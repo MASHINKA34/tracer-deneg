@@ -1,0 +1,149 @@
+# =====================================================================
+#  ПРИВАТНОЕ: промты, инструкции, заметки для AI-агентов
+#  Ничего из этого не должно попадать в GitHub.
+#  Всё приватное складываем в _private/ — эта папка игнорируется целиком.
+# =====================================================================
+_private/
+.private/
+
+# Папки с промтами/инструкциями в любом месте проекта (вкл. рус. названия)
+**/prompts/
+**/promts/
+**/промты/
+**/промпты/
+**/instructions/
+**/инструкции/
+*.prompt.md
+*.prompt.txt
+
+# Конфиги и инструкции AI-инструментов
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+AGENTS.md
+**/AGENTS.md
+GEMINI.md
+.cursor/
+.cursorrules
+.cursorignore
+.windsurf/
+.windsurfrules
+.continue/
+.aider*
+.codeium/
+.github/copilot-instructions.md
+.mcp.json
+
+# =====================================================================
+#  СЕКРЕТЫ (репозиторий публичный!)
+# =====================================================================
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+key.properties
+keystore.properties
+*.pem
+*.p8
+*.p12
+*.key
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+supabase/.env
+secrets/
+
+# =====================================================================
+#  Android / Gradle / Kotlin
+# =====================================================================
+.gradle/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+.kotlin/
+
+# =====================================================================
+#  Flutter / Dart
+# =====================================================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/ios/.symlinks/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+app.*.symbols
+app.*.map.json
+
+# =====================================================================
+#  Node / веб / бэкенд
+# =====================================================================
+node_modules/
+dist/
+out/
+.next/
+.nuxt/
+.expo/
+.turbo/
+.vercel/
+.cache/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Supabase CLI (локальное состояние)
+supabase/.branches/
+supabase/.temp/
+
+# =====================================================================
+#  Логи, временные файлы
+# =====================================================================
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# =====================================================================
+#  IDE
+# =====================================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.fleet/
+*.code-workspace
+
+# =====================================================================
+#  ОС
+# =====================================================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
