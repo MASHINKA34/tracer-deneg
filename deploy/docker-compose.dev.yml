@@ -1,0 +1,28 @@
+# PostgreSQL для разработки.
+# Запуск:    docker compose -f deploy/docker-compose.dev.yml up -d --wait
+# Остановка: docker compose -f deploy/docker-compose.dev.yml down   (данные остаются в томе)
+#
+# Порт 5434 (а не 5432) — чтобы не мешать локально установленному PostgreSQL.
+# Пароль несекретный и только для разработки: порт открыт лишь на 127.0.0.1.
+name: milionchik-dev
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: milionchik
+      POSTGRES_PASSWORD: milionchik
+      POSTGRES_DB: milionchik
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      # С PostgreSQL 18 том монтируется в /var/lib/postgresql (не …/data).
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U milionchik -d milionchik"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
