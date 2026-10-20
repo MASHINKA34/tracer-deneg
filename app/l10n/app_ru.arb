@@ -3,5 +3,99 @@
   "appTitle": "Милиончик",
   "@appTitle": {
     "description": "Название приложения: заголовок задачи и заглушка главного экрана"
-  }
+  },
+
+  "a11yShowPassword": "Показать пароль",
+  "@a11yShowPassword": {
+    "description": "TalkBack: «глазик» в поле пароля, пароль скрыт"
+  },
+  "a11yHidePassword": "Скрыть пароль",
+  "@a11yHidePassword": {
+    "description": "TalkBack: «глазик» в поле пароля, пароль виден"
+  },
+  "a11yClose": "Закрыть",
+  "@a11yClose": {
+    "description": "TalkBack: крестик (плашка праздника и т.п.)"
+  },
+  "a11yBackspace": "Стереть",
+  "@a11yBackspace": {
+    "description": "TalkBack: клавиша «стереть» на клавиатуре суммы"
+  },
+  "a11yAddExpense": "Добавить трату",
+  "@a11yAddExpense": {
+    "description": "TalkBack: кнопка «+» в нижнем меню"
+  },
+  "a11yPrevMonth": "Предыдущий месяц",
+  "@a11yPrevMonth": {
+    "description": "TalkBack: стрелка ‹ на карточке месяца"
+  },
+  "a11yNextMonth": "Следующий месяц",
+  "@a11yNextMonth": {
+    "description": "TalkBack: стрелка › на карточке месяца"
+  },
+  "a11yChooseMonth": "{month}, выбрать месяц",
+  "@a11yChooseMonth": {
+    "description": "TalkBack: название месяца на карточке (открывает выбор месяца)",
+    "placeholders": {
+      "month": { "type": "String", "example": "Октябрь 2026" }
+    }
+  },
+  "a11yDaySpent": "{date}, потрачено {rubles, plural, one{{rubles} рубль} few{{rubles} рубля} many{{rubles} рублей} other{{rubles} рубля}}",
+  "@a11yDaySpent": {
+    "description": "TalkBack: ячейка календаря с тратами («19 октября, потрачено 1 100 рублей»)",
+    "placeholders": {
+      "date": { "type": "String", "example": "19 октября" },
+      "rubles": { "type": "int", "format": "decimalPattern" }
+    }
+  },
+  "a11yDayNoSpending": "{date}, трат нет",
+  "@a11yDayNoSpending": {
+    "description": "TalkBack: прошедший день без трат",
+    "placeholders": {
+      "date": { "type": "String", "example": "4 октября" }
+    }
+  },
+  "a11yDayToday": "сегодня",
+  "@a11yDayToday": {
+    "description": "TalkBack: добавка к подписи ячейки сегодняшнего дня"
+  },
+  "a11yDaySelected": "выбран",
+  "@a11yDaySelected": {
+    "description": "TalkBack: добавка к подписи выбранной ячейки"
+  },
+
+  "navMonth": "Месяц",
+  "@navMonth": { "description": "Нижнее меню: главная (карточка месяца)" },
+  "navStats": "Статистика",
+  "@navStats": { "description": "Нижнее меню: статистика" },
+  "navRecurring": "Регулярные",
+  "@navRecurring": { "description": "Нижнее меню: регулярные траты" },
+  "navProfile": "Профиль",
+  "@navProfile": { "description": "Нижнее меню: профиль" },
+
+  "syncDone": "Синхронизировано",
+  "@syncDone": { "description": "Статус синхронизации: всё на сервере" },
+  "syncWaiting": "Ждёт сети · {count}",
+  "@syncWaiting": {
+    "description": "Статус синхронизации: нет сети, в очереди N изменений",
+    "placeholders": {
+      "count": { "type": "int", "format": "decimalPattern" }
+    }
+  },
+  "syncSending": "Отправляем…",
+  "@syncSending": { "description": "Статус синхронизации: идёт отправка" },
+  "syncError": "Ошибка синхронизации",
+  "@syncError": { "description": "Статус синхронизации: ошибка" },
+
+  "monthAverage": "В среднем",
+  "@monthAverage": { "description": "Футер карточки месяца: подпись среднего в день" },
+  "monthAveragePerDay": "{amount} / день",
+  "@monthAveragePerDay": {
+    "description": "Футер карточки месяца: среднее в день",
+    "placeholders": {
+      "amount": { "type": "String", "example": "963 ₽" }
+    }
+  },
+  "monthTotal": "Итог за месяц",
+  "@monthTotal": { "description": "Футер карточки месяца: подпись итога" }
 }

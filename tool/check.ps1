@@ -8,7 +8,8 @@
     server - dart pub get, dart analyze --fatal-infos,
              тестовый Postgres (deploy/docker-compose.test.yml), dart test,
              тестовый Postgres убирается всегда (down -v)
-    app    - flutter pub get, flutter analyze --fatal-infos, flutter test
+    app    - flutter pub get, проверка tokens.g.dart (gen_tokens --check),
+             flutter analyze --fatal-infos, flutter test (с эталонными скриншотами)
   Упавший шаг не останавливает остальные: в конце - сводка по всем шагам.
   Код выхода 0 - всё зелёное, 1 - хотя бы один шаг упал.
 
@@ -106,6 +107,8 @@ try {
 # app
 $app = Join-Path $root 'app'
 [void](Invoke-Step 'app: pub get' $app 'flutter' @('pub', 'get'))
+# tokens.g.dart должен совпадать с tool/design-tokens.json (руками не правится)
+[void](Invoke-Step 'app: tokens up to date' $app 'dart' @('run', 'tool/gen_tokens.dart', '--check'))
 [void](Invoke-Step 'app: analyze' $app 'flutter' @('analyze', '--fatal-infos'))
 [void](Invoke-Step 'app: test' $app 'flutter' @('test'))
 
