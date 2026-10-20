@@ -7,6 +7,8 @@ environment:
   sdk: ^3.13.5
 
 dependencies:
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
   ffi: ^2.2.0
   flutter:
     sdk: flutter
@@ -25,6 +27,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  drift_dev: ^2.35.1
+  build_runner: ^2.16.2
 
 flutter:
   uses-material-design: true
