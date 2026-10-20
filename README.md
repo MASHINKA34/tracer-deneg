@@ -73,6 +73,41 @@ flutter run
   adb exec-out run-as ru.milionchik.app cat files/logs/app.log
   ```
 
+### Локальная база (`app/lib/data/db/`)
+
+База на телефоне — SQLite через drift: таблицы в `tables.dart`, класс `AppDatabase` и версия схемы (`schemaVersion`) в `app_database.dart`, запуск шагов миграции и ошибка неизвестной версии — в `migrations.dart`. Снимки схемы каждой версии лежат в `app/drift_schemas/app_database/drift_schema_v<N>.json`, их тестовые копии — в `app/test/data/db/app_database/generated/` (настройка — `app/build.yaml`). Тест `test/data/db/schema_snapshot_test.dart` сверяет текущую схему со снимком последней версии: если поменять таблицу и не выпустить новую версию, он краснеет и пишет, какая колонка или индекс разошлись.
+
+Порядок изменения схемы (всё из папки `app`):
+
+1. Поменять таблицы в `tables.dart` и поднять `schemaVersion` в `app_database.dart` на 1. Версию никогда не уменьшать и не переиспользовать.
+2. Пересоздать код базы и снять снимок новой версии:
+   ```powershell
+   dart run build_runner build
+   dart run drift_dev make-migrations
+   ```
+   Появятся `drift_schemas/app_database/drift_schema_v<N>.json`, `lib/data/db/app_database.steps.dart` (функции `migrationSteps` и классы `Schema<N>`), тестовые копии схем в `test/data/db/app_database/generated/` и заготовка `test/data/db/app_database/migration_test.dart`. Старые снимки не трогать и не пересоздавать.
+3. Написать шаг миграции: в `app_database.dart` импортировать `app_database.steps.dart` и в `_upgradeSchema` передать шаги в `migrateSchema`, например для новой колонки `note` в `local_prefs`:
+   ```dart
+   migrateSchema(
+     m,
+     from: from,
+     to: to,
+     steps: migrationSteps(
+       from1To2: (m, schema) async {
+         await m.addColumn(schema.localPrefs, schema.localPrefs.note);
+       },
+     ),
+   );
+   ```
+   `schema` — схема той версии, в которую переводит шаг (`Schema2` …). Каждый шаг переводит базу ровно на одну версию, версия в файле сохраняется после каждого шага. Пока шага нет, тест из шага 4 падает с `UnknownSchemaVersionException: no migration from database schema version 1 to app schema version 2`.
+4. Проверить. В заготовке `migration_test.dart` убрать `// ignore_for_file` и комментарии `TODO` (в репозитории их нет), для изменённых колонок заполнить тест с данными. Поправить тесты, где схема записана явно (`schema_test.dart`, `open_database_test.dart`). Затем:
+   ```powershell
+   flutter test test/data/db
+   ```
+   и полная проверка `tool/check.ps1`. Все файлы из шага 2 коммитятся вместе с изменением схемы.
+
+Если файл базы на телефоне новее приложения (поставили старую сборку поверх новой) или для его версии нет шага, база не открывается: в логе `[db]` строка `schema migration failed from=<было> to=<стало>` с причиной и стеком, файл остаётся как был.
+
 ### Дизайн-система (`app/lib/ui/`)
 
 Цвета, шрифты, отступы, компоненты и декор карточки месяца — из макетов Figma; экраны собираются только из этих деталей.
