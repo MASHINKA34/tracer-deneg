@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared/shared.dart';
 
 import 'converters.dart';
+import 'migrations.dart';
 import 'tables.dart';
 
 part 'app_database.g.dart';
@@ -38,8 +39,11 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   @override
-  MigrationStrategy get migration =>
-      MigrationStrategy(onCreate: _createSchema, beforeOpen: _beforeOpen);
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: _createSchema,
+    onUpgrade: _upgradeSchema,
+    beforeOpen: _beforeOpen,
+  );
 
   Future<void> _createSchema(Migrator m) async {
     final sw = Stopwatch()..start();
@@ -55,6 +59,9 @@ class AppDatabase extends _$AppDatabase {
       'indexes=$indexes in ${sw.elapsedMilliseconds}ms',
     );
   }
+
+  Future<void> _upgradeSchema(Migrator m, int from, int to) =>
+      migrateSchema(m, from: from, to: to);
 
   Future<void> _beforeOpen(OpeningDetails details) async {
     _opening = details;
