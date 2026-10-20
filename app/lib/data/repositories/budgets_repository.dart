@@ -42,6 +42,8 @@ abstract interface class BudgetsRepository {
 
   Future<Budget> update(String id, {String? name, String? emoji});
 
+  Future<Budget> createLocalPersonal();
+
   Future<void> applyFromServer(Iterable<Budget> budgets);
 
   Future<BudgetRemoval> removeBudgetData(Iterable<String> budgetIds);
@@ -61,6 +63,10 @@ final class DriftBudgetsRepository implements BudgetsRepository {
        );
 
   static const String _entity = 'budget';
+
+  static const String personalName = 'Личный бюджет';
+
+  static const String personalEmoji = '👛';
 
   final AppDatabase _db;
   final RepositoryWriter _writer;
@@ -125,6 +131,78 @@ final class DriftBudgetsRepository implements BudgetsRepository {
         return budget;
       },
     );
+  }
+
+  @override
+  Future<Budget> createLocalPersonal() async {
+    final sw = Stopwatch()..start();
+    final id = newId();
+    var categories = 0;
+    var outboxEntries = 0;
+    final budget = await _writer.edit(
+      _entity,
+      'create-personal',
+      id: id,
+      describe: (b) => b.id == id
+          ? 'kind=${b.kind.name} categories=$categories outbox=$outboxEntries'
+          : 'skipped existing=${b.id}',
+      body: (c) async {
+        final existing =
+            await (_db.select(_db.budgets)
+                  ..where(
+                    (b) =>
+                        b.kind.equalsValue(BudgetKind.personal) &
+                        b.deletedAt.isNull(),
+                  )
+                  ..orderBy([
+                    (b) => OrderingTerm.asc(b.createdAt),
+                    (b) => OrderingTerm.asc(b.id),
+                  ])
+                  ..limit(1))
+                .getSingleOrNull();
+        if (existing != null) return budgetFromRow(existing);
+
+        final personal = Budget(
+          id: id,
+          kind: BudgetKind.personal,
+          name: personalName,
+          emoji: personalEmoji,
+          ownerId: c.userId,
+          createdAt: c.now,
+          updatedAt: c.now,
+          updatedBy: c.userId,
+        );
+        await _db.into(_db.budgets).insert(budgetToRow(personal));
+        await _outbox.enqueueUpsert(personal);
+        outboxEntries++;
+        final presets = buildPresetCategories(
+          budgetId: id,
+          updatedBy: c.userId,
+          now: c.now,
+          newId: newId,
+        );
+        for (final category in presets) {
+          await _db.into(_db.categories).insert(categoryToRow(category));
+          await _outbox.enqueueUpsert(category);
+          categories++;
+          outboxEntries++;
+        }
+        return personal;
+      },
+    );
+    if (budget.id == id) {
+      _log.info(
+        'personal budget created id=$id categories=$categories '
+        'outbox=$outboxEntries in ${sw.elapsedMilliseconds}ms',
+      );
+    } else {
+      _log.fine(
+        'personal budget already exists id=${budget.id} '
+        'owner=${budget.ownerId}, nothing created '
+        'in ${sw.elapsedMilliseconds}ms',
+      );
+    }
+    return budget;
   }
 
   @override
