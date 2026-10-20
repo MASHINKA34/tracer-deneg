@@ -11,7 +11,4 @@ final class Clock {
   LocalDate today() => LocalDate.fromDateTime(now());
 }
 
-final clockProvider = Provider<Clock>(
-  (ref) => const Clock(),
-  name: 'clock',
-);
+final clockProvider = Provider<Clock>((ref) => const Clock(), name: 'clock');
