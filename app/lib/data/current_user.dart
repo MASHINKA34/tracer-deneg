@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import 'db/redact_db_error.dart';
 import 'repositories/prefs_repository.dart';
 
 final _log = Logger('repo');
@@ -43,10 +44,11 @@ final class LocalPrefsCurrentUser implements CurrentUser {
       return id;
     } catch (e, st) {
       _userId = null;
+      final error = redactDbError(e);
       _log.severe(
         'local user id load failed key=${PrefKeys.localUserId} '
-        'after ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
-        e,
+        'after ${sw.elapsedMilliseconds}ms: ${describeError(error)}',
+        error,
         st,
       );
       rethrow;

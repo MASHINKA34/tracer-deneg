@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../db/app_database.dart';
+import '../db/redact_db_error.dart';
 
 final _log = Logger('repo');
 
@@ -52,10 +53,11 @@ final class DriftPrefsRepository implements PrefsRepository {
       );
       return row?.value;
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         'pref get failed key=$key type=$type '
-        'after ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
-        e,
+        'after ${sw.elapsedMilliseconds}ms: ${describeError(error)}',
+        error,
         st,
       );
       rethrow;
@@ -67,9 +69,10 @@ final class DriftPrefsRepository implements PrefsRepository {
           .watchSingleOrNull()
           .map((row) => row?.value)
           .handleError((Object e, StackTrace st) {
+            final error = redactDbError(e);
             _log.severe(
-              'pref watch failed key=$key type=$type: ${describeError(e)}',
-              e,
+              'pref watch failed key=$key type=$type: ${describeError(error)}',
+              error,
               st,
             );
             Error.throwWithStackTrace(e, st);
@@ -86,10 +89,11 @@ final class DriftPrefsRepository implements PrefsRepository {
         'in ${sw.elapsedMilliseconds}ms',
       );
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         'pref set failed key=$key type=$type '
-        'after ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
-        e,
+        'after ${sw.elapsedMilliseconds}ms: ${describeError(error)}',
+        error,
         st,
       );
       rethrow;
@@ -162,10 +166,11 @@ final class DriftPrefsRepository implements PrefsRepository {
         'pref remove key=$key removed=$removed in ${sw.elapsedMilliseconds}ms',
       );
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         'pref remove failed key=$key after ${sw.elapsedMilliseconds}ms: '
-        '${describeError(e)}',
-        e,
+        '${describeError(error)}',
+        error,
         st,
       );
       rethrow;
@@ -193,10 +198,11 @@ final class DriftPrefsRepository implements PrefsRepository {
         return value;
       });
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         'pref create failed key=$key after ${sw.elapsedMilliseconds}ms: '
-        '${describeError(e)}',
-        e,
+        '${describeError(error)}',
+        error,
         st,
       );
       rethrow;

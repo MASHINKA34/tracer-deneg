@@ -3,6 +3,7 @@ import 'package:shared/shared.dart';
 
 import '../current_user.dart';
 import '../db/app_database.dart';
+import '../db/redact_db_error.dart';
 import 'outbox_queue.dart';
 import 'repository_errors.dart';
 
@@ -53,10 +54,11 @@ final class RepositoryWriter {
       );
       rethrow;
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         '$entity $op failed id=$id after ${sw.elapsedMilliseconds}ms, '
-        'transaction rolled back: ${describeError(e)}',
-        e,
+        'transaction rolled back: ${describeError(error)}',
+        error,
         st,
       );
       rethrow;
@@ -78,10 +80,11 @@ final class RepositoryWriter {
       await outbox.reportSize('$entity.$op');
       return result;
     } catch (e, st) {
+      final error = redactDbError(e);
       _log.severe(
         '$entity $op failed $target after ${sw.elapsedMilliseconds}ms, '
-        'transaction rolled back: ${describeError(e)}',
-        e,
+        'transaction rolled back: ${describeError(error)}',
+        error,
         st,
       );
       rethrow;
@@ -90,7 +93,12 @@ final class RepositoryWriter {
 
   Stream<T> watch<T>(String entity, String query, Stream<T> stream) =>
       stream.handleError((Object e, StackTrace st) {
-        _log.severe('$entity watch failed $query: ${describeError(e)}', e, st);
+        final error = redactDbError(e);
+        _log.severe(
+          '$entity watch failed $query: ${describeError(error)}',
+          error,
+          st,
+        );
         Error.throwWithStackTrace(e, st);
       });
 }
