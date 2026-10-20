@@ -9,7 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared/logging.dart';
 
-import 'app.dart';
+import 'core/data_startup.dart';
 import 'core/logging/app_logging.dart';
 import 'core/logging/crash_test.dart';
 import 'core/logging/device_info.dart';
@@ -82,12 +82,14 @@ Future<void> main() async {
   }
   OrientationPolicy().start();
 
+  final data = await startData();
+
   // 5. Первый кадр.
   binding.addPostFrameCallback((_) {
     _log.info('first frame in ${startup.elapsedMilliseconds}ms');
   });
   _log.fine('runApp after ${startup.elapsedMilliseconds}ms');
-  runApp(const MilionchikApp());
+  runApp(appRoot(data));
 
   // 6. Шрифты на месте (в фоне, не задерживает первый кадр).
   unawaited(checkFontAssets(rootBundle));
