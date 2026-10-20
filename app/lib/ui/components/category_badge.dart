@@ -12,6 +12,9 @@ import '../tokens/tokens.g.dart';
 class CategoryBadge extends StatelessWidget {
   const CategoryBadge({super.key, required this.emoji, required this.color});
 
+  /// Сторона значка.
+  static const double size = 40;
+
   final String emoji;
   final CategoryColor? color;
 
@@ -20,8 +23,8 @@ class CategoryBadge extends StatelessWidget {
     final colors = context.colors;
     return ExcludeSemantics(
       child: Container(
-        width: 40,
-        height: 40,
+        width: size,
+        height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: colors.categorySoft(color),

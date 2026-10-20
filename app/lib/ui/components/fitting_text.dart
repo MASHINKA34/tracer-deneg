@@ -27,27 +27,38 @@ class FittingText extends StatelessWidget {
 
   static final RegExp _spaces = RegExp(r'[ \t\n]+');
 
+  /// Ширина самого длинного слова [text] стилем [style] (поверх
+  /// `DefaultTextStyle`) с системным масштабом шрифта. Если она больше
+  /// ширины места, [FittingText] уменьшит кегль; по ней же раскладка может
+  /// решить дать тексту больше места (ExpenseRow).
+  static double widestWord(BuildContext context, String text, TextStyle style) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final merged = DefaultTextStyle.of(context).style.merge(style);
+    var widest = 0.0;
+    for (final word in text.split(_spaces)) {
+      if (word.isEmpty) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: word, style: merged),
+        textDirection: direction,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      widest = math.max(widest, painter.width);
+      painter.dispose();
+    }
+    return widest;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scaler = MediaQuery.textScalerOf(context);
-    final direction = Directionality.of(context);
     final merged = DefaultTextStyle.of(context).style.merge(style);
     return LayoutBuilder(
       builder: (context, constraints) {
         var factor = 1.0;
         if (constraints.hasBoundedWidth) {
-          var widest = 0.0;
-          for (final word in text.split(_spaces)) {
-            if (word.isEmpty) continue;
-            final painter = TextPainter(
-              text: TextSpan(text: word, style: merged),
-              textDirection: direction,
-              textScaler: scaler,
-              maxLines: 1,
-            )..layout();
-            widest = math.max(widest, painter.width);
-            painter.dispose();
-          }
+          final widest = widestWord(context, text, style);
           if (widest > constraints.maxWidth && widest > 0) {
             factor = constraints.maxWidth / widest;
           }
