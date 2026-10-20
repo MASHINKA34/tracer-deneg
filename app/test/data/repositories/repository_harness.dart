@@ -39,7 +39,7 @@ final class SeededBudget {
 }
 
 final class RepositoryHarness {
-  RepositoryHarness() : db = AppDatabase.memory() {
+  RepositoryHarness({AppDatabase? db}) : db = db ?? AppDatabase.memory() {
     Logger.root.level = Level.ALL;
     _logs = Logger.root.onRecord.listen(records.add);
   }
