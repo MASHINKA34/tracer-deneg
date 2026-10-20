@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ import 'core/logging/device_info.dart';
 import 'core/logging/error_handlers.dart';
 import 'core/logging/error_reports.dart';
 import 'core/orientation_policy.dart';
+import 'ui/theme/font_check.dart';
 
 final _log = Logger('app');
 
@@ -86,6 +88,9 @@ Future<void> main() async {
   });
   _log.fine('runApp after ${startup.elapsedMilliseconds}ms');
   runApp(const MilionchikApp());
+
+  // 6. Шрифты на месте (в фоне, не задерживает первый кадр).
+  unawaited(checkFontAssets(rootBundle));
 
   scheduleCrashTestIfRequested();
 }
