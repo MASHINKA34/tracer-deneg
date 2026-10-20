@@ -6,8 +6,9 @@ import '../theme/app_theme.dart';
 
 /// Логотип «Милиончика» (Figma Logo `5:178`): монетка с ростком на
 /// квадрате 72 со скруглением 20. Цвета привязаны к настроению, как в Figma:
-/// фон и «М» — `accent`, монетка — `on-accent`, кольцо — `accent` 1.5,
-/// росток — `category/green`. Рисуется в 72 и масштабируется до [size].
+/// фон — `accent` (заливка), монетка — `on-accent`, кольцо 1.5 и «М» —
+/// `accent-strong` (обводка и текст, 00-spec §6.2), росток —
+/// `category/green`. Рисуется в 72 и масштабируется до [size].
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.size = 72, this.semanticLabel});
 
@@ -50,7 +51,7 @@ class AppLogo extends StatelessWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: mood.accent, width: 1.5),
+                      border: Border.all(color: mood.accentStrong, width: 1.5),
                     ),
                   ),
                 ),
@@ -61,7 +62,7 @@ class AppLogo extends StatelessWidget {
                   child: Text(
                     'М',
                     textAlign: TextAlign.center,
-                    style: AppText.displayS.copyWith(color: mood.accent),
+                    style: AppText.displayS.copyWith(color: mood.accentStrong),
                     textScaler: TextScaler.noScaling,
                   ),
                 ),
