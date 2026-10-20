@@ -20,6 +20,13 @@ String maskInviteCode(String? code) {
   return 'MLN-****';
 }
 
+/// Код восстановления для лога — всегда `****-****-****`, сам код не пишем.
+String maskRecoveryCode(String? code) {
+  if (code == null) return '<none>';
+  if (code.isEmpty) return '<empty>';
+  return '****-****-****';
+}
+
 /// Токен или секрет для лога: только длина, `***(43)`.
 String maskToken(String? token) {
   if (token == null) return '<none>';
