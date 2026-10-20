@@ -60,9 +60,11 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 
 ```powershell
 cd app
-flutter emulators --launch milionchik_api37
+flutter emulators --launch milionchik_api36
 flutter run
 ```
+
+Эмуляторы: `milionchik_api30` (Android 11) и `milionchik_api36` (Android 16, образ API 36.1), оба 360×800 dp.
 
 - Уровень логов: `flutter run --dart-define=LOG_LEVEL=debug` (по умолчанию `info`).
 - Проверка перехвата ошибок (только debug-сборка): `flutter run --dart-define=CRASH_TEST=1` — через 2 секунды после старта бросается тестовое исключение, его стек виден в логе.
@@ -70,6 +72,20 @@ flutter run
   ```powershell
   adb exec-out run-as ru.milionchik.app cat files/logs/app.log
   ```
+
+### Если эмулятор с образом API 36.1+ падает
+
+На некоторых компьютерах (эмулятор 37.2.12) системный графический драйвер образов API 36.1 и 37 падает при чтении кадра (`mapper.ranchu: Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma`), и вместе с ним перезапускается `system_server`. Помогает:
+
+- навигация тремя кнопками вместо жестов (настройка сохраняется в эмуляторе):
+  ```powershell
+  adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
+  ```
+- снимок экрана — средствами эмулятора, а не `adb shell screencap`:
+  ```powershell
+  adb emu screenrecord screenshot .
+  ```
+- если повторный `flutter run` при уже открытом приложении завершается ошибкой `Activity class {ru.milionchik.app/…MainActivity} does not exist` — это система эмулятора перезапустилась (падает снимок задачи старого экземпляра); запустить `flutter run` ещё раз.
 
 ## Логи
 
