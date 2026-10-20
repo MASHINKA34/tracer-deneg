@@ -183,11 +183,15 @@ final class DriftOutboxQueue implements OutboxQueue {
         lastError: row.lastError,
       );
     } catch (e, st) {
+      final offset = e is FormatException && e.offset != null
+          ? ' offset=${e.offset}'
+          : '';
       _log.severe(
         'outbox entry unreadable outboxId=${row.id} entity=${row.entity.name} '
         'id=${row.entityId} op=${row.op.name} '
-        'payloadLength=${row.payload?.length ?? 0}: ${describeError(e)}',
-        e,
+        'payloadLength=${row.payload?.length ?? 0} '
+        'error=${e.runtimeType}$offset',
+        null,
         st,
       );
       rethrow;
