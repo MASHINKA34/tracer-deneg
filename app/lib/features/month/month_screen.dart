@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,12 @@ import 'month_header.dart';
 
 final _log = Logger('month');
 
+const Duration monthSlideDuration = Duration(milliseconds: 250);
+
+const double monthSwipeDistance = 48;
+
+const double monthSwipeVelocity = 300;
+
 class MonthScreen extends ConsumerStatefulWidget {
   const MonthScreen({super.key});
 
@@ -20,6 +27,8 @@ class MonthScreen extends ConsumerStatefulWidget {
 }
 
 class _MonthScreenState extends ConsumerState<MonthScreen> {
+  double _dragDx = 0;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +39,31 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
   }
 
   MonthController get _controller => ref.read(monthControllerProvider.notifier);
+
+  void _onDragEnd(DragEndDetails details) {
+    final dx = _dragDx;
+    final velocity = details.primaryVelocity ?? 0;
+    _dragDx = 0;
+    final bool forward;
+    if (velocity.abs() >= monthSwipeVelocity) {
+      forward = velocity < 0;
+    } else if (dx.abs() >= monthSwipeDistance) {
+      forward = dx < 0;
+    } else {
+      _log.fine(
+        'month swipe ignored dx=${dx.round()} '
+        'velocity=${velocity.round()}: shorter than '
+        '${monthSwipeDistance.round()}px and slower than '
+        '${monthSwipeVelocity.round()}px/s',
+      );
+      return;
+    }
+    if (forward) {
+      _controller.next(MonthStepSource.swipe);
+    } else {
+      _controller.previous(MonthStepSource.swipe);
+    }
+  }
 
   void _openCatalog() {
     _log.info('long press on month header → debug catalog');
@@ -66,6 +100,13 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
           'available yet',
         ),
       );
+      card = GestureDetector(
+        dragStartBehavior: DragStartBehavior.down,
+        onHorizontalDragStart: (_) => _dragDx = 0,
+        onHorizontalDragUpdate: (details) => _dragDx += details.delta.dx,
+        onHorizontalDragEnd: _onDragEnd,
+        child: _MonthSlide(month: month, child: card),
+      );
     }
 
     return Scaffold(
@@ -87,6 +128,55 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MonthSlide extends StatefulWidget {
+  const _MonthSlide({required this.month, required this.child});
+
+  final YearMonth month;
+  final Widget child;
+
+  @override
+  State<_MonthSlide> createState() => _MonthSlideState();
+}
+
+class _MonthSlideState extends State<_MonthSlide> {
+  int _direction = 1;
+
+  @override
+  void didUpdateWidget(covariant _MonthSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.month != widget.month) {
+      _direction = widget.month > oldWidget.month ? 1 : -1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = ValueKey<YearMonth>(widget.month);
+    return AnimatedSwitcher(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : monthSlideDuration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeOutCubic.flipped,
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.topCenter,
+        children: [...previousChildren, ?currentChild],
+      ),
+      transitionBuilder: (child, animation) {
+        final side = child.key == current ? _direction : -_direction;
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(side.toDouble(), 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        );
+      },
+      child: KeyedSubtree(key: current, child: widget.child),
     );
   }
 }
