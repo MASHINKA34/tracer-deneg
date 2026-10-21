@@ -79,6 +79,8 @@
   "@recurringTitle": { "description": "Заголовок вкладки «Регулярные» (12:1047)" },
   "profileTitle": "Профиль",
   "@profileTitle": { "description": "Заголовок вкладки «Профиль» (13:975)" },
+  "newExpenseTitle": "Новая трата",
+  "@newExpenseTitle": { "description": "Заголовок экрана «Новая трата» (10:763), открывается кнопкой «+»" },
 
   "syncDone": "Синхронизировано",
   "@syncDone": { "description": "Статус синхронизации: всё на сервере" },

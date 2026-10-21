@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 
 import '../features/month/month_stub_screen.dart';
 import '../features/shell/app_shell.dart';
+import '../features/shell/new_expense_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'logging/navigation_logger.dart';
@@ -16,8 +17,13 @@ abstract final class AppRoutes {
   static const String stats = '/stats';
   static const String recurring = '/recurring';
   static const String profile = '/profile';
+  static const String newExpense = '/expense/new';
   static const String catalog = '/catalog';
+
+  static const String newExpenseName = 'newExpense';
 }
+
+const Duration newExpenseTransition = Duration(milliseconds: 300);
 
 /// Маршруты приложения. Пока заглушка «Милиончик» (главная появится на
 /// этапе 05) и — только в debug-сборке — каталог компонентов `/catalog`
@@ -84,6 +90,20 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
           ),
         ],
       ),
+      GoRoute(
+        path: AppRoutes.newExpense,
+        name: AppRoutes.newExpenseName,
+        parentNavigatorKey: rootKey,
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          name: state.name,
+          fullscreenDialog: true,
+          transitionDuration: newExpenseTransition,
+          reverseTransitionDuration: newExpenseTransition,
+          transitionsBuilder: slideUpTransition,
+          child: const NewExpenseStubScreen(),
+        ),
+      ),
       if (kDebugMode)
         GoRoute(
           path: AppRoutes.catalog,
@@ -92,5 +112,23 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
           builder: (context, state) => const CatalogScreen(),
         ),
     ],
+  );
+}
+
+Widget slideUpTransition(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  if (MediaQuery.disableAnimationsOf(context)) return child;
+  return SlideTransition(
+    position: animation.drive(
+      Tween<Offset>(
+        begin: const Offset(0, 1),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+    ),
+    child: child,
   );
 }

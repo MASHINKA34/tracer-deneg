@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
+import '../../core/router.dart';
 import '../../ui/components/bottom_nav.dart';
 
 final _log = Logger('nav');
@@ -23,15 +24,31 @@ class AppShell extends StatelessWidget {
     navigationShell.goBranch(tab.index, initialLocation: tab == from);
   }
 
+  void _openNewExpense(BuildContext context) {
+    _log.fine('new expense open from tab=${_active.name}');
+    context.pushNamed(AppRoutes.newExpenseName);
+  }
+
+  void _handleBack(bool didPop, Object? result) {
+    if (didPop) return;
+    _log.fine('back on ${_active.name} root → ${AppNavTab.month.name}');
+    navigationShell.goBranch(AppNavTab.month.index);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: AppBottomNav(
-        active: _active,
-        onTabSelected: _selectTab,
-        onAdd: null,
+    final active = _active;
+    return PopScope<Object?>(
+      canPop: active == AppNavTab.month,
+      onPopInvokedWithResult: _handleBack,
+      child: Scaffold(
+        extendBody: true,
+        body: navigationShell,
+        bottomNavigationBar: AppBottomNav(
+          active: active,
+          onTabSelected: _selectTab,
+          onAdd: () => _openNewExpense(context),
+        ),
       ),
     );
   }
