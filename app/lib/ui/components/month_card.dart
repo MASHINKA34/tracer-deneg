@@ -168,6 +168,30 @@ class _Header extends StatelessWidget {
         child: Stack(
           alignment: AlignmentDirectional.centerStart,
           children: [
+            Positioned(
+              right: kMinTapTarget,
+              child: _NavButton(
+                icon: AppIcons.chevronLeft,
+                label: l10n.a11yPrevMonth,
+                onTap: onPrevious,
+                margin: const EdgeInsets.only(
+                  left: kMinTapTarget - _NavButton.size - _arrowMargin,
+                  right: _arrowMargin,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              child: _NavButton(
+                icon: AppIcons.chevronRight,
+                label: l10n.a11yNextMonth,
+                onTap: onNext,
+                margin: const EdgeInsets.only(
+                  left: _arrowMargin,
+                  right: kMinTapTarget - _NavButton.size - _arrowMargin,
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.only(right: _arrowsWidth + overhang),
               child: Align(
@@ -221,30 +245,6 @@ class _Header extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: kMinTapTarget,
-              child: _NavButton(
-                icon: AppIcons.chevronLeft,
-                label: l10n.a11yPrevMonth,
-                onTap: onPrevious,
-                margin: const EdgeInsets.only(
-                  left: kMinTapTarget - _NavButton.size - _arrowMargin,
-                  right: _arrowMargin,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 0,
-              child: _NavButton(
-                icon: AppIcons.chevronRight,
-                label: l10n.a11yNextMonth,
-                onTap: onNext,
-                margin: const EdgeInsets.only(
-                  left: _arrowMargin,
-                  right: kMinTapTarget - _NavButton.size - _arrowMargin,
                 ),
               ),
             ),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milionchik/features/month/month_header.dart';
@@ -81,9 +83,16 @@ void main() {
         _expectTapTarget(tester, previous, 'previous month');
         _expectTapTarget(tester, next, 'next month');
 
+        final previousRect = tester.getRect(previous);
+        final titleRight = tester
+            .getRect(find.bySemanticsLabel('Октябрь 2026, выбрать месяц'))
+            .right;
         await _tapAt(
           tester,
-          tester.getRect(previous).topLeft + const Offset(1, 1),
+          Offset(
+            math.max(previousRect.left, titleRight) + 1,
+            previousRect.top + 1,
+          ),
         );
         expect(
           find.bySemanticsLabel('Сентябрь 2026, выбрать месяц'),
