@@ -362,7 +362,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _AmountView(
+                        ExpenseAmountView(
                           input: state.input,
                           caretOn: _caretOn,
                           shake: _shake,
@@ -420,8 +420,8 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                   SliverLayoutBuilder(
                     builder: (context, constraints) => SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _Keypad(
-                        keyHeight: _Keypad.keyHeightFor(
+                      child: ExpenseKeypad(
+                        keyHeight: ExpenseKeypad.keyHeightFor(
                           context,
                           space:
                               constraints.viewportMainAxisExtent -
@@ -626,8 +626,9 @@ class _Categories extends StatelessWidget {
   }
 }
 
-class _AmountView extends StatelessWidget {
-  const _AmountView({
+class ExpenseAmountView extends StatelessWidget {
+  const ExpenseAmountView({
+    super.key,
     required this.input,
     required this.caretOn,
     required this.shake,
@@ -719,14 +720,18 @@ class _AmountView extends StatelessWidget {
   }
 }
 
-class _Keypad extends StatelessWidget {
-  const _Keypad({
+class ExpenseKeypad extends StatelessWidget {
+  const ExpenseKeypad({
+    super.key,
     required this.keyHeight,
     required this.bottomInset,
     required this.onDigit,
     required this.onComma,
     required this.onBackspace,
     required this.onClear,
+    this.borderRadius = const BorderRadius.vertical(
+      top: Radius.circular(RadiusTokens.xl),
+    ),
   });
 
   final double keyHeight;
@@ -735,6 +740,7 @@ class _Keypad extends StatelessWidget {
   final VoidCallback onComma;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
+  final BorderRadius borderRadius;
 
   static const double _gap = 8;
   static const double _padding = 12;
@@ -772,9 +778,7 @@ class _Keypad extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: context.colors.bgSurface2,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(RadiusTokens.xl),
-        ),
+        borderRadius: borderRadius,
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
