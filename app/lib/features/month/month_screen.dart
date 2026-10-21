@@ -10,6 +10,7 @@ import '../../core/clock.dart';
 import '../../ui/components/month_card.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
+import 'month_picker_sheet.dart';
 
 final _log = Logger('month');
 
@@ -28,6 +29,7 @@ class MonthScreen extends ConsumerStatefulWidget {
 
 class _MonthScreenState extends ConsumerState<MonthScreen> {
   double _dragDx = 0;
+  bool _pickerOpen = false;
 
   @override
   void initState() {
@@ -65,6 +67,29 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     }
   }
 
+  Future<void> _openPicker(YearMonth month) async {
+    if (_pickerOpen) {
+      _log.fine('month title tap month=$month ignored: picker already open');
+      return;
+    }
+    _log.fine('month title tap month=$month → month picker');
+    _pickerOpen = true;
+    final YearMonth? chosen;
+    try {
+      chosen = await showMonthPickerSheet(context, shown: month);
+    } finally {
+      _pickerOpen = false;
+    }
+    if (chosen == null) return;
+    if (!mounted) {
+      _log.warning(
+        'month picker chose $chosen but month screen is gone, nothing to show',
+      );
+      return;
+    }
+    _controller.open(chosen);
+  }
+
   void _openCatalog() {
     _log.info('long press on month header → debug catalog');
     context.pushNamed('catalog');
@@ -87,10 +112,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         dayTotals: data?.dayTotals ?? const {},
         mood: Mood.ofSeason(seasonOf(month.month)),
         holidayMarks: monthMarkEmojis(month),
-        onMonthTap: () => _log.fine(
-          'month title tap month=$month: no action, month picker is not '
-          'available yet',
-        ),
+        onMonthTap: () => _openPicker(month),
         onPrevious: () => _controller.previous(MonthStepSource.arrow),
         onNext: canGoToNextMonth(month, today)
             ? () => _controller.next(MonthStepSource.arrow)

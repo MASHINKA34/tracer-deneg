@@ -282,25 +282,21 @@ void main() {
     expect(_card(tester).month, _september);
   });
 
-  testWidgets('тап по дню и по названию месяца пока ничего не открывает, '
-      'нажатия в debug-логе month', (tester) async {
+  testWidgets('тап по дню пока ничего не открывает, нажатие в debug-логе '
+      'month', (tester) async {
     final db = openTestDatabase();
     await _seedOctober(tester, db);
     final h = await ShellHarness.start(tester, db: db);
 
     await tester.tap(find.bySemanticsLabel(RegExp(r'^17 октября')));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel('Октябрь 2026, выбрать месяц'));
-    await tester.pumpAndSettle();
 
     expect(_card(tester).month, _october);
     expect(
       _monthDebug(h),
-      containsAllInOrder([
+      contains(
         'day tap date=2026-10-17: no action, day sheet is not available yet',
-        'month title tap month=2026-10: no action, month picker is not '
-            'available yet',
-      ]),
+      ),
     );
   });
 

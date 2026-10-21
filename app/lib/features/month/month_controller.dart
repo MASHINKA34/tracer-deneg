@@ -40,6 +40,25 @@ final class MonthController extends Notifier<YearMonth> {
     _log.fine('month $from → $state by=${source.name}');
     return true;
   }
+
+  bool open(YearMonth month) {
+    final today = ref.read(clockProvider).today();
+    final from = state;
+    if (!canOpenMonth(month, today)) {
+      _log.warning(
+        'month open $month by=picker ignored: future month today=$today, '
+        'staying on $from',
+      );
+      return false;
+    }
+    if (month == from) {
+      _log.fine('month open $month by=picker: already shown');
+      return true;
+    }
+    state = month;
+    _log.fine('month $from → $state by=picker');
+    return true;
+  }
 }
 
 final monthControllerProvider = NotifierProvider<MonthController, YearMonth>(
