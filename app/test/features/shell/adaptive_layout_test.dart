@@ -7,7 +7,7 @@ import 'package:milionchik/features/month/month_picker_sheet.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/month/today_block.dart';
 import 'package:milionchik/features/shell/expense_stub_screen.dart';
-import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
+import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/features/shell/search_stub_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/month_card.dart';
@@ -294,7 +294,7 @@ void main() {
 
     await h.tapPlus();
     expect(
-      _rect(tester, NewExpenseStubScreen),
+      _rect(tester, NewExpenseScreen),
       const Rect.fromLTWH(400, 0, maxContentWidth, 800),
     );
     expect(tester.takeException(), isNull);
@@ -320,7 +320,7 @@ void main() {
     );
     await tester.tap(add);
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Закрыть'));
     await tester.pumpAndSettle();
     expect(find.byType(DaySheet), findsOneWidget);

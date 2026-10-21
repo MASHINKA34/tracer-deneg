@@ -9,7 +9,7 @@ import 'package:milionchik/core/clock.dart';
 import 'package:milionchik/data/providers.dart';
 import 'package:milionchik/data/queries/month_queries.dart';
 import 'package:milionchik/features/month/day_sheet.dart';
-import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
+import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/ui/components/expense_row.dart';
 import 'package:shared/shared.dart';
 
@@ -95,7 +95,7 @@ void main() {
     await h.systemBack();
     await tester.tap(find.text('Добавить трату в этот день'));
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
     await h.systemBack();
     await h.systemBack();
     expect(find.byType(DaySheet), findsNothing);
@@ -210,7 +210,7 @@ void main() {
 
     await tester.tap(inSheet(find.text('Добавить трату в этот день')));
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
 
     for (final r in records) {
       expect(formatLogRecord(r), isNot(contains(_secret)));

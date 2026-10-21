@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
 
+import '../features/expense/new_expense_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/expense_stub_screen.dart';
-import '../features/shell/new_expense_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
@@ -120,7 +120,11 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
           transitionDuration: newExpenseTransition,
           reverseTransitionDuration: newExpenseTransition,
           transitionsBuilder: slideUpTransition,
-          child: const AppFrame(child: NewExpenseStubScreen()),
+          child: AppFrame(
+            child: NewExpenseScreen(
+              date: state.uri.queryParameters[AppRoutes.dateParameter],
+            ),
+          ),
         ),
       ),
       GoRoute(

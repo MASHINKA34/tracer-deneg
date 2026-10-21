@@ -11,7 +11,7 @@ import 'package:milionchik/data/repositories/outbox_queue.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/features/month/day_sheet.dart';
 import 'package:milionchik/features/shell/expense_stub_screen.dart';
-import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
+import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/button.dart';
 import 'package:milionchik/ui/components/expense_row.dart';
@@ -355,10 +355,10 @@ void main() {
     await tester.tap(_sheetText('Добавить трату в этот день'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
     expect(_location(tester), '/expense/new?date=2026-10-17');
     expect(
-      GoRouter.of(tester.element(find.byType(NewExpenseStubScreen)))
+      GoRouter.of(tester.element(find.byType(NewExpenseScreen)))
           .state
           .uri
           .queryParameters,
@@ -367,7 +367,7 @@ void main() {
 
     await h.systemBack();
 
-    expect(find.byType(NewExpenseStubScreen), findsNothing);
+    expect(find.byType(NewExpenseScreen), findsNothing);
     expect(_sheet, findsOneWidget);
     expect(_location(tester), '/month');
     await h.systemBack();
@@ -464,7 +464,7 @@ void main() {
 
     await tester.tap(_sheetText('Добавить трату в этот день'));
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
   });
 
   testWidgets('320 dp и шрифт 2.0: шторка без переполнений, итог под '
@@ -485,6 +485,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_sheetText('Добавить трату в этот день'));
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
   });
 }

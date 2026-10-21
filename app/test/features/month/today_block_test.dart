@@ -11,7 +11,7 @@ import 'package:milionchik/data/repositories/outbox_queue.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/features/month/today_block.dart';
 import 'package:milionchik/features/shell/expense_stub_screen.dart';
-import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
+import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/button.dart';
 import 'package:milionchik/ui/components/expense_row.dart';
@@ -206,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_blockText('Добавить первую трату'));
     await tester.pumpAndSettle();
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
     expect(_location(tester), '/expense/new');
   });
 
@@ -350,9 +350,7 @@ void main() {
         isEmpty,
       );
       expect(
-        find.byType(
-          name == 'три траты' ? ExpenseStubScreen : NewExpenseStubScreen,
-        ),
+        find.byType(name == 'три траты' ? ExpenseStubScreen : NewExpenseScreen),
         findsOneWidget,
       );
     });

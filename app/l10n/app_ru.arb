@@ -121,6 +121,32 @@
   "@profileTitle": { "description": "Заголовок вкладки «Профиль» (13:975)" },
   "newExpenseTitle": "Новая трата",
   "@newExpenseTitle": { "description": "Заголовок экрана «Новая трата» (10:763), открывается кнопкой «+»" },
+  "newExpenseAmount": "Сумма",
+  "@newExpenseAmount": { "description": "Новая трата (10:763): подпись над суммой; TalkBack: название поля суммы" },
+  "newExpenseToday": "Сегодня, {date}",
+  "@newExpenseToday": {
+    "description": "Новая трата: чип даты, трата за сегодня",
+    "placeholders": {
+      "date": { "type": "String", "example": "19 окт" }
+    }
+  },
+  "newExpenseYesterday": "Вчера, {date}",
+  "@newExpenseYesterday": {
+    "description": "Новая трата: чип даты, трата за вчера",
+    "placeholders": {
+      "date": { "type": "String", "example": "18 окт" }
+    }
+  },
+  "newExpenseComment": "Комментарий",
+  "@newExpenseComment": { "description": "Новая трата: чип комментария, когда комментарий пустой" },
+  "newExpensePersonalBudget": "Личный",
+  "@newExpensePersonalBudget": { "description": "Новая трата: чип личного бюджета (короткое имя, как на 10:763 и в профиле)" },
+  "newExpenseDiscardTitle": "Не сохранять?",
+  "@newExpenseDiscardTitle": { "description": "Диалог при закрытии «Новой траты» с введённой суммой (решение заказчика 20.10.2026)" },
+  "newExpenseDiscard": "Не сохранять",
+  "@newExpenseDiscard": { "description": "Диалог «Не сохранять?»: закрыть экран без траты" },
+  "newExpenseStay": "Остаться",
+  "@newExpenseStay": { "description": "Диалог «Не сохранять?»: вернуться к вводу, сумма остаётся" },
   "searchTitle": "Поиск",
   "@searchTitle": { "description": "Заголовок экрана «Поиск» (46:5267), открывается иконкой поиска в шапке главной" },
 

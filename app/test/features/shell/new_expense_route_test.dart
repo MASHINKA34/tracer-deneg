@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/features/month/month_screen.dart';
-import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
+import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/fab.dart';
@@ -23,12 +23,12 @@ void main() {
 
     await h.tapPlus();
 
-    expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+    expect(find.byType(NewExpenseScreen), findsOneWidget);
     expect(title, findsOneWidget);
     expect(find.bySemanticsLabel('Закрыть'), findsOneWidget);
     expect(find.byType(AppBottomNav), findsNothing);
     expect(location(tester), AppRoutes.newExpense);
-    expect(tester.getRect(find.byType(NewExpenseStubScreen)).top, 0);
+    expect(tester.getRect(find.byType(NewExpenseScreen)).top, 0);
   });
 
   testWidgets(
@@ -41,11 +41,11 @@ void main() {
 
       await tester.tapAt(fab.topLeft + const Offset(3, 3));
       await tester.pumpAndSettle();
-      expect(find.byType(NewExpenseStubScreen), findsNothing);
+      expect(find.byType(NewExpenseScreen), findsNothing);
 
       await tester.tapAt(Offset(fab.center.dx, fab.top + 4));
       await tester.pumpAndSettle();
-      expect(find.byType(NewExpenseStubScreen), findsOneWidget);
+      expect(find.byType(NewExpenseScreen), findsOneWidget);
     },
   );
 
@@ -55,11 +55,11 @@ void main() {
     await tester.tap(find.byType(AppFab));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
-    final start = tester.getRect(find.byType(NewExpenseStubScreen)).top;
+    final start = tester.getRect(find.byType(NewExpenseScreen)).top;
     await tester.pump(newExpenseTransition ~/ 2);
-    final middle = tester.getRect(find.byType(NewExpenseStubScreen)).top;
+    final middle = tester.getRect(find.byType(NewExpenseScreen)).top;
     await tester.pumpAndSettle();
-    final end = tester.getRect(find.byType(NewExpenseStubScreen)).top;
+    final end = tester.getRect(find.byType(NewExpenseScreen)).top;
 
     expect(start, greaterThan(700));
     expect(middle, inExclusiveRange(0, start));
@@ -77,7 +77,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
 
-    expect(tester.getRect(find.byType(NewExpenseStubScreen)).top, 0);
+    expect(tester.getRect(find.byType(NewExpenseScreen)).top, 0);
   });
 
   testWidgets('крестик закрывает и возвращает на ту же вкладку', (
@@ -90,7 +90,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Закрыть'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(NewExpenseStubScreen), findsNothing);
+    expect(find.byType(NewExpenseScreen), findsNothing);
     expect(h.activeTab, AppNavTab.stats);
     expect(find.byType(TabStubScreen), findsOneWidget);
     expect(location(tester), AppRoutes.stats);
@@ -113,7 +113,7 @@ void main() {
     expect(h.frameworkHandlesBack, isTrue);
     await h.systemBack();
 
-    expect(find.byType(NewExpenseStubScreen), findsNothing);
+    expect(find.byType(NewExpenseScreen), findsNothing);
     expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(h.systemPops, 0);
@@ -129,7 +129,7 @@ void main() {
     await h.tapPlus();
     await h.predictiveBackGesture();
 
-    expect(find.byType(NewExpenseStubScreen), findsNothing);
+    expect(find.byType(NewExpenseScreen), findsNothing);
     expect(h.activeTab, AppNavTab.profile);
     expect(h.systemPops, 0);
     expect(h.navDebug(), contains('new expense closed by back'));
