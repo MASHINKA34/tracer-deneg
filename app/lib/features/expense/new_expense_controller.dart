@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../data/db/redact_db_error.dart';
+import '../../data/providers.dart';
 
 final _log = Logger('expense');
 
@@ -56,6 +59,8 @@ final class NewExpenseState {
         saving: saving ?? this.saving,
       );
 }
+
+enum NewExpenseSave { saved, zeroAmount, busy, noBudget, failed }
 
 final class NewExpenseController extends Notifier<NewExpenseState> {
   NewExpenseController(this.requestedDate);
@@ -128,8 +133,72 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
     }
     return 'more than ${Money(maxExpenseKopecks).format()}';
   }
-}
 
+  Future<NewExpenseSave> save(Category category) async {
+    final current = state;
+    if (current.saving) {
+      _log.fine(
+        'expense save category=${category.id} ignored: previous save is '
+        'in progress',
+      );
+      return NewExpenseSave.busy;
+    }
+    if (!current.input.canSave) {
+      _log.fine(
+        'expense save category=${category.id} rejected: amount is zero, '
+        'nothing saved',
+      );
+      return NewExpenseSave.zeroAmount;
+    }
+    state = current.copyWith(saving: true);
+    final sw = Stopwatch()..start();
+    String? budgetId;
+    try {
+      budgetId = await ref.read(selectedBudgetIdProvider.future);
+      if (budgetId == null) {
+        _log.warning(
+          'expense save category=${category.id} date=${current.date} '
+          'failed: no budget selected',
+        );
+        if (ref.mounted) state = state.copyWith(saving: false);
+        return NewExpenseSave.noBudget;
+      }
+      final expense = await ref
+          .read(expensesRepositoryProvider)
+          .create(
+            budgetId: budgetId,
+            categoryId: category.id,
+            amount: current.input.amount,
+            spentOn: current.date,
+          );
+      _log.info(
+        'expense saved id=${expense.id} budgetId=$budgetId '
+        'category=${category.id} date=${current.date} '
+        'in ${sw.elapsedMilliseconds}ms',
+      );
+      _log.fine(
+        'expense saved id=${expense.id} amountKopecks=${expense.amount.kopecks}',
+      );
+      return NewExpenseSave.saved;
+    } catch (e, st) {
+      var cause = e;
+      while (cause is ProviderException) {
+        cause = cause.exception;
+      }
+      final redacted = redactDbError(cause);
+      _log.severe(
+        'expense save failed budgetId=${budgetId ?? 'unknown'} '
+        'category=${category.id} date=${current.date} '
+        'after ${sw.elapsedMilliseconds}ms, nothing saved: '
+        '${describeError(redacted)}',
+        redacted,
+        st,
+      );
+      if (ref.mounted) state = state.copyWith(saving: false);
+      return NewExpenseSave.failed;
+    }
+  }
+}
 
 final newExpenseControllerProvider = NotifierProvider.autoDispose
     .family<NewExpenseController, NewExpenseState, String?>(

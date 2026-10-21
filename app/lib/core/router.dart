@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
@@ -7,6 +10,7 @@ import 'package:shared/shared.dart' show LocalDate;
 import '../features/expense/new_expense_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
+import '../features/shell/categories_stub_screen.dart';
 import '../features/shell/expense_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
@@ -24,11 +28,16 @@ abstract final class AppRoutes {
   static const String newExpense = '/expense/new';
   static const String expense = '/expense/:id';
   static const String search = '/search';
+  static const String categories = '/categories';
   static const String catalog = '/catalog';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
   static const String expenseName = 'expense';
+  static const String categoriesName = 'categories';
+
+  static const String deepLinkScheme = 'milionchik';
+  static const String addDeepLinkHost = 'add';
 
   static const String dateParameter = 'date';
 
@@ -42,15 +51,39 @@ abstract final class AppRoutes {
 
 const Duration newExpenseTransition = Duration(milliseconds: 300);
 
+bool isAddExpenseLink(Uri uri) =>
+    uri.scheme == AppRoutes.deepLinkScheme &&
+    uri.host == AppRoutes.addDeepLinkHost;
+
 /// Маршруты приложения. Пока заглушка «Милиончик» (главная появится на
 /// этапе 05) и — только в debug-сборке — каталог компонентов `/catalog`
 /// (долгий тап по логотипу на заглушке).
 GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-  return GoRouter(
+  late final GoRouter router;
+  return router = GoRouter(
     navigatorKey: rootKey,
     initialLocation: initialLocation,
     observers: [NavigationLogger()],
+    redirect: (context, state) {
+      if (!isAddExpenseLink(state.uri)) return null;
+      final current = router.routerDelegate.currentConfiguration;
+      _log.info(
+        'deep link ${AppRoutes.deepLinkScheme}://${AppRoutes.addDeepLinkHost} '
+        '→ ${AppRoutes.newExpense} over ${AppRoutes.month} '
+        'from=${current.isEmpty ? 'cold start' : current.uri.path}',
+      );
+      SchedulerBinding.instance
+        ..addPostFrameCallback((_) {
+          _log.fine(
+            'deep link add: ${AppRoutes.month} is shown, pushing '
+            '${AppRoutes.newExpense}',
+          );
+          unawaited(router.push<void>(AppRoutes.newExpense));
+        })
+        ..ensureVisualUpdate();
+      return AppRoutes.month;
+    },
     onException: (context, state, router) {
       _log.warning(
         'no route for path=${state.uri.path} → opening ${AppRoutes.month}',
@@ -134,6 +167,13 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         builder: (context, state) => AppFrame(
           child: ExpenseStubScreen(expenseId: state.pathParameters['id']!),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.categories,
+        name: AppRoutes.categoriesName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) =>
+            const AppFrame(child: CategoriesStubScreen()),
       ),
       GoRoute(
         path: AppRoutes.search,

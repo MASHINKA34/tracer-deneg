@@ -15,16 +15,19 @@ import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../ui/components/category_tile.dart';
 import '../../ui/components/chip.dart';
 import '../../ui/components/dialog.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/components/keypad_key.dart';
+import '../../ui/components/snackbar.dart';
 import '../../ui/components/tap_target.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
 import '../month/day_sheet.dart' show spokenAmount;
+import 'category_grid.dart';
 import 'new_expense_controller.dart';
 
 final _log = Logger('expense');
@@ -34,6 +37,8 @@ final _nav = Logger('nav');
 const Duration caretBlinkInterval = Duration(milliseconds: 530);
 
 const Duration amountShakeDuration = Duration(milliseconds: 420);
+
+const int newExpenseGridCategories = 7;
 
 String shortExpenseDate(LocalDate date, LocalDate today) {
   final pattern = date.year == today.year ? 'd MMM' : 'd MMM y';
@@ -74,6 +79,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
   bool _animate = true;
   String _closedBy = 'back';
   bool _leaving = false;
+  bool _needAmount = false;
 
   NewExpenseController get _controller =>
       ref.read(newExpenseControllerProvider(widget.date).notifier);
@@ -118,9 +124,83 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
   void _press(bool Function(NewExpenseController c) key, {bool shake = true}) {
     HapticFeedback.lightImpact();
     if (key(_controller)) {
+      final input = ref.read(newExpenseControllerProvider(widget.date)).input;
+      if (_needAmount && input.canSave) setState(() => _needAmount = false);
       _restartCaret();
     } else if (shake) {
       _shakeAmount();
+    }
+  }
+
+  Future<void> _pick(Category category, {required String from}) async {
+    final result = await _controller.save(category);
+    if (!mounted) return;
+    switch (result) {
+      case NewExpenseSave.saved:
+        HapticFeedback.lightImpact();
+        _leave('save');
+      case NewExpenseSave.zeroAmount:
+        _log.fine(
+          'category tap from=$from category=${category.id} with zero amount → '
+          'shake and hint',
+        );
+        setState(() => _needAmount = true);
+        _shakeAmount();
+      case NewExpenseSave.failed || NewExpenseSave.noBudget:
+        showAppSnackbar(
+          context,
+          text: AppLocalizations.of(context).newExpenseSaveFailed,
+        );
+      case NewExpenseSave.busy:
+        break;
+    }
+  }
+
+  Future<void> _openAll(List<Category> categories) async {
+    _log.fine(
+      'category tile «all» → sheet with ${categories.length} categories',
+    );
+    final choice = await showAllCategoriesSheet(
+      context,
+      categories: categories,
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case PickedCategory(:final category):
+        await _pick(category, from: 'all sheet');
+      case SetupCategories():
+        _openSetup(from: 'all sheet');
+      case null:
+        _log.fine('all categories sheet closed without choice');
+    }
+  }
+
+  void _openSetup({required String from}) {
+    _log.fine('categories setup from=$from → ${AppRoutes.categories}');
+    context.push(AppRoutes.categories);
+  }
+
+  void _logCategories(String budgetId, AsyncValue<List<Category>> next) {
+    switch (next) {
+      case AsyncData(value: final categories):
+        _log.fine(
+          'new expense categories budgetId=$budgetId '
+          'total=${categories.length} '
+          'grid=${math.min(categories.length, newExpenseGridCategories)} + all',
+        );
+      case AsyncError(:final error, :final stackTrace):
+        var cause = error;
+        while (cause is ProviderException) {
+          cause = cause.exception;
+        }
+        final redacted = redactDbError(cause);
+        _log.severe(
+          'new expense categories failed budgetId=$budgetId, grid shows only '
+          '«all»: ${describeError(redacted)}',
+          redacted,
+          stackTrace,
+        );
+      default:
     }
   }
 
@@ -220,7 +300,17 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
         (previous, next) => _logBudget(budgetId, next),
       );
       budget = ref.watch(budgetProvider(budgetId)).value;
+      ref.listen(
+        categoriesProvider(budgetId),
+        (previous, next) => _logCategories(budgetId, next),
+      );
     }
+    final categoriesValue = budgetId == null
+        ? null
+        : ref.watch(categoriesProvider(budgetId));
+    final categories = categoriesValue == null || categoriesValue.hasError
+        ? const <Category>[]
+        : categoriesValue.value ?? const <Category>[];
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return PopScope<Object?>(
@@ -272,6 +362,29 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                                 label: l10n.newExpenseComment,
                               ),
                             ],
+                          ),
+                        ),
+                        _Categories(
+                          categories: categories,
+                          onPick: (c) => _pick(c, from: 'grid'),
+                          onAll: () => _openAll(categories),
+                          onSetup: () => _openSetup(from: 'grid'),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Semantics(
+                            liveRegion: true,
+                            child: FittingText(
+                              _needAmount
+                                  ? l10n.newExpenseNeedAmount
+                                  : l10n.newExpenseHint,
+                              textAlign: TextAlign.center,
+                              style: AppText.caption.copyWith(
+                                color: _needAmount
+                                    ? colors.statusDanger
+                                    : colors.textTertiary,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -387,6 +500,101 @@ class _TopBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Categories extends StatelessWidget {
+  const _Categories({
+    required this.categories,
+    required this.onPick,
+    required this.onAll,
+    required this.onSetup,
+  });
+
+  final List<Category> categories;
+  final ValueChanged<Category> onPick;
+  final VoidCallback onAll;
+  final VoidCallback onSetup;
+
+  static const double _side = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colors = context.colors;
+    final mood = context.mood;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final grid = categoryGridColumns * categoryTileWidth;
+        final side = math.max(
+          0.0,
+          math.min(_side, (constraints.maxWidth - grid) / 2),
+        );
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: side),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 14),
+                      child: FittingText(
+                        l10n.newExpenseCategory,
+                        style: AppText.labelM.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: l10n.newExpenseSetup,
+                    excludeSemantics: true,
+                    onTap: onSetup,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onSetup,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 17, 0, 15),
+                        child: Text(
+                          l10n.newExpenseSetup,
+                          style: AppText.labelS.copyWith(
+                            color: mood.accentStrong,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              CategoryGrid(
+                rowGap: 10,
+                tiles: [
+                  for (final category in categories.take(
+                    newExpenseGridCategories,
+                  ))
+                    CategoryTile(
+                      emoji: category.emoji,
+                      name: category.name,
+                      color: category.color,
+                      onTap: () => onPick(category),
+                    ),
+                  CategoryTile(
+                    emoji: allCategoriesEmoji,
+                    name: l10n.newExpenseAll,
+                    color: null,
+                    onTap: onAll,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
