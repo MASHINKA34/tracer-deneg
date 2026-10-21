@@ -15,6 +15,7 @@ import '../../ui/components/button.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/components/month_tab.dart';
 import '../../ui/components/sheet.dart';
+import '../../ui/components/tap_target.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
@@ -402,6 +403,10 @@ class _Head extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
+  static const double _titleGap = 8;
+
+  static const double _yearGap = 4;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -409,26 +414,53 @@ class _Head extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: FittingText(
-            l10n.monthPickerTitle,
-            style: AppText.titleM.copyWith(color: colors.textPrimary),
+          child: Semantics(
+            header: true,
+            child: FittingText(
+              l10n.monthPickerTitle,
+              style: AppText.titleM.copyWith(color: colors.textPrimary),
+            ),
           ),
         ),
-        _YearButton(
-          icon: AppIcons.chevronLeft,
-          label: l10n.a11yPrevYear,
-          onTap: onPrevious,
-          margin: const EdgeInsets.only(left: 8, right: 4),
-        ),
-        Text(
-          '$year',
-          style: AppText.labelL.copyWith(color: colors.textPrimary),
-        ),
-        _YearButton(
-          icon: AppIcons.chevronRight,
-          label: l10n.a11yNextYear,
-          onTap: onNext,
-          margin: const EdgeInsets.only(left: 4),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              constraints: const BoxConstraints(minHeight: kMinTapTarget),
+              padding: const EdgeInsets.only(
+                left: _titleGap + _YearButton.size + _yearGap,
+                right: _yearGap + _YearButton.size,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$year',
+                style: AppText.labelL.copyWith(color: colors.textPrimary),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              child: _YearButton(
+                icon: AppIcons.chevronLeft,
+                label: l10n.a11yPrevYear,
+                onTap: onPrevious,
+                margin: const EdgeInsets.only(
+                  left: _titleGap,
+                  right: kMinTapTarget - _YearButton.size - _titleGap,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              child: _YearButton(
+                icon: AppIcons.chevronRight,
+                label: l10n.a11yNextYear,
+                onTap: onNext,
+                margin: const EdgeInsets.only(
+                  left: kMinTapTarget - _YearButton.size,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -448,6 +480,8 @@ class _YearButton extends StatelessWidget {
   final EdgeInsets margin;
   final VoidCallback? onTap;
 
+  static const double size = 32;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -462,7 +496,7 @@ class _YearButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          height: 48,
+          height: kMinTapTarget,
           padding: margin,
           alignment: Alignment.center,
           child: Material(
@@ -472,7 +506,7 @@ class _YearButton extends StatelessWidget {
               customBorder: const CircleBorder(),
               onTap: onTap,
               child: SizedBox.square(
-                dimension: 32,
+                dimension: size,
                 child: Center(
                   child: AppIcon(
                     icon,
@@ -594,9 +628,11 @@ class _Summary extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              seasonEmoji(month),
-              style: AppText.displayL.copyWith(color: colors.textPrimary),
+            ExcludeSemantics(
+              child: Text(
+                seasonEmoji(month),
+                style: AppText.displayL.copyWith(color: colors.textPrimary),
+              ),
             ),
           ],
         ),

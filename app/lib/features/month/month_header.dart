@@ -146,7 +146,10 @@ class MonthHeaderView extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 52),
       child: Padding(
-        padding: const EdgeInsets.only(left: 12, right: 10),
+        padding: const EdgeInsets.only(
+          left: 12,
+          right: 10 - _HeaderButton.overhang,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -162,7 +165,7 @@ class MonthHeaderView extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 6 - _HeaderButton.overhang),
             _HeaderButton(
               label: l10n.a11ySearch,
               onTap: onSearchTap,
@@ -178,11 +181,12 @@ class MonthHeaderView extends StatelessWidget {
               ),
             ),
             Semantics(
+              container: true,
               label: l10n.syncDone,
               excludeSemantics: true,
               child: SizedBox(
-                width: 32,
-                height: 48,
+                width: 32 - 2 * _HeaderButton.overhang,
+                height: kMinTapTarget,
                 child: Center(
                   child: AppIcon(
                     AppIcons.cloudCheck,
@@ -295,6 +299,8 @@ class _HeaderButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget child;
 
+  static const double overhang = 2;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -307,8 +313,8 @@ class _HeaderButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          height: kMinTapTarget,
+          padding: const EdgeInsets.symmetric(horizontal: 6 + overhang),
           alignment: Alignment.center,
           child: Material(
             type: MaterialType.transparency,

@@ -207,11 +207,13 @@ class DayCell extends StatelessWidget {
         child: InkWell(borderRadius: radius, onTap: onTap, child: cell),
       );
     }
+    if (type == DayCellType.empty) return ExcludeSemantics(child: cell);
+    final actionable = onTap != null && type != DayCellType.future;
     return Semantics(
-      button: onTap != null,
+      button: actionable,
       selected: selected,
       label: semanticLabel,
-      onTap: onTap,
+      onTap: actionable ? onTap : null,
       excludeSemantics: true,
       child: cell,
     );

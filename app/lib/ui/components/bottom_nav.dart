@@ -48,6 +48,9 @@ class AppBottomNav extends StatelessWidget {
         icon: icon,
         label: label,
         active: tab == active,
+        order: tab.index < AppNavTab.recurring.index
+            ? tab.index
+            : tab.index + 1,
         onTap: () => onTabSelected(tab),
       ),
     );
@@ -76,7 +79,12 @@ class AppBottomNav extends StatelessWidget {
                   left: 2,
                   top: -26,
                   child: _FabAnchor(
-                    child: AppFab(onPressed: onAdd, stickerEmoji: fabSticker),
+                    child: Semantics(
+                      sortKey: OrdinalSortKey(
+                        AppNavTab.recurring.index.toDouble(),
+                      ),
+                      child: AppFab(onPressed: onAdd, stickerEmoji: fabSticker),
+                    ),
                   ),
                 ),
               ],
@@ -87,7 +95,9 @@ class AppBottomNav extends StatelessWidget {
         ],
       ),
     );
-    return _FabHitArea(child: nav);
+    return _FabHitArea(
+      child: Semantics(container: true, explicitChildNodes: true, child: nav),
+    );
   }
 }
 
@@ -159,12 +169,14 @@ class _NavTab extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.active,
+    required this.order,
     required this.onTap,
   });
 
   final AppIcons icon;
   final String label;
   final bool active;
+  final int order;
   final VoidCallback onTap;
 
   @override
@@ -175,6 +187,7 @@ class _NavTab extends StatelessWidget {
         ? AppText.labelS.copyWith(color: colors.textPrimary)
         : AppText.micro.copyWith(color: colors.textTertiary);
     return Semantics(
+      sortKey: OrdinalSortKey(order.toDouble()),
       button: true,
       selected: active,
       label: label,

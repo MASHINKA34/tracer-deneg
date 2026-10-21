@@ -82,6 +82,27 @@
   "@a11yDaySelected": {
     "description": "TalkBack: добавка к подписи выбранной ячейки"
   },
+  "a11yDayFuture": "{date}, будет",
+  "@a11yDayFuture": {
+    "description": "TalkBack: будущий день в календаре («20 октября, будет»)",
+    "placeholders": {
+      "date": { "type": "String", "example": "20 октября" }
+    }
+  },
+  "a11yRubles": "{rubles, plural, one{{rubles} рубль} few{{rubles} рубля} many{{rubles} рублей} other{{rubles} рубля}}",
+  "@a11yRubles": {
+    "description": "TalkBack: рубли суммы траты словами («640 рублей»)",
+    "placeholders": {
+      "rubles": { "type": "int", "format": "decimalPattern" }
+    }
+  },
+  "a11yKopecks": "{kopecks, plural, one{{kopecks} копейка} few{{kopecks} копейки} many{{kopecks} копеек} other{{kopecks} копейки}}",
+  "@a11yKopecks": {
+    "description": "TalkBack: копейки суммы траты словами, если не ноль («90 копеек»)",
+    "placeholders": {
+      "kopecks": { "type": "int" }
+    }
+  },
 
   "navMonth": "Месяц",
   "@navMonth": { "description": "Нижнее меню: главная (карточка месяца)" },

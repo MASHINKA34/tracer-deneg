@@ -176,6 +176,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.opaque,
+              excludeFromSemantics: true,
               onLongPress: kDebugMode ? _openCatalog : null,
               child: const MonthHeader(),
             ),

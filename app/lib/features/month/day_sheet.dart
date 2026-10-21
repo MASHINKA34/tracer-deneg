@@ -42,6 +42,25 @@ String? expenseSubtitle(Expense expense) {
   return parts.isEmpty ? null : parts.join(' · ');
 }
 
+String spokenAmount(AppLocalizations l10n, Money amount) {
+  final rubles = amount.wholeRubles;
+  final kopecks = amount.kopecksPart;
+  if (kopecks == 0) return l10n.a11yRubles(rubles);
+  if (rubles == 0) return l10n.a11yKopecks(kopecks);
+  return '${l10n.a11yRubles(rubles)} ${l10n.a11yKopecks(kopecks)}';
+}
+
+String expenseLabel(
+  AppLocalizations l10n,
+  Expense expense,
+  String categoryName,
+) => [
+  categoryName,
+  if (expense.comment.isNotEmpty) expense.comment,
+  ?expenseTime(expense),
+  spokenAmount(l10n, expense.amount),
+].join(', ');
+
 Category? expenseCategory(Expense expense, List<Category> categories) {
   Category? system;
   for (final category in categories) {
@@ -132,13 +151,20 @@ class DayExpenseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final other = presetCategories.last;
     final category = this.category;
-    return ExpenseRow(
-      emoji: category?.emoji ?? other.emoji,
-      color: category == null ? other.color : category.color,
-      title: category?.name ?? other.name,
-      subtitle: expenseSubtitle(expense),
-      amount: expense.amount.format(),
+    final title = category?.name ?? other.name;
+    return Semantics(
+      button: onTap != null,
+      label: expenseLabel(AppLocalizations.of(context), expense, title),
+      excludeSemantics: true,
       onTap: onTap,
+      child: ExpenseRow(
+        emoji: category?.emoji ?? other.emoji,
+        color: category == null ? other.color : category.color,
+        title: title,
+        subtitle: expenseSubtitle(expense),
+        amount: expense.amount.format(),
+        onTap: onTap,
+      ),
     );
   }
 }

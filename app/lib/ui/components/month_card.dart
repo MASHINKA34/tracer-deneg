@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/mood_colors.dart';
 import '../tokens/tokens.g.dart';
 import 'day_cell.dart';
+import 'tap_target.dart';
 
 /// Карточка месяца (00-spec §6.3, макет `7:7`): фон `soft`, скругление 28,
 /// тень card, декор первым слоем; полоса 60 с названием месяца ▾, годом и
@@ -97,7 +98,12 @@ class MonthCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                padding: const EdgeInsets.fromLTRB(
+                  12,
+                  0,
+                  12 - _Header.overhang,
+                  12,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -108,7 +114,10 @@ class MonthCard extends StatelessWidget {
                       onPrevious: onPrevious,
                       onNext: onNext,
                     ),
-                    _Panel(card: this),
+                    Padding(
+                      padding: const EdgeInsets.only(right: _Header.overhang),
+                      child: _Panel(card: this),
+                    ),
                   ],
                 ),
               ),
@@ -133,6 +142,12 @@ class _Header extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
+  static const double overhang = 9;
+
+  static const double _arrowsWidth = 79;
+
+  static const double _arrowMargin = 3;
+
   @override
   Widget build(BuildContext context) {
     final mood = context.mood;
@@ -150,9 +165,11 @@ class _Header extends StatelessWidget {
       child: Padding(
         // Справа 2 по Figma — его даёт поле правой стрелки.
         padding: const EdgeInsets.only(left: 8),
-        child: Row(
+        child: Stack(
+          alignment: AlignmentDirectional.centerStart,
           children: [
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.only(right: _arrowsWidth + overhang),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Semantics(
@@ -207,17 +224,29 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
-            _NavButton(
-              icon: AppIcons.chevronLeft,
-              label: l10n.a11yPrevMonth,
-              onTap: onPrevious,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
+            Positioned(
+              right: kMinTapTarget,
+              child: _NavButton(
+                icon: AppIcons.chevronLeft,
+                label: l10n.a11yPrevMonth,
+                onTap: onPrevious,
+                margin: const EdgeInsets.only(
+                  left: kMinTapTarget - _NavButton.size - _arrowMargin,
+                  right: _arrowMargin,
+                ),
+              ),
             ),
-            _NavButton(
-              icon: AppIcons.chevronRight,
-              label: l10n.a11yNextMonth,
-              onTap: onNext,
-              margin: const EdgeInsets.only(left: 3, right: 2),
+            Positioned(
+              right: 0,
+              child: _NavButton(
+                icon: AppIcons.chevronRight,
+                label: l10n.a11yNextMonth,
+                onTap: onNext,
+                margin: const EdgeInsets.only(
+                  left: _arrowMargin,
+                  right: kMinTapTarget - _NavButton.size - _arrowMargin,
+                ),
+              ),
             ),
           ],
         ),
@@ -227,8 +256,9 @@ class _Header extends StatelessWidget {
 }
 
 /// Круглая кнопка 34 со стрелкой. Область нажатия — кружок с полями
-/// [margin] (≈ 40 × 48): две кнопки стоят с зазором 6, как в Figma, шире
-/// не помещается. Неактивная — стрелка `text/disabled`.
+/// [margin] (48 × 48): кружки стоят с зазором 6, как в Figma, а области
+/// заходят на поле карточки справа и на место под названием слева.
+/// Неактивная — стрелка `text/disabled`.
 class _NavButton extends StatelessWidget {
   const _NavButton({
     required this.icon,
@@ -241,6 +271,8 @@ class _NavButton extends StatelessWidget {
   final String label;
   final EdgeInsets margin;
   final VoidCallback? onTap;
+
+  static const double size = 34;
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +289,7 @@ class _NavButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          height: 48,
+          height: kMinTapTarget,
           padding: margin,
           alignment: Alignment.center,
           child: Material(
@@ -267,7 +299,7 @@ class _NavButton extends StatelessWidget {
               customBorder: const CircleBorder(),
               onTap: onTap,
               child: SizedBox.square(
-                dimension: 34,
+                dimension: size,
                 child: Center(
                   child: AppIcon(
                     icon,
@@ -327,7 +359,7 @@ class _Panel extends StatelessWidget {
       );
       final parts = <String>[
         if (kind == DayKind.future)
-          dateText
+          l10n.a11yDayFuture(dateText)
         else if (sum.kopecks > 0)
           l10n.a11yDaySpent(dateText, sum.roundedRubles)
         else
@@ -358,6 +390,7 @@ class _Panel extends StatelessWidget {
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              excludeFromSemantics: true,
               onTap: date == null || card.onDayTap == null
                   ? null
                   : () => card.onDayTap!(date.day),
@@ -459,27 +492,31 @@ class _Footer extends StatelessWidget {
       return w;
     }
 
-    final left = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(l10n.monthAverage, style: captionStyle),
-        const SizedBox(height: 2),
-        Text(average, style: averageStyle),
-      ],
+    final left = MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.monthAverage, style: captionStyle),
+          const SizedBox(height: 2),
+          Text(average, style: averageStyle),
+        ],
+      ),
     );
-    final right = Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(l10n.monthTotal, textAlign: TextAlign.end, style: captionStyle),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerRight,
-          child: Text(total, maxLines: 1, style: totalStyle),
-        ),
-      ],
+    final right = MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.monthTotal, textAlign: TextAlign.end, style: captionStyle),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(total, maxLines: 1, style: totalStyle),
+          ),
+        ],
+      ),
     );
 
     return LayoutBuilder(
