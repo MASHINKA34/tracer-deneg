@@ -129,6 +129,74 @@
   "monthTotal": "Итог за месяц",
   "@monthTotal": { "description": "Футер карточки месяца: подпись итога" },
 
+  "monthPickerTitle": "Выбор месяца",
+  "@monthPickerTitle": { "description": "Шторка выбора месяца (9:257): заголовок" },
+  "a11yPrevYear": "Предыдущий год",
+  "@a11yPrevYear": { "description": "TalkBack: стрелка ‹ у года в шторке выбора месяца" },
+  "a11yNextYear": "Следующий год",
+  "@a11yNextYear": { "description": "TalkBack: стрелка › у года в шторке выбора месяца" },
+  "monthPickerNow": "{month} · идёт сейчас",
+  "@monthPickerNow": {
+    "description": "Шторка выбора месяца: подпись сводки, когда выбран текущий месяц",
+    "placeholders": {
+      "month": { "type": "String", "example": "Октябрь 2026" }
+    }
+  },
+  "monthPrepositional": "{month, select, january{январе} february{феврале} march{марте} april{апреле} may{мае} june{июне} july{июле} august{августе} september{сентябре} october{октябре} november{ноябре} december{декабре} other{прошлом месяце}}",
+  "@monthPrepositional": {
+    "description": "Название месяца в предложном падеже для «чем в сентябре»; ключ — английское имя месяца",
+    "placeholders": {
+      "month": { "type": "String", "example": "september" }
+    }
+  },
+  "monthPickerLess": "на {amount} меньше, чем в {month}",
+  "@monthPickerLess": {
+    "description": "Шторка выбора месяца: сравнение с прошлым месяцем, потратили меньше (00-spec §7.3)",
+    "placeholders": {
+      "amount": { "type": "String", "example": "2 100 ₽" },
+      "month": { "type": "String", "example": "сентябре" }
+    }
+  },
+  "monthPickerMore": "на {amount} больше, чем в {month}",
+  "@monthPickerMore": {
+    "description": "Шторка выбора месяца: сравнение с прошлым месяцем, потратили больше (00-spec §7.3)",
+    "placeholders": {
+      "amount": { "type": "String", "example": "2 100 ₽" },
+      "month": { "type": "String", "example": "сентябре" }
+    }
+  },
+  "monthPickerSame": "столько же, сколько в {month}",
+  "@monthPickerSame": {
+    "description": "Шторка выбора месяца: сравнение с прошлым месяцем, суммы равны",
+    "placeholders": {
+      "month": { "type": "String", "example": "сентябре" }
+    }
+  },
+  "monthPickerAverage": "В среднем {amount} в день",
+  "@monthPickerAverage": {
+    "description": "Шторка выбора месяца: среднее в день выбранного месяца (как на 12:820)",
+    "placeholders": {
+      "amount": { "type": "String", "example": "963 ₽" }
+    }
+  },
+  "monthPickerLegend": "Высота столбика — сколько потрачено за месяц.",
+  "@monthPickerLegend": { "description": "Шторка выбора месяца: подпись под сводкой, когда за год трат нет" },
+  "monthPickerLegendMax": "Высота столбика — сколько потрачено за месяц. Самый дорогой — {month}, {amount}",
+  "@monthPickerLegendMax": {
+    "description": "Шторка выбора месяца: подпись под сводкой с самым дорогим месяцем года",
+    "placeholders": {
+      "month": { "type": "String", "example": "июль" },
+      "amount": { "type": "String", "example": "24 300 ₽" }
+    }
+  },
+  "monthPickerOpen": "Открыть {month}",
+  "@monthPickerOpen": {
+    "description": "Шторка выбора месяца: кнопка, закрывает шторку и показывает месяц на главной",
+    "placeholders": {
+      "month": { "type": "String", "example": "октябрь" }
+    }
+  },
+
   "databaseErrorTitle": "Не удалось открыть траты",
   "@databaseErrorTitle": {
     "description": "Экран-заглушка при старте: локальная база на телефоне не открылась, заголовок"
