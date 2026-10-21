@@ -8,6 +8,7 @@ import 'db/app_database.dart';
 import 'queries/month_queries.dart';
 import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
+import 'queries/today_queries.dart';
 import 'repositories/budgets_repository.dart';
 import 'repositories/categories_repository.dart';
 import 'repositories/expenses_repository.dart';
@@ -114,6 +115,11 @@ final searchQueriesProvider = Provider<SearchQueries>(
   name: 'searchQueries',
 );
 
+final todayQueriesProvider = Provider<TodayQueries>(
+  (ref) => DriftTodayQueries(ref.watch(appDatabaseProvider)),
+  name: 'todayQueries',
+);
+
 final dayTotalsProvider = StreamProvider.autoDispose
     .family<Map<int, Money>, BudgetMonth>(
       (ref, arg) => ref
@@ -138,6 +144,14 @@ final dayExpensesProvider = StreamProvider.autoDispose
           .watch(monthQueriesProvider)
           .watchDayExpenses(arg.budgetId, arg.day),
       name: 'dayExpenses',
+      retry: _noRetry,
+    );
+
+final todayExpensesProvider = StreamProvider.autoDispose
+    .family<TodayExpenses, BudgetDay>(
+      (ref, arg) =>
+          ref.watch(todayQueriesProvider).watchToday(arg.budgetId, arg.day),
+      name: 'todayExpenses',
       retry: _noRetry,
     );
 

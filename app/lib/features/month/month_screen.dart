@@ -12,6 +12,7 @@ import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
 import 'month_picker_sheet.dart';
+import 'today_block.dart';
 
 final _log = Logger('month');
 
@@ -112,6 +113,17 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     }
   }
 
+  void _logTodayBlock(YearMonth? previous, YearMonth next) {
+    final current = YearMonth.of(ref.read(clockProvider).today());
+    if (previous == current && next != current) {
+      _log.fine(
+        'today block hidden month=$next: not the current month $current',
+      );
+    } else if (previous != null && previous != current && next == current) {
+      _log.fine('today block shown again month=$next: current month');
+    }
+  }
+
   void _openCatalog() {
     _log.info('long press on month header → debug catalog');
     context.pushNamed('catalog');
@@ -120,14 +132,17 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
   @override
   Widget build(BuildContext context) {
     final today = ref.watch(clockProvider).today();
+    ref.listen(monthControllerProvider, _logTodayBlock);
     final requested = ref.watch(monthControllerProvider);
     final shown = ref.watch(shownMonthProvider);
     final data = shown.hasError ? null : shown.value;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     Widget? card;
+    var current = false;
     if (data != null || shown.hasError) {
       final month = data?.month ?? requested;
+      current = month == YearMonth.of(today);
       card = MonthCard(
         month: month,
         today: today,
@@ -166,7 +181,16 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(12, 6, 12, 20 + bottom),
-                child: card ?? const SizedBox.shrink(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ?card,
+                    if (current) ...[
+                      const SizedBox(height: 20),
+                      TodayBlock(today: today),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
