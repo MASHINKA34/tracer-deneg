@@ -73,6 +73,24 @@ flutter run
   adb exec-out run-as ru.milionchik.app cat files/logs/app.log
   ```
 
+### Integration-тест на эмуляторе
+
+Сценарий `app/integration_test/month_picker_day_sheet_flow_test.dart`: главная за октябрь 2026 → выбор месяца → сентябрь → назад к октябрю стрелкой › → шторка дня 17 октября → жест «назад». Данные у теста свои: база в памяти с демо-тратами (как у dev seed) и часы 19.10.2026 18:40, поэтому дата эмулятора и данные приложения на нём не важны. Тестовая сборка ставится поверх приложения на эмуляторе.
+
+```powershell
+cd app
+flutter emulators --launch milionchik_api30
+adb devices
+flutter test integration_test -d emulator-5554
+```
+
+`emulator-5554` - имя из вывода `adb devices`. Так же на `milionchik_api36`, только перед запуском закрыть приложение: `adb shell am force-stop ru.milionchik.app` (см. «Если эмулятор с образом API 36.1+ падает»).
+
+- Успех - `All tests passed!` в конце вывода. Шаги с длительностью видны в выводе и в `adb logcat -s milionchik` (модуль `[it]`), например `step 3/6 September chosen in picker and shown on main screen in 590ms`. Упавший шаг - строка `ERROR [it] step N/6 "<шаг>" failed after …ms` с причиной и стеком.
+- Подробные логи приложения во время теста: добавить `--dart-define=LOG_LEVEL=debug`.
+- Первый запуск собирает APK через Gradle и скачивает зависимости `integration_test` (около 3 минут), повторный - около 1-1,5 минуты; сам сценарий идёт 5-16 секунд.
+- В `tool/check.ps1` integration-тест не входит: ему нужен запущенный эмулятор, сборка и установка APK занимают минуты, а полная проверка проекта должна проходить без устройства.
+
 ### Локальная база (`app/lib/data/db/`)
 
 База на телефоне — SQLite через drift: таблицы в `tables.dart`, класс `AppDatabase` и версия схемы (`schemaVersion`) в `app_database.dart`, запуск шагов миграции и ошибка неизвестной версии — в `migrations.dart`. Снимки схемы каждой версии лежат в `app/drift_schemas/app_database/drift_schema_v<N>.json`, их тестовые копии — в `app/test/data/db/app_database/generated/` (настройка — `app/build.yaml`). Тест `test/data/db/schema_snapshot_test.dart` сверяет текущую схему со снимком последней версии: если поменять таблицу и не выпустить новую версию, он краснеет и пишет, какая колонка или индекс разошлись.
