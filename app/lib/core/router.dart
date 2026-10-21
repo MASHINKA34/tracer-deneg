@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import '../features/month/month_stub_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/new_expense_stub_screen.dart';
+import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'logging/navigation_logger.dart';
@@ -18,9 +19,11 @@ abstract final class AppRoutes {
   static const String recurring = '/recurring';
   static const String profile = '/profile';
   static const String newExpense = '/expense/new';
+  static const String search = '/search';
   static const String catalog = '/catalog';
 
   static const String newExpenseName = 'newExpense';
+  static const String searchName = 'search';
 }
 
 const Duration newExpenseTransition = Duration(milliseconds: 300);
@@ -103,6 +106,12 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
           transitionsBuilder: slideUpTransition,
           child: const NewExpenseStubScreen(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.search,
+        name: AppRoutes.searchName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const SearchStubScreen(),
       ),
       if (kDebugMode)
         GoRoute(

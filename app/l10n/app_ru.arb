@@ -40,6 +40,10 @@
       "month": { "type": "String", "example": "Октябрь 2026" }
     }
   },
+  "a11yBack": "Назад",
+  "@a11yBack": {
+    "description": "TalkBack: стрелка «назад» в заголовке экрана"
+  },
   "a11yDaySpent": "{date}, потрачено {rubles, plural, one{{rubles} рубль} few{{rubles} рубля} many{{rubles} рублей} other{{rubles} рубля}}",
   "@a11yDaySpent": {
     "description": "TalkBack: ячейка календаря с тратами («19 октября, потрачено 1 100 рублей»)",
@@ -81,6 +85,8 @@
   "@profileTitle": { "description": "Заголовок вкладки «Профиль» (13:975)" },
   "newExpenseTitle": "Новая трата",
   "@newExpenseTitle": { "description": "Заголовок экрана «Новая трата» (10:763), открывается кнопкой «+»" },
+  "searchTitle": "Поиск",
+  "@searchTitle": { "description": "Заголовок экрана «Поиск» (46:5267), открывается иконкой поиска в шапке главной" },
 
   "syncDone": "Синхронизировано",
   "@syncDone": { "description": "Статус синхронизации: всё на сервере" },
