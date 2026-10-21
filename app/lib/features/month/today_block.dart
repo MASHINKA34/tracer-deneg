@@ -11,6 +11,7 @@ import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
 import '../../data/queries/today_queries.dart';
 import '../../l10n/app_localizations.dart';
+import '../../ui/components/button.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
@@ -71,8 +72,8 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
         _budgetId = null;
         _shown = null;
         _log.fine(
-          'today block hidden date=$_day without budget: no budget '
-          'selected',
+          'today block empty state shown date=$_day without budget: no '
+          'budget selected, first expense hint and button',
         );
       case AsyncData(value: final String budgetId) when budgetId != _budgetId:
         _closeData();
@@ -121,8 +122,9 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
         final count = today.expenses.length;
         if (shown.empty) {
           _log.fine(
-            'today block hidden date=$_day budgetId=$budgetId: no expenses '
-            'in budget yet',
+            'today block empty state shown date=$_day budgetId=$budgetId: '
+            'no expenses in budget yet, first expense hint and button'
+            '${previous == null ? ' in ${_sw.elapsedMilliseconds}ms' : ''}',
           );
         } else if (previous == null) {
           final withTime = today.expenses
@@ -138,7 +140,7 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
           _log.fine(
             'today block updated date=$_day budgetId=$budgetId '
             'expenses=${previous.count} → $count'
-            '${previous.empty ? ', block shown: budget has expenses' : ''}',
+            '${previous.empty ? ', empty state left: budget has expenses' : ''}',
           );
         }
       case AsyncError(:final error, :final stackTrace):
@@ -197,6 +199,11 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
     context.push(AppRoutes.expenseOf(expense.id));
   }
 
+  void _addFirst() {
+    _log.fine('today block add first expense → ${AppRoutes.newExpense}');
+    context.pushNamed(AppRoutes.newExpenseName);
+  }
+
   static T? _ok<T>(AsyncValue<T>? value) =>
       value == null || value.hasError ? null : value.value;
 
@@ -219,12 +226,24 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
       return _TodayHead(title: title, total: '—');
     }
     if (!budget.hasValue) return const SizedBox.shrink();
-    if (budgetId == null) return const SizedBox.shrink();
+    if (budgetId == null) {
+      return _TodayView(
+        title: title,
+        total: Money.zero,
+        child: _FirstExpense(onAdd: _addFirst),
+      );
+    }
     final today = _ok(todayValue);
     final categories = _ok(categoriesValue);
     if (today == null || categories == null) return const SizedBox.shrink();
 
-    if (!today.budgetHasExpenses) return const SizedBox.shrink();
+    if (!today.budgetHasExpenses) {
+      return _TodayView(
+        title: title,
+        total: Money.zero,
+        child: _FirstExpense(onAdd: _addFirst),
+      );
+    }
     final expenses = today.expenses;
     if (expenses.isEmpty) {
       return _TodayView(title: title, total: Money.zero, child: const _None());
@@ -310,6 +329,61 @@ class _TodayHead extends StatelessWidget {
             total,
             maxLines: 1,
             style: AppText.labelM.copyWith(color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FirstExpense extends StatelessWidget {
+  const _FirstExpense({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  static const String _wave = '👋';
+
+  static const double _padding = 20;
+
+  static const double _gap = 10;
+
+  static const double _buttonHeight = 40;
+
+  static const double _buttonSlack =
+      (kMinInteractiveDimension - _buttonHeight) / 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        _padding,
+        _padding,
+        _padding,
+        _padding - _buttonSlack,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ExcludeSemantics(
+            child: Text(
+              _wave,
+              style: AppText.displayL.copyWith(color: colors.textPrimary),
+            ),
+          ),
+          const SizedBox(height: _gap),
+          FittingText(
+            l10n.todayFirstHint,
+            textAlign: TextAlign.center,
+            style: AppText.bodyM.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: _gap - _buttonSlack),
+          AppButton(
+            label: l10n.todayFirstAdd,
+            onPressed: onAdd,
+            type: AppButtonType.soft,
+            size: AppButtonSize.m,
           ),
         ],
       ),

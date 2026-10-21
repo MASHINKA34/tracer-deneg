@@ -306,7 +306,13 @@ void main() {
     final card = _card(tester);
     expect(card.month, _october);
     expect(card.dayTotals, isEmpty);
-    expect(find.text('0$nbsp₽'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(MonthCard),
+        matching: find.text('0$nbsp₽'),
+      ),
+      findsOneWidget,
+    );
     expect(
       _monthDebug(h),
       contains(
