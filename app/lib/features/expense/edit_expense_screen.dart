@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
@@ -26,6 +28,7 @@ import 'edit_expense_controller.dart';
 import 'expense_amount_sheet.dart';
 import 'expense_comment_sheet.dart';
 import 'expense_date_sheet.dart';
+import 'expense_delete_controller.dart';
 
 final _log = Logger('expense');
 
@@ -71,6 +74,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
   final Stopwatch _sinceOpen = Stopwatch()..start();
   String _closedBy = 'back';
   String? _warnedCategory;
+  Expense? _deleted;
 
   String get _id => widget.expenseId;
 
@@ -94,6 +98,11 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           'kopecks=${expense.amount.kopecks} '
           'commentLength=${textLength(expense.comment)} '
           'in ${_sinceOpen.elapsedMilliseconds}ms',
+        );
+      case AsyncData() when _deleted != null:
+        _log.fine(
+          'expense edit id=$_id: expense deleted from this screen, keeping '
+          'the form until the screen is closed',
         );
       case AsyncData():
         if (previous?.value != null) {
@@ -172,7 +181,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
   void _handlePop(bool didPop, Object? result) {
     if (!didPop) return;
     _nav.fine('expense edit closed id=$_id by $_closedBy');
-    if (_closedBy == 'save') return;
+    if (_closedBy == 'save' || _closedBy == 'delete') return;
     final expense = ref.read(expenseProvider(_id)).value;
     if (expense == null) return;
     final changed = ref
@@ -266,15 +275,24 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     }
   }
 
-  void _delete(String from) {
-    _log.info(
-      'expense delete tap id=$_id from=$from: deleting is not available '
-      'yet, expense kept',
+  void _delete(Expense expense, String from) {
+    if (_deleted != null) {
+      _log.fine(
+        'expense edit id=$_id delete tap from=$from ignored: already deleting',
+      );
+      return;
+    }
+    final changed = ref
+        .read(editExpenseControllerProvider(_id))
+        .changedFields(expense);
+    _log.fine(
+      'expense edit id=$_id delete tap from=$from unsaved '
+      'fields=${fieldNames(changed)} → back and delete with undo',
     );
-    showAppSnackbar(
-      context,
-      text: AppLocalizations.of(context).expenseEditDeleteSoon,
-    );
+    final deleting = ref.read(expenseDeleteProvider.notifier);
+    setState(() => _deleted = expense);
+    _leave('delete');
+    unawaited(deleting.delete(expense, from: 'edit $from'));
   }
 
   Category? _categoryOf(
@@ -305,7 +323,10 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final value = ref.watch(expenseProvider(_id));
     final Widget body;
     Expense? loaded;
+    final deleted = _deleted;
     switch (value) {
+      case _ when deleted != null:
+        body = _form(context, deleted);
       case AsyncError():
         body = _MissingView(failed: true, onBack: () => _leave('back button'));
       case AsyncData(value: final expense?):
@@ -316,6 +337,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       default:
         body = const SizedBox.shrink();
     }
+    final current = loaded;
     return PopScope<Object?>(
       onPopInvokedWithResult: _handlePop,
       child: Scaffold(
@@ -327,7 +349,9 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
               bottom: false,
               child: _TopBar(
                 onBack: () => _leave('back button'),
-                onDelete: loaded == null ? null : () => _delete('top bar'),
+                onDelete: current == null
+                    ? null
+                    : () => _delete(current, 'top bar'),
               ),
             ),
             Expanded(child: body),
@@ -438,7 +462,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
             type: AppButtonType.text,
             destructive: true,
             expand: true,
-            onPressed: () => _delete('button'),
+            onPressed: () => _delete(expense, 'button'),
           ),
         ],
       ),

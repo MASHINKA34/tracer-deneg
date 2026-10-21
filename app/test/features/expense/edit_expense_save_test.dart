@@ -260,29 +260,6 @@ void main() {
     );
   });
 
-  testWidgets('«Удалить трату» и корзина — пока заглушка: снекбар, трата '
-      'остаётся, info-лог', (tester) async {
-    final h = await EditHarness.start(tester);
-    await h.openById(h.pyaterochka.id);
-
-    await tester.tap(h.inEdit(find.bySemanticsLabel('Удалить трату')).first);
-    await tester.pumpAndSettle();
-    expect(find.byType(AppSnackbar), findsOneWidget);
-    expect(
-      find.text('Удаление траты появится в следующем обновлении'),
-      findsOneWidget,
-    );
-    expect(find.byType(EditExpenseScreen), findsOneWidget);
-    expect(await h.stored(h.pyaterochka.id), isNotNull);
-    expect(
-      _expenseInfo(h).map((r) => r.message),
-      contains(
-        'expense delete tap id=${h.pyaterochka.id} from=top bar: deleting '
-        'is not available yet, expense kept',
-      ),
-    );
-  });
-
   testWidgets('ошибка записи в базу: снекбар, экран и правка остаются, '
       'error [expense] с id и полями без значений параметров SQL', (
     tester,
