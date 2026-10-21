@@ -109,6 +109,7 @@ class _ExpenseCommentSheetState extends ConsumerState<ExpenseCommentSheet> {
     ),
   );
   final TextInputFormatter _limit = _CommentLimit();
+  final FocusNode _focus = FocusNode(debugLabel: 'comment');
   late int _length = textLength(widget.initial);
 
   @override
@@ -131,6 +132,7 @@ class _ExpenseCommentSheetState extends ConsumerState<ExpenseCommentSheet> {
   void dispose() {
     _text.removeListener(_onText);
     _text.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -168,6 +170,10 @@ class _ExpenseCommentSheetState extends ConsumerState<ExpenseCommentSheet> {
       selection: TextSelection.collapsed(offset: comment.length),
     );
     _log.fine('comment recent #$index picked length=${textLength(comment)}');
+    if (!_focus.hasFocus) {
+      _log.fine('comment field lost focus on recent tap → focus back');
+      _focus.requestFocus();
+    }
   }
 
   void _done() => Navigator.of(context).pop(normalizeText(_text.text));
@@ -226,6 +232,7 @@ class _ExpenseCommentSheetState extends ConsumerState<ExpenseCommentSheet> {
                 AppTextField(
                   label: l10n.expenseCommentLabel,
                   controller: _text,
+                  focusNode: _focus,
                   autofocus: true,
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.done,
