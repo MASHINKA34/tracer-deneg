@@ -28,6 +28,7 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
 import '../month/day_sheet.dart' show spokenAmount;
 import 'category_grid.dart';
+import 'expense_date_sheet.dart';
 import 'new_expense_controller.dart';
 
 final _log = Logger('expense');
@@ -173,6 +174,14 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
       case null:
         _log.fine('all categories sheet closed without choice');
     }
+  }
+
+  Future<void> _pickDate() async {
+    final current = ref.read(newExpenseControllerProvider(widget.date)).date;
+    _log.fine('date chip tap date=$current → date sheet');
+    final chosen = await showExpenseDateSheet(context, initial: current);
+    if (!mounted || chosen == null) return;
+    _controller.setDate(chosen, by: 'date sheet');
   }
 
   void _openSetup({required String from}) {
@@ -356,6 +365,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                                   state.date,
                                   today,
                                 ),
+                                onTap: _pickDate,
                               ),
                               AppChip(
                                 emoji: '💬',

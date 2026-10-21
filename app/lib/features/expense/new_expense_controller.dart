@@ -52,12 +52,15 @@ final class NewExpenseState {
   final LocalDate date;
   final bool saving;
 
-  NewExpenseState copyWith({KeypadInput? input, bool? saving}) =>
-      NewExpenseState(
-        input: input ?? this.input,
-        date: date,
-        saving: saving ?? this.saving,
-      );
+  NewExpenseState copyWith({
+    KeypadInput? input,
+    LocalDate? date,
+    bool? saving,
+  }) => NewExpenseState(
+    input: input ?? this.input,
+    date: date ?? this.date,
+    saving: saving ?? this.saving,
+  );
 }
 
 enum NewExpenseSave { saved, zeroAmount, busy, noBudget, failed }
@@ -87,6 +90,25 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
       'from=${resolved.source.name} today=$today',
     );
     return NewExpenseState(input: KeypadInput.empty, date: resolved.date);
+  }
+
+  bool setDate(LocalDate date, {required String by}) {
+    final today = ref.read(clockProvider).today();
+    final from = state.date;
+    if (date.isAfter(today)) {
+      _log.warning(
+        'expense date $date by=$by rejected: future day today=$today, '
+        'keeping $from',
+      );
+      return false;
+    }
+    if (date == from) {
+      _log.fine('expense date $date by=$by unchanged');
+      return false;
+    }
+    state = state.copyWith(date: date);
+    _log.fine('expense date $from → $date by=$by');
+    return true;
   }
 
   bool digit(int digit) => _apply('digit $digit', state.input.digit(digit));
