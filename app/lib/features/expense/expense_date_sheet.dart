@@ -24,7 +24,7 @@ const double expenseDateDayHeight = 36;
 
 const double expenseDateGap = 4;
 
-const double _blockGap = 14;
+const double expenseSheetGap = 14;
 
 const double _sheetGap = 16;
 
@@ -43,10 +43,7 @@ double chipTapSlack(TextScaler scaler) => tapSlack(
   math.max(_chipHeight, _scaledLine(scaler, AppText.labelM) + _chipPadding),
 );
 
-double sheetTitleLift(TextScaler scaler, {double visual = 0}) =>
-    _sheetGap -
-    _blockGap +
-    tapSlack(math.max(visual, _scaledLine(scaler, AppText.titleM)));
+const double expenseSheetLift = _sheetGap - expenseSheetGap;
 
 enum QuickExpenseDate { today, yesterday, dayBefore }
 
@@ -165,7 +162,7 @@ class _ExpenseDateSheetState extends ConsumerState<ExpenseDateSheet> {
 
     return Flexible(
       child: Transform.translate(
-        offset: Offset(0, -sheetTitleLift(scaler, visual: _headHeight)),
+        offset: Offset(0, -(expenseSheetLift + headSlack)),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -180,7 +177,7 @@ class _ExpenseDateSheetState extends ConsumerState<ExpenseDateSheet> {
                     ? () => _showMonth(1)
                     : null,
               ),
-              SizedBox(height: _blockGap - headSlack - chipSlack),
+              SizedBox(height: expenseSheetGap - headSlack - chipSlack),
               Wrap(
                 spacing: 8,
                 runSpacing: 8 - 2 * chipSlack,
@@ -194,22 +191,22 @@ class _ExpenseDateSheetState extends ConsumerState<ExpenseDateSheet> {
                     ),
                 ],
               ),
-              SizedBox(height: _blockGap - chipSlack),
+              SizedBox(height: expenseSheetGap - chipSlack),
               const _Weekdays(),
-              const SizedBox(height: _blockGap - expenseDateGap / 2),
+              const SizedBox(height: expenseSheetGap - expenseDateGap / 2),
               _Grid(
                 month: _shown,
                 today: today,
                 selected: _selected,
                 onTap: (date) => _select(date, by: 'calendar'),
               ),
-              const SizedBox(height: _blockGap - expenseDateGap / 2),
+              const SizedBox(height: expenseSheetGap - expenseDateGap / 2),
               AppButton(
                 label: l10n.expenseSheetDone,
                 expand: true,
                 onPressed: () => Navigator.of(context).pop(_selected),
               ),
-              const SizedBox(height: _blockGap),
+              const SizedBox(height: expenseSheetGap),
               FittingText(
                 l10n.expenseDateFutureHint,
                 textAlign: TextAlign.center,

@@ -45,20 +45,24 @@ final class NewExpenseState {
   const NewExpenseState({
     required this.input,
     required this.date,
+    this.comment = '',
     this.saving = false,
   });
 
   final KeypadInput input;
   final LocalDate date;
+  final String comment;
   final bool saving;
 
   NewExpenseState copyWith({
     KeypadInput? input,
     LocalDate? date,
+    String? comment,
     bool? saving,
   }) => NewExpenseState(
     input: input ?? this.input,
     date: date ?? this.date,
+    comment: comment ?? this.comment,
     saving: saving ?? this.saving,
   );
 }
@@ -108,6 +112,27 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
     }
     state = state.copyWith(date: date);
     _log.fine('expense date $from → $date by=$by');
+    return true;
+  }
+
+  bool setComment(String comment) {
+    final value = normalizeText(comment);
+    final length = textLength(value);
+    final error = validateComment(value);
+    if (error != null) {
+      _log.warning(
+        'expense comment rejected: ${error.code} length=$length '
+        'max=$commentMaxLength, keeping length=${textLength(state.comment)}',
+      );
+      return false;
+    }
+    final previous = textLength(state.comment);
+    if (value == state.comment) {
+      _log.fine('expense comment unchanged length=$length');
+      return false;
+    }
+    state = state.copyWith(comment: value);
+    _log.fine('expense comment set length=$length was=$previous');
     return true;
   }
 
@@ -192,6 +217,7 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
             categoryId: category.id,
             amount: current.input.amount,
             spentOn: current.date,
+            comment: current.comment,
           );
       _log.info(
         'expense saved id=${expense.id} budgetId=$budgetId '

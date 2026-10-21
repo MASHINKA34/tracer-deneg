@@ -173,6 +173,20 @@
   "@expenseDateDayBefore": { "description": "Шторка даты траты: быстрый выбор позавчерашней даты" },
   "expenseDateFutureHint": "Будущие дни недоступны: траты вносим по факту, а будущие платежи — через «Регулярные».",
   "@expenseDateFutureHint": { "description": "Шторка даты траты: подпись под кнопкой «Готово» (00-spec §2.1)" },
+  "expenseCommentTitle": "Комментарий",
+  "@expenseCommentTitle": { "description": "Шторка комментария траты (43:4962): заголовок" },
+  "expenseCommentCounter": "{count} / {max}",
+  "@expenseCommentCounter": {
+    "description": "Шторка комментария траты: счётчик введённых символов справа от заголовка",
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "expenseCommentLabel": "Что купил",
+  "@expenseCommentLabel": { "description": "Шторка комментария траты: подпись над полем ввода" },
+  "expenseCommentRecent": "Недавние",
+  "@expenseCommentRecent": { "description": "Шторка комментария траты: заголовок недавних комментариев бюджета (до 6, тап подставляет в поле)" },
   "categoriesTitle": "Категории",
   "@categoriesTitle": { "description": "Заголовок экрана «Категории» (44:4792), открывается «Настроить» в «Новой трате»" },
   "searchTitle": "Поиск",

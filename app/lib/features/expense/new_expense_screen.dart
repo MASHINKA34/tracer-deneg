@@ -28,6 +28,7 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
 import '../month/day_sheet.dart' show spokenAmount;
 import 'category_grid.dart';
+import 'expense_comment_sheet.dart';
 import 'expense_date_sheet.dart';
 import 'new_expense_controller.dart';
 
@@ -182,6 +183,19 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
     final chosen = await showExpenseDateSheet(context, initial: current);
     if (!mounted || chosen == null) return;
     _controller.setDate(chosen, by: 'date sheet');
+  }
+
+  Future<void> _editComment() async {
+    final current = ref.read(newExpenseControllerProvider(widget.date)).comment;
+    final budgetId = ref.read(selectedBudgetIdProvider).value;
+    _log.fine('comment chip tap length=${textLength(current)} → comment sheet');
+    final result = await showExpenseCommentSheet(
+      context,
+      initial: current,
+      budgetId: budgetId,
+    );
+    if (!mounted || result == null) return;
+    _controller.setComment(result);
   }
 
   void _openSetup({required String from}) {
@@ -369,7 +383,10 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                               ),
                               AppChip(
                                 emoji: '💬',
-                                label: l10n.newExpenseComment,
+                                label: state.comment.isEmpty
+                                    ? l10n.newExpenseComment
+                                    : commentChipLabel(state.comment),
+                                onTap: _editComment,
                               ),
                             ],
                           ),
