@@ -174,6 +174,12 @@ final recentCommentsProvider = StreamProvider.autoDispose
       retry: _noRetry,
     );
 
+final budgetProvider = StreamProvider.autoDispose.family<Budget?, String>(
+  (ref, budgetId) => ref.watch(budgetsRepositoryProvider).watchById(budgetId),
+  name: 'budget',
+  retry: _noRetry,
+);
+
 final selectedBudgetIdProvider = StreamProvider<String?>(
   (ref) => ref
       .watch(budgetsRepositoryProvider)

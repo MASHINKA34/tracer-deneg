@@ -4,6 +4,7 @@ import 'package:milionchik/app.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:shared/shared.dart';
 
+import '../../support/app_scope.dart';
 import '../../support/golden.dart';
 import '../../support/test_fonts.dart';
 
@@ -35,7 +36,10 @@ void main() {
             addTearDown(tester.platformDispatcher.clearAllTestValues);
 
             await tester.pumpWidget(
-              MilionchikApp(today: LocalDate(2026, 10, 19)),
+              withDatabase(
+                openTestDatabase(),
+                MilionchikApp(today: LocalDate(2026, 10, 19)),
+              ),
             );
             await settleAssets(tester);
             if (label != null) {

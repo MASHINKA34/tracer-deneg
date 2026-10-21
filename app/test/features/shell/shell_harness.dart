@@ -3,13 +3,17 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
+import 'package:milionchik/data/db/app_database.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:shared/shared.dart';
 
+import '../../support/app_scope.dart';
+
 final class ShellHarness {
-  ShellHarness._(this.tester);
+  ShellHarness._(this.tester, this.db);
 
   final WidgetTester tester;
+  final AppDatabase db;
   final List<LogRecord> records = [];
   final List<MethodCall> platformCalls = [];
 
@@ -17,8 +21,10 @@ final class ShellHarness {
     WidgetTester tester, {
     Size size = const Size(360, 800),
     double bottomInset = 0,
+    double topInset = 0,
+    AppDatabase? db,
   }) async {
-    final harness = ShellHarness._(tester);
+    final harness = ShellHarness._(tester, db ?? openTestDatabase());
     final previousLevel = Logger.root.level;
     Logger.root.level = Level.ALL;
     final sub = Logger.root.onRecord.listen(harness.records.add);
@@ -30,8 +36,8 @@ final class ShellHarness {
     tester.view
       ..devicePixelRatio = 1
       ..physicalSize = size
-      ..viewPadding = FakeViewPadding(bottom: bottomInset)
-      ..padding = FakeViewPadding(bottom: bottomInset);
+      ..viewPadding = FakeViewPadding(top: topInset, bottom: bottomInset)
+      ..padding = FakeViewPadding(top: topInset, bottom: bottomInset);
     addTearDown(tester.view.reset);
 
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -49,7 +55,9 @@ final class ShellHarness {
     );
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pumpWidget(MilionchikApp(today: LocalDate(2026, 10, 19)));
+    await tester.pumpWidget(
+      withDatabase(harness.db, MilionchikApp(today: LocalDate(2026, 10, 19))),
+    );
     await tester.pumpAndSettle();
     return harness;
   }

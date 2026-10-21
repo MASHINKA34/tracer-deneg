@@ -7,6 +7,7 @@ import '../../l10n/app_localizations.dart';
 import '../../ui/components/logo.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
+import 'month_header.dart';
 
 final _log = Logger('month');
 
@@ -21,29 +22,36 @@ class MonthStubScreen extends StatelessWidget {
     final title = AppLocalizations.of(context).appTitle;
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onLongPress: kDebugMode
-                    ? () {
-                        _log.info('long press on logo → debug catalog');
-                        context.pushNamed('catalog');
-                      }
-                    : null,
-                child: AppLogo(semanticLabel: title),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: AppText.displayM.copyWith(
-                  color: context.colors.textPrimary,
+        child: Column(
+          children: [
+            const MonthHeader(),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onLongPress: kDebugMode
+                          ? () {
+                              _log.info('long press on logo → debug catalog');
+                              context.pushNamed('catalog');
+                            }
+                          : null,
+                      child: AppLogo(semanticLabel: title),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: AppText.displayM.copyWith(
+                        color: context.colors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

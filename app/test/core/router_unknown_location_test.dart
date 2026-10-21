@@ -8,6 +8,8 @@ import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/theme/app_theme.dart';
 import 'package:shared/shared.dart' show Mood;
 
+import '../support/app_scope.dart';
+
 void main() {
   testWidgets(
     'неизвестный адрес — предупреждение без query и вкладка «Месяц»',
@@ -20,12 +22,15 @@ void main() {
       addTearDown(router.dispose);
 
       await tester.pumpWidget(
-        MaterialApp.router(
-          theme: AppTheme.build(Brightness.light, Mood.autumn),
-          locale: const Locale('ru'),
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          routerConfig: router,
+        withDatabase(
+          openTestDatabase(),
+          MaterialApp.router(
+            theme: AppTheme.build(Brightness.light, Mood.autumn),
+            locale: const Locale('ru'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();

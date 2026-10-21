@@ -190,6 +190,7 @@ void main() {
     expect(container.read(appDatabaseProvider), same(db));
 
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(Duration.zero);
     await db.close();
   });
 

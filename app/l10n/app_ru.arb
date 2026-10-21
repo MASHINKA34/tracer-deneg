@@ -40,6 +40,21 @@
       "month": { "type": "String", "example": "Октябрь 2026" }
     }
   },
+  "a11yChooseBudget": "{budget}, выбрать бюджет",
+  "@a11yChooseBudget": {
+    "description": "TalkBack: название бюджета в шапке главной (откроет переключатель бюджетов)",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Личный бюджет" }
+    }
+  },
+  "a11ySearch": "Поиск",
+  "@a11ySearch": {
+    "description": "TalkBack: иконка поиска в шапке главной"
+  },
+  "a11yProfile": "Профиль",
+  "@a11yProfile": {
+    "description": "TalkBack: аватар в шапке главной (открывает вкладку «Профиль»)"
+  },
   "a11yBack": "Назад",
   "@a11yBack": {
     "description": "TalkBack: стрелка «назад» в заголовке экрана"

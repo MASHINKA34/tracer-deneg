@@ -7,6 +7,8 @@ import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
 import 'package:milionchik/core/system_ui.dart';
 
+import 'support/app_scope.dart';
+
 void main() {
   late List<LogRecord> records;
   late StreamSubscription<LogRecord> subscription;
@@ -19,7 +21,9 @@ void main() {
   tearDown(() => subscription.cancel());
 
   testWidgets('заглушка «Милиончик» и лог перехода на экран', (tester) async {
-    await tester.pumpWidget(const MilionchikApp());
+    await tester.pumpWidget(
+      withDatabase(openTestDatabase(), const MilionchikApp()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Милиончик'), findsOneWidget);
@@ -30,7 +34,9 @@ void main() {
   });
 
   testWidgets('системные панели прозрачные, иконки по теме', (tester) async {
-    await tester.pumpWidget(const MilionchikApp());
+    await tester.pumpWidget(
+      withDatabase(openTestDatabase(), const MilionchikApp()),
+    );
     await tester.pumpAndSettle();
 
     final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
