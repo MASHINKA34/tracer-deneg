@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_frame.dart';
 import '../theme/app_theme.dart';
 import '../tokens/tokens.g.dart';
 
@@ -63,6 +64,7 @@ Future<T?> showAppSheet<T>(
     backgroundColor: Colors.transparent,
     elevation: 0,
     barrierColor: context.colors.scrim,
+    constraints: const BoxConstraints(maxWidth: maxContentWidth),
     builder: (context) => AppSheet(children: builder(context)),
   );
 }

@@ -11,6 +11,7 @@ import '../features/shell/new_expense_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
+import 'app_frame.dart';
 import 'logging/navigation_logger.dart';
 
 final _log = Logger('nav');
@@ -62,7 +63,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
             NoTransitionPage<void>(
               key: state.pageKey,
               name: 'shell',
-              child: AppShell(navigationShell: navigationShell),
+              child: AppFrame(
+                child: AppShell(navigationShell: navigationShell),
+              ),
             ),
         branches: [
           StatefulShellBranch(
@@ -117,21 +120,22 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
           transitionDuration: newExpenseTransition,
           reverseTransitionDuration: newExpenseTransition,
           transitionsBuilder: slideUpTransition,
-          child: const NewExpenseStubScreen(),
+          child: const AppFrame(child: NewExpenseStubScreen()),
         ),
       ),
       GoRoute(
         path: AppRoutes.expense,
         name: AppRoutes.expenseName,
         parentNavigatorKey: rootKey,
-        builder: (context, state) =>
-            ExpenseStubScreen(expenseId: state.pathParameters['id']!),
+        builder: (context, state) => AppFrame(
+          child: ExpenseStubScreen(expenseId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: AppRoutes.search,
         name: AppRoutes.searchName,
         parentNavigatorKey: rootKey,
-        builder: (context, state) => const SearchStubScreen(),
+        builder: (context, state) => const AppFrame(child: SearchStubScreen()),
       ),
       if (kDebugMode)
         GoRoute(
