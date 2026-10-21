@@ -196,6 +196,12 @@ final categoriesProvider = StreamProvider.autoDispose
       retry: _noRetry,
     );
 
+final expenseProvider = StreamProvider.autoDispose.family<Expense?, String>(
+  (ref, id) => ref.watch(expensesRepositoryProvider).watchById(id),
+  name: 'expense',
+  retry: _noRetry,
+);
+
 final budgetProvider = StreamProvider.autoDispose.family<Budget?, String>(
   (ref, budgetId) => ref.watch(budgetsRepositoryProvider).watchById(budgetId),
   name: 'budget',

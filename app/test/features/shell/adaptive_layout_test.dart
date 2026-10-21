@@ -6,7 +6,7 @@ import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_picker_sheet.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/month/today_block.dart';
-import 'package:milionchik/features/shell/expense_stub_screen.dart';
+import 'package:milionchik/features/expense/edit_expense_screen.dart';
 import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/features/shell/search_stub_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
@@ -268,7 +268,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-      _rect(tester, ExpenseStubScreen),
+      _rect(tester, EditExpenseScreen),
       const Rect.fromLTWH(400, 0, maxContentWidth, 800),
     );
     await h.systemBack();

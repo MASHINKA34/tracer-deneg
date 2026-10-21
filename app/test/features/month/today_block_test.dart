@@ -10,7 +10,7 @@ import 'package:milionchik/data/repositories/expenses_repository.dart';
 import 'package:milionchik/data/repositories/outbox_queue.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/features/month/today_block.dart';
-import 'package:milionchik/features/shell/expense_stub_screen.dart';
+import 'package:milionchik/features/expense/edit_expense_screen.dart';
 import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/button.dart';
@@ -161,7 +161,7 @@ void main() {
     expect(find.text('Добавить первую трату'), findsNothing);
   });
 
-  testWidgets('тап по трате в блоке открывает /expense/<id> (заглушка '
+  testWidgets('тап по трате в блоке открывает /expense/<id> (экран '
       '«Трата»), «назад» возвращает на главную', (tester) async {
     final db = openTestDatabase();
     final budgetId = await _seedOctober(tester, db);
@@ -181,7 +181,7 @@ void main() {
 
     expect(
       tester
-          .widget<ExpenseStubScreen>(find.byType(ExpenseStubScreen))
+          .widget<EditExpenseScreen>(find.byType(EditExpenseScreen))
           .expenseId,
       pyaterochka.id,
     );
@@ -189,7 +189,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Назад'));
     await tester.pumpAndSettle();
-    expect(find.byType(ExpenseStubScreen), findsNothing);
+    expect(find.byType(EditExpenseScreen), findsNothing);
     expect(_location(tester), '/month');
     expect(_block, findsOneWidget);
   });
@@ -350,7 +350,7 @@ void main() {
         isEmpty,
       );
       expect(
-        find.byType(name == 'три траты' ? ExpenseStubScreen : NewExpenseScreen),
+        find.byType(name == 'три траты' ? EditExpenseScreen : NewExpenseScreen),
         findsOneWidget,
       );
     });

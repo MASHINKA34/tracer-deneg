@@ -116,9 +116,7 @@ void main() {
         ),
         'day sheet expense tap id=${expenses.first.id} date=2026-10-17 → '
             '/expense/:id',
-        'expense opened id=${expenses.first.id}: stub screen, editing is not '
-            'available yet',
-        'expense closed id=${expenses.first.id} by back',
+        'expense edit closed id=${expenses.first.id} by back',
         'day sheet add expense date=2026-10-17 → /expense/new with '
             'date=2026-10-17',
         'new expense closed by back',

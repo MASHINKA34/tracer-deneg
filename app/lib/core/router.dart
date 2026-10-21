@@ -7,11 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
 
+import '../features/expense/edit_expense_screen.dart';
 import '../features/expense/new_expense_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/categories_stub_screen.dart';
-import '../features/shell/expense_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
@@ -165,7 +165,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         name: AppRoutes.expenseName,
         parentNavigatorKey: rootKey,
         builder: (context, state) => AppFrame(
-          child: ExpenseStubScreen(expenseId: state.pathParameters['id']!),
+          child: EditExpenseScreen(expenseId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(
