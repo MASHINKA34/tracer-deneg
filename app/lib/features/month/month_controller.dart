@@ -66,6 +66,44 @@ final monthControllerProvider = NotifierProvider<MonthController, YearMonth>(
   name: 'monthController',
 );
 
+final class OpenDaySheet extends Notifier<LocalDate?> {
+  @override
+  LocalDate? build() => null;
+
+  bool open(LocalDate day) {
+    if (state != null) return false;
+    state = day;
+    return true;
+  }
+
+  void close(LocalDate day) {
+    if (state == day) state = null;
+  }
+}
+
+final openDaySheetProvider = NotifierProvider<OpenDaySheet, LocalDate?>(
+  OpenDaySheet.new,
+  name: 'openDaySheet',
+);
+
+final class MonthPickerOpen extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  bool open() {
+    if (state) return false;
+    state = true;
+    return true;
+  }
+
+  void close() => state = false;
+}
+
+final monthPickerOpenProvider = NotifierProvider<MonthPickerOpen, bool>(
+  MonthPickerOpen.new,
+  name: 'monthPickerOpen',
+);
+
 final class ShownMonth {
   const ShownMonth({
     required this.month,

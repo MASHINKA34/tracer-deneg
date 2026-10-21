@@ -31,8 +31,6 @@ class MonthScreen extends ConsumerStatefulWidget {
 
 class _MonthScreenState extends ConsumerState<MonthScreen> {
   double _dragDx = 0;
-  bool _pickerOpen = false;
-  LocalDate? _sheetDay;
 
   @override
   void initState() {
@@ -71,26 +69,26 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
   }
 
   Future<void> _openPicker(YearMonth month) async {
-    if (_pickerOpen) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    if (!container.read(monthPickerOpenProvider.notifier).open()) {
       _log.fine('month title tap month=$month ignored: picker already open');
       return;
     }
     _log.fine('month title tap month=$month → month picker');
-    _pickerOpen = true;
     final YearMonth? chosen;
     try {
       chosen = await showMonthPickerSheet(context, shown: month);
     } finally {
-      _pickerOpen = false;
+      container.read(monthPickerOpenProvider.notifier).close();
     }
     if (chosen == null) return;
     if (!mounted) {
-      _log.warning(
-        'month picker chose $chosen but month screen is gone, nothing to show',
+      _log.fine(
+        'month picker chose $chosen after month screen left the tree, '
+        'opening it in the month controller anyway',
       );
-      return;
     }
-    _controller.open(chosen);
+    container.read(monthControllerProvider.notifier).open(chosen);
   }
 
   Future<void> _openDay(LocalDate date) async {
@@ -99,17 +97,19 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       _log.fine('day tap date=$date ignored: future day today=$today');
       return;
     }
-    final open = _sheetDay;
-    if (open != null) {
-      _log.fine('day tap date=$date ignored: day sheet of $open is open');
+    final container = ProviderScope.containerOf(context, listen: false);
+    if (!container.read(openDaySheetProvider.notifier).open(date)) {
+      _log.fine(
+        'day tap date=$date ignored: day sheet of '
+        '${container.read(openDaySheetProvider)} is open',
+      );
       return;
     }
     _log.fine('day tap date=$date → day sheet');
-    setState(() => _sheetDay = date);
     try {
       await showDaySheet(context, day: date);
     } finally {
-      if (mounted) setState(() => _sheetDay = null);
+      container.read(openDaySheetProvider.notifier).close(date);
     }
   }
 
@@ -135,6 +135,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     ref.listen(monthControllerProvider, _logTodayBlock);
     final requested = ref.watch(monthControllerProvider);
     final shown = ref.watch(shownMonthProvider);
+    final sheetDay = ref.watch(openDaySheetProvider);
     final data = shown.hasError ? null : shown.value;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
@@ -149,8 +150,8 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         dayTotals: data?.dayTotals ?? const {},
         mood: Mood.ofSeason(seasonOf(month.month)),
         holidayMarks: monthMarkEmojis(month),
-        selectedDay: _sheetDay != null && month.contains(_sheetDay!)
-            ? _sheetDay!.day
+        selectedDay: sheetDay != null && month.contains(sheetDay)
+            ? sheetDay.day
             : null,
         onMonthTap: () => _openPicker(month),
         onPrevious: () => _controller.previous(MonthStepSource.arrow),
