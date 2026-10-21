@@ -197,6 +197,40 @@
     }
   },
 
+  "daySheetExpenses": "{count, plural, one{{count} трата} few{{count} траты} many{{count} трат} other{{count} траты}}",
+  "@daySheetExpenses": {
+    "description": "Шторка дня (9:439): число трат дня в подзаголовке",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "daySheetMore": "{expenses} · больше среднего на {amount}",
+  "@daySheetMore": {
+    "description": "Шторка дня: подзаголовок, сумма дня больше среднего в день месяца (00-spec §7.3)",
+    "placeholders": {
+      "expenses": { "type": "String", "example": "2 траты" },
+      "amount": { "type": "String", "example": "487 ₽" }
+    }
+  },
+  "daySheetLess": "{expenses} · меньше среднего на {amount}",
+  "@daySheetLess": {
+    "description": "Шторка дня: подзаголовок, сумма дня меньше среднего в день месяца (00-spec §7.3)",
+    "placeholders": {
+      "expenses": { "type": "String", "example": "1 трата" },
+      "amount": { "type": "String", "example": "753 ₽" }
+    }
+  },
+  "daySheetSame": "{expenses} · столько же, сколько в среднем",
+  "@daySheetSame": {
+    "description": "Шторка дня: подзаголовок, сумма дня равна среднему в день (разница меньше рубля)",
+    "placeholders": {
+      "expenses": { "type": "String", "example": "3 траты" }
+    }
+  },
+  "daySheetHint": "Нажми на трату, чтобы изменить. Смахни влево — удалить.",
+  "@daySheetHint": { "description": "Шторка дня: подсказка под списком трат (как на 9:439)" },
+  "daySheetAdd": "Добавить трату в этот день",
+  "@daySheetAdd": { "description": "Шторка дня: кнопка, открывает «Новую трату» с датой дня" },
   "expenseTitle": "Трата",
   "@expenseTitle": { "description": "Заголовок экрана траты (43:4368), открывается тапом по трате" },
 

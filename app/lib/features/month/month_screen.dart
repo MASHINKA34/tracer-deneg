@@ -8,6 +8,7 @@ import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
 import '../../ui/components/month_card.dart';
+import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
 import 'month_picker_sheet.dart';
@@ -30,6 +31,7 @@ class MonthScreen extends ConsumerStatefulWidget {
 class _MonthScreenState extends ConsumerState<MonthScreen> {
   double _dragDx = 0;
   bool _pickerOpen = false;
+  LocalDate? _sheetDay;
 
   @override
   void initState() {
@@ -90,6 +92,26 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     _controller.open(chosen);
   }
 
+  Future<void> _openDay(LocalDate date) async {
+    final today = ref.read(clockProvider).today();
+    if (dayKind(date, today) == DayKind.future) {
+      _log.fine('day tap date=$date ignored: future day today=$today');
+      return;
+    }
+    final open = _sheetDay;
+    if (open != null) {
+      _log.fine('day tap date=$date ignored: day sheet of $open is open');
+      return;
+    }
+    _log.fine('day tap date=$date → day sheet');
+    setState(() => _sheetDay = date);
+    try {
+      await showDaySheet(context, day: date);
+    } finally {
+      if (mounted) setState(() => _sheetDay = null);
+    }
+  }
+
   void _openCatalog() {
     _log.info('long press on month header → debug catalog');
     context.pushNamed('catalog');
@@ -112,15 +134,15 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         dayTotals: data?.dayTotals ?? const {},
         mood: Mood.ofSeason(seasonOf(month.month)),
         holidayMarks: monthMarkEmojis(month),
+        selectedDay: _sheetDay != null && month.contains(_sheetDay!)
+            ? _sheetDay!.day
+            : null,
         onMonthTap: () => _openPicker(month),
         onPrevious: () => _controller.previous(MonthStepSource.arrow),
         onNext: canGoToNextMonth(month, today)
             ? () => _controller.next(MonthStepSource.arrow)
             : null,
-        onDayTap: (day) => _log.fine(
-          'day tap date=${month.dayOf(day)}: no action, day sheet is not '
-          'available yet',
-        ),
+        onDayTap: (day) => _openDay(month.dayOf(day)),
       );
       card = GestureDetector(
         dragStartBehavior: DragStartBehavior.down,
