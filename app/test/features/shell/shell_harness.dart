@@ -23,6 +23,7 @@ final class ShellHarness {
     double bottomInset = 0,
     double topInset = 0,
     AppDatabase? db,
+    DateTime? now,
   }) async {
     final harness = ShellHarness._(tester, db ?? openTestDatabase());
     final previousLevel = Logger.root.level;
@@ -56,7 +57,11 @@ final class ShellHarness {
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpWidget(
-      withDatabase(harness.db, MilionchikApp(today: LocalDate(2026, 10, 19))),
+      withDatabase(
+        harness.db,
+        MilionchikApp(today: LocalDate.fromDateTime(now ?? testNow)),
+        now: now,
+      ),
     );
     await tester.pumpAndSettle();
     return harness;
