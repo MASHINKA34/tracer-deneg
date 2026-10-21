@@ -256,8 +256,7 @@ class _Header extends StatelessWidget {
 }
 
 /// Круглая кнопка 34 со стрелкой. Область нажатия — кружок с полями
-/// [margin] (48 × 48): кружки стоят с зазором 6, как в Figma, а области
-/// заходят на поле карточки справа и на место под названием слева.
+/// [margin] (48 × 48): две кнопки стоят с зазором 6, как в Figma.
 /// Неактивная — стрелка `text/disabled`.
 class _NavButton extends StatelessWidget {
   const _NavButton({
