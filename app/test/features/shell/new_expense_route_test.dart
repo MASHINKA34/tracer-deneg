@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:milionchik/core/router.dart';
-import 'package:milionchik/features/month/month_stub_screen.dart';
+import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/shell/new_expense_stub_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
@@ -114,7 +114,7 @@ void main() {
     await h.systemBack();
 
     expect(find.byType(NewExpenseStubScreen), findsNothing);
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(h.systemPops, 0);
     expect(h.navDebug(), contains('new expense closed by back'));

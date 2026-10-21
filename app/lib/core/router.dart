@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
-import '../features/month/month_stub_screen.dart';
+import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/new_expense_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
@@ -57,7 +57,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
               GoRoute(
                 path: AppRoutes.month,
                 name: 'month',
-                builder: (context, state) => const MonthStubScreen(),
+                builder: (context, state) => const MonthScreen(),
               ),
             ],
           ),

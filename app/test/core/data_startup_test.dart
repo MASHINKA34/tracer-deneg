@@ -12,6 +12,7 @@ import 'package:milionchik/core/data_startup.dart';
 import 'package:milionchik/data/db/app_database.dart';
 import 'package:milionchik/data/dev_seed.dart';
 import 'package:milionchik/data/providers.dart';
+import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/startup/database_error_app.dart';
 import 'package:milionchik/ui/components/logo.dart';
 import 'package:shared/shared.dart';
@@ -183,7 +184,7 @@ void main() {
 
     expect(find.byType(ProviderScope), findsOneWidget);
     expect(find.byType(MilionchikApp), findsOneWidget);
-    expect(find.text('Милиончик'), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MilionchikApp)),
     );

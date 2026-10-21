@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
 import 'package:milionchik/core/system_ui.dart';
+import 'package:milionchik/features/month/month_screen.dart';
+import 'package:milionchik/ui/components/month_card.dart';
 
 import 'support/app_scope.dart';
 
@@ -20,13 +22,16 @@ void main() {
   });
   tearDown(() => subscription.cancel());
 
-  testWidgets('заглушка «Милиончик» и лог перехода на экран', (tester) async {
+  testWidgets('главная с карточкой месяца и лог перехода на экран', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       withDatabase(openTestDatabase(), const MilionchikApp()),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Милиончик'), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(MonthCard), findsOneWidget);
     expect(
       records.where((r) => r.loggerName == 'nav').map((r) => r.message),
       contains(startsWith('push month')),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
-import 'package:milionchik/features/month/month_stub_screen.dart';
+import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/l10n/app_localizations.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/theme/app_theme.dart';
@@ -35,7 +35,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(MonthStubScreen), findsOneWidget);
+      expect(find.byType(MonthScreen), findsOneWidget);
       expect(
         tester.widget<AppBottomNav>(find.byType(AppBottomNav)).active,
         AppNavTab.month,

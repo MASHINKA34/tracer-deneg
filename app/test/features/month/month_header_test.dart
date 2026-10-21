@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/features/month/month_header.dart';
-import 'package:milionchik/features/month/month_stub_screen.dart';
+import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/shell/search_stub_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/avatar.dart';
@@ -117,7 +117,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Назад'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchStubScreen), findsNothing);
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(router.state.uri.path, AppRoutes.month);
 
@@ -125,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
     await h.systemBack();
     expect(find.byType(SearchStubScreen), findsNothing);
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.systemPops, 0);
     expect(
       h.navDebug(),
@@ -167,7 +167,7 @@ void main() {
     await tester.tap(_inHeader(find.text('Личный бюджет')));
     await tester.pumpAndSettle();
 
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(
       _monthDebug(h),

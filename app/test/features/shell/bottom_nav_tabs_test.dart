@@ -1,12 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
-import 'package:milionchik/features/month/month_stub_screen.dart';
+import 'package:milionchik/features/month/month_header.dart';
+import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/catalog/catalog_screen.dart';
 import 'package:milionchik/ui/components/fab.dart';
-import 'package:milionchik/ui/components/logo.dart';
 
 import 'shell_harness.dart';
 
@@ -21,7 +21,7 @@ void main() {
   ) async {
     final h = await ShellHarness.start(tester);
 
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(find.byType(AppBottomNav), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(find.byType(AppFab), findsOneWidget);
@@ -33,7 +33,7 @@ void main() {
     await h.tapTab('Статистика');
     expect(h.activeTab, AppNavTab.stats);
     expect(stubTitle('Статистика'), findsOneWidget);
-    expect(find.byType(MonthStubScreen), findsNothing);
+    expect(find.byType(MonthScreen), findsNothing);
 
     await h.tapTab('Регулярные');
     expect(h.activeTab, AppNavTab.recurring);
@@ -45,7 +45,7 @@ void main() {
 
     await h.tapTab('Месяц');
     expect(h.activeTab, AppNavTab.month);
-    expect(find.byType(MonthStubScreen), findsOneWidget);
+    expect(find.byType(MonthScreen), findsOneWidget);
     expect(find.byType(TabStubScreen), findsNothing);
   });
 
@@ -53,16 +53,13 @@ void main() {
     tester,
   ) async {
     final h = await ShellHarness.start(tester);
-    final before = tester.element(find.byType(MonthStubScreen));
+    final before = tester.element(find.byType(MonthScreen));
 
     await h.tapTab('Статистика');
-    expect(find.byType(MonthStubScreen, skipOffstage: false), findsOneWidget);
+    expect(find.byType(MonthScreen, skipOffstage: false), findsOneWidget);
     await h.tapTab('Месяц');
 
-    expect(
-      identical(tester.element(find.byType(MonthStubScreen)), before),
-      isTrue,
-    );
+    expect(identical(tester.element(find.byType(MonthScreen)), before), isTrue);
   });
 
   testWidgets('смена вкладки и повторный тап — в debug-логе nav', (
@@ -99,12 +96,11 @@ void main() {
     );
   });
 
-  testWidgets('долгий тап по логотипу: каталог поверх меню, «назад» — к меню', (
-    tester,
-  ) async {
+  testWidgets('долгий тап по шапке месяца: каталог поверх меню, «назад» — к '
+      'меню', (tester) async {
     final h = await ShellHarness.start(tester);
 
-    await tester.longPress(find.byType(AppLogo));
+    await tester.longPress(find.byType(MonthHeaderView));
     await tester.pumpAndSettle();
     expect(find.byType(CatalogScreen), findsOneWidget);
     expect(find.byType(AppBottomNav), findsNothing);

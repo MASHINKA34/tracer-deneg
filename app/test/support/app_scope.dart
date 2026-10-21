@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:milionchik/core/clock.dart';
 import 'package:milionchik/data/current_user.dart';
 import 'package:milionchik/data/db/app_database.dart';
 import 'package:milionchik/data/providers.dart';
@@ -27,7 +28,13 @@ BudgetsRepository testBudgets(AppDatabase db) => DriftBudgetsRepository(
   outbox: DriftOutboxQueue(db),
 );
 
-Widget withDatabase(AppDatabase db, Widget child) => ProviderScope(
-  overrides: [appDatabaseProvider.overrideWithValue(db)],
-  child: child,
-);
+final DateTime testNow = DateTime(2026, 10, 19, 18, 40);
+
+Widget withDatabase(AppDatabase db, Widget child, {DateTime? now}) =>
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        clockProvider.overrideWithValue(Clock(now: () => now ?? testNow)),
+      ],
+      child: child,
+    );
