@@ -73,6 +73,13 @@
   "navProfile": "Профиль",
   "@navProfile": { "description": "Нижнее меню: профиль" },
 
+  "statsTitle": "Статистика",
+  "@statsTitle": { "description": "Заголовок вкладки «Статистика» (12:820)" },
+  "recurringTitle": "Регулярные",
+  "@recurringTitle": { "description": "Заголовок вкладки «Регулярные» (12:1047)" },
+  "profileTitle": "Профиль",
+  "@profileTitle": { "description": "Заголовок вкладки «Профиль» (13:975)" },
+
   "syncDone": "Синхронизировано",
   "@syncDone": { "description": "Статус синхронизации: всё на сервере" },
   "syncWaiting": "Ждёт сети · {count}",
