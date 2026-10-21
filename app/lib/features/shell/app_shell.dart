@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 
 import '../../core/router.dart';
 import '../../ui/components/bottom_nav.dart';
+import '../expense/expense_snackbar_layer.dart';
 
 final _log = Logger('nav');
 
@@ -44,10 +45,12 @@ class AppShell extends StatelessWidget {
       child: Scaffold(
         extendBody: true,
         body: navigationShell,
-        bottomNavigationBar: AppBottomNav(
-          active: active,
-          onTabSelected: _selectTab,
-          onAdd: () => _openNewExpense(context),
+        bottomNavigationBar: ExpenseSnackbarAnchor(
+          child: AppBottomNav(
+            active: active,
+            onTabSelected: _selectTab,
+            onAdd: () => _openNewExpense(context),
+          ),
         ),
       ),
     );

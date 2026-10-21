@@ -16,6 +16,7 @@ import '../../ui/components/fitting_text.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../expense/expense_swipe_to_delete.dart';
 import 'day_sheet.dart';
 
 final _log = Logger('month');
@@ -256,10 +257,15 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
         child: Column(
           children: [
             for (final expense in expenses)
-              DayExpenseRow(
+              ExpenseSwipeToDelete(
+                key: ValueKey<String>(expense.id),
                 expense: expense,
-                category: _categoryOf(expense, categories, budgetId),
-                onTap: () => _open(expense),
+                from: 'today',
+                child: DayExpenseRow(
+                  expense: expense,
+                  category: _categoryOf(expense, categories, budgetId),
+                  onTap: () => _open(expense),
+                ),
               ),
           ],
         ),

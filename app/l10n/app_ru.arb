@@ -367,6 +367,19 @@
   "@expenseLoadFailedText": { "description": "Экран траты: ошибка чтения траты из базы на телефоне, что делать" },
   "expenseMissingBack": "Назад",
   "@expenseMissingBack": { "description": "Экран траты, когда трата не найдена или не открылась: кнопка, возвращает назад" },
+  "expenseDeleted": "Трата {amount} удалена",
+  "@expenseDeleted": {
+    "description": "Снекбар после удаления траты (43:4434): смахивание в строке траты или «Удалить трату» на экране траты; 5 секунд над меню",
+    "placeholders": {
+      "amount": { "type": "String", "example": "640 ₽" }
+    }
+  },
+  "expenseDeleteUndo": "Отменить",
+  "@expenseDeleteUndo": { "description": "Снекбар «Трата N ₽ удалена» (43:4434): действие, возвращает удалённую трату" },
+  "expenseDeleteFailed": "Не удалось удалить трату. Попробуй ещё раз",
+  "@expenseDeleteFailed": { "description": "Снекбар: трата не удалилась из базы на телефоне, строка возвращается на место" },
+  "expenseUndoFailed": "Не удалось вернуть трату",
+  "@expenseUndoFailed": { "description": "Снекбар: «Отменить» не вернуло трату — окно 5 секунд уже прошло или ошибка базы на телефоне; трата остаётся удалённой" },
 
   "databaseErrorTitle": "Не удалось открыть траты",
   "@databaseErrorTitle": {

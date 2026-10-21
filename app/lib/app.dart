@@ -6,6 +6,7 @@ import 'package:shared/shared.dart';
 
 import 'core/router.dart';
 import 'core/system_ui.dart';
+import 'features/expense/expense_snackbar_layer.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -56,7 +57,7 @@ class _MilionchikAppState extends State<MilionchikApp> {
       routerConfig: _router,
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: systemUiStyleFor(Theme.of(context).brightness),
-        child: child ?? const SizedBox.shrink(),
+        child: ExpenseSnackbarLayer(child: child ?? const SizedBox.shrink()),
       ),
     );
   }
