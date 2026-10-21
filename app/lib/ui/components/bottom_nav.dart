@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../icons/app_icon.dart';
@@ -53,7 +54,7 @@ class AppBottomNav extends StatelessWidget {
 
     // Container добавляет линию сверху (1) к отступу 8 — как в Figma, где
     // обводка входит в размер.
-    return Container(
+    final nav = Container(
       decoration: BoxDecoration(
         color: colors.bgSurface,
         border: Border(top: BorderSide(color: colors.borderDefault)),
@@ -74,7 +75,9 @@ class AppBottomNav extends StatelessWidget {
                 Positioned(
                   left: 2,
                   top: -26,
-                  child: AppFab(onPressed: onAdd, stickerEmoji: fabSticker),
+                  child: _FabAnchor(
+                    child: AppFab(onPressed: onAdd, stickerEmoji: fabSticker),
+                  ),
                 ),
               ],
             ),
@@ -84,6 +87,70 @@ class AppBottomNav extends StatelessWidget {
         ],
       ),
     );
+    return _FabHitArea(child: nav);
+  }
+}
+
+class _FabHitArea extends SingleChildRenderObjectWidget {
+  const _FabHitArea({required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderFabHitArea();
+}
+
+class _RenderFabHitArea extends RenderProxyBox {
+  _RenderFabAnchor? fab;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final fab = this.fab;
+    if (fab != null && fab.attached && fab.hasSize) {
+      final transform = fab.getTransformTo(this);
+      final local = MatrixUtils.transformPoint(
+        Matrix4.inverted(transform),
+        position,
+      );
+      if (fab.size.contains(local) &&
+          result.addWithPaintTransform(
+            transform: transform,
+            position: position,
+            hitTest: (result, position) =>
+                fab.hitTest(result, position: position),
+          )) {
+        result.add(BoxHitTestEntry(this, position));
+        return true;
+      }
+    }
+    return super.hitTest(result, position: position);
+  }
+}
+
+class _FabAnchor extends SingleChildRenderObjectWidget {
+  const _FabAnchor({required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderFabAnchor();
+}
+
+class _RenderFabAnchor extends RenderProxyBox {
+  _RenderFabHitArea? _area;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    var node = parent;
+    while (node != null && node is! _RenderFabHitArea) {
+      node = node.parent;
+    }
+    _area = node as _RenderFabHitArea?;
+    _area?.fab = this;
+  }
+
+  @override
+  void detach() {
+    if (_area?.fab == this) _area?.fab = null;
+    _area = null;
+    super.detach();
   }
 }
 
