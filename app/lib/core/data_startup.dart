@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
+import 'package:shared/shared.dart' show LocalDate;
 
 import '../app.dart';
 import '../data/current_user.dart';
@@ -11,6 +13,7 @@ import '../data/dev_seed.dart';
 import '../data/providers.dart';
 import '../data/repositories/prefs_repository.dart';
 import '../features/startup/database_error_app.dart';
+import 'clock.dart';
 import 'logging/provider_logger.dart';
 
 final _log = Logger('app');
@@ -24,10 +27,11 @@ sealed class DataStartup {
 }
 
 final class DataReady extends DataStartup {
-  const DataReady(this.db, this.seed);
+  const DataReady(this.db, this.seed, {this.todayOverride});
 
   final AppDatabase db;
   final DevSeedResult seed;
+  final LocalDate? todayOverride;
 }
 
 final class DataUnavailable extends DataStartup {
@@ -77,7 +81,12 @@ Future<DataStartup> startData({
     result = DevSeedResult(DevSeedStatus.failed, elapsed: sw.elapsed);
   }
   _logSeed(result, sw.elapsedMilliseconds);
-  return DataReady(db, result);
+
+  LocalDate? todayOverride;
+  if (kDebugMode) {
+    todayOverride = await loadTodayOverride(DriftPrefsRepository(db));
+  }
+  return DataReady(db, result, todayOverride: todayOverride);
 }
 
 void _logSeed(DevSeedResult result, int ms) {
@@ -102,8 +111,12 @@ void _logSeed(DevSeedResult result, int ms) {
 }
 
 Widget appRoot(DataStartup data) => switch (data) {
-  DataReady(:final db) => ProviderScope(
-    overrides: [appDatabaseProvider.overrideWithValue(db)],
+  DataReady(:final db, :final todayOverride) => ProviderScope(
+    overrides: [
+      appDatabaseProvider.overrideWithValue(db),
+      if (kDebugMode && todayOverride != null)
+        todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
+    ],
     observers: const [ProviderLogger()],
     child: const MilionchikApp(),
   ),

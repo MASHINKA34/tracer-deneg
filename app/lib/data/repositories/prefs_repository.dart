@@ -9,6 +9,7 @@ final _log = Logger('repo');
 
 abstract final class PrefKeys {
   static const String localUserId = 'localUserId';
+  static const String todayOverride = 'debugTodayOverride';
 }
 
 abstract interface class PrefsRepository {
