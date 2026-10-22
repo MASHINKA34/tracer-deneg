@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
-import 'package:shared/shared.dart' show Mood;
+import 'package:shared/shared.dart' show LocalDate, Mood;
 
+import '../../core/clock.dart';
 import '../components/button.dart';
 import '../components/chip.dart';
 import '../components/dialog.dart';
@@ -164,6 +167,8 @@ class _Controls extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
+              const _TodayControls(),
+              const SizedBox(height: 4),
               AppSegmented<Brightness>(
                 options: const [
                   SegmentOption(Brightness.light, 'Светлая'),
@@ -208,6 +213,70 @@ class _Controls extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TodayControls extends ConsumerWidget {
+  const _TodayControls();
+
+  static String _label(LocalDate today) {
+    final pattern = today.year == DateTime.now().year ? 'd MMMM' : 'd MMMM y';
+    final date = DateTime(today.year, today.month, today.day);
+    return 'Сегодня = ${DateFormat(pattern, 'ru').format(date)}';
+  }
+
+  Future<void> _pick(BuildContext context, WidgetRef ref) async {
+    final today = ref.read(clockProvider).today();
+    final override = ref.read(todayOverrideProvider.notifier);
+    _log.fine('catalog today picker opened initial=$today');
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(today.year, today.month, today.day),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2099, 12, 31),
+    );
+    if (picked == null) {
+      _log.fine('catalog today picker cancelled, today stays $today');
+      return;
+    }
+    final saved = await override.set(LocalDate.fromDateTime(picked));
+    if (!saved && context.mounted) {
+      showAppSnackbar(context, text: 'Не удалось сохранить дату');
+    }
+  }
+
+  Future<void> _reset(BuildContext context, WidgetRef ref) async {
+    _log.fine('catalog today reset tap');
+    final saved = await ref.read(todayOverrideProvider.notifier).reset();
+    if (!saved && context.mounted) {
+      showAppSnackbar(context, text: 'Не удалось сбросить дату');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(clockProvider).today();
+    final overridden = ref.watch(todayOverrideProvider) != null;
+    return Row(
+      children: [
+        Expanded(
+          child: AppButton(
+            label: _label(today),
+            size: AppButtonSize.m,
+            type: AppButtonType.soft,
+            expand: true,
+            onPressed: () => _pick(context, ref),
+          ),
+        ),
+        const SizedBox(width: 8),
+        AppButton(
+          label: 'Сбросить',
+          size: AppButtonSize.m,
+          type: AppButtonType.text,
+          onPressed: overridden ? () => _reset(context, ref) : null,
+        ),
+      ],
     );
   }
 }
