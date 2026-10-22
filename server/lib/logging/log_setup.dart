@@ -18,6 +18,7 @@ void setupServerLogging({
 }) {
   registerIoErrorDetails();
   registerErrorDetailsExtractor(postgresErrorDetails);
+  registerErrorTextFormatter(postgresErrorText);
   Logger.root.level = level;
   final write = writeLine ?? stdout.writeln;
   unawaited(_subscription?.cancel());
@@ -30,8 +31,27 @@ void setupServerLogging({
 Map<String, Object?>? postgresErrorDetails(Object error) => switch (error) {
   ServerException(:final code, :final detail, :final hint) => {
     'sqlState': code,
-    'detail': detail,
+    'detail': detail == null ? null : redactPostgresDetail(detail),
     'hint': hint,
   },
   _ => null,
 };
+
+String? postgresErrorText(Object error) {
+  if (error is! ServerException) return null;
+  final message = (error.code ?? '').startsWith('22')
+      ? error.message.replaceAll(RegExp(r'"[^"]*"'), '"…"')
+      : error.message;
+  final buffer = StringBuffer('${error.severity} ${error.code}: $message');
+  if (error.tableName != null) buffer.write(' table: ${error.tableName}');
+  if (error.columnName != null) buffer.write(' column: ${error.columnName}');
+  if (error.constraintName != null) {
+    buffer.write(' constraint ${error.constraintName}');
+  }
+  return buffer.toString();
+}
+
+String redactPostgresDetail(String detail) => detail.replaceAllMapped(
+  RegExp(r'(=|contains )\(.*\)', dotAll: true),
+  (match) => '${match[1]}(…)',
+);

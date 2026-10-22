@@ -6,6 +6,26 @@ typedef ErrorDetailsExtractor = Map<String, Object?>? Function(Object error);
 
 final List<ErrorDetailsExtractor> _extractors = [];
 
+typedef ErrorTextFormatter = String? Function(Object error);
+
+final List<ErrorTextFormatter> _formatters = [];
+
+void registerErrorTextFormatter(ErrorTextFormatter formatter) {
+  if (!_formatters.contains(formatter)) _formatters.add(formatter);
+}
+
+String? _formattedText(Object error) {
+  for (final formatter in _formatters) {
+    try {
+      final text = formatter(error);
+      if (text != null) return text;
+    } catch (e) {
+      return '<text formatter failed: ${e.runtimeType}: $e>';
+    }
+  }
+  return null;
+}
+
 /// Регистрирует извлекатель подробностей. Платформенный код (сервер,
 /// приложение) добавляет свои: ошибки `dart:io`, Postgres, платформенные каналы.
 void registerErrorDetailsExtractor(ErrorDetailsExtractor extractor) {
@@ -37,10 +57,15 @@ String describeError(Object? error) {
   if (error == null) return 'null';
   final type = error.runtimeType.toString();
   String text;
-  try {
-    text = error.toString();
-  } catch (e) {
-    text = '<toString() failed: ${e.runtimeType}: $e>';
+  final formatted = _formattedText(error);
+  if (formatted != null) {
+    text = formatted;
+  } else {
+    try {
+      text = error.toString();
+    } catch (e) {
+      text = '<toString() failed: ${e.runtimeType}: $e>';
+    }
   }
   if (text.startsWith('$type: ')) text = text.substring(type.length + 2);
   if (text == type) text = '';
