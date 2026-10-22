@@ -16,13 +16,26 @@ const Duration loginFailureWindow = Duration(minutes: 15);
 const int authRequestsPerIpLimit = 30;
 const int clientErrorRequestsPerIpLimit = 20;
 const Duration ipRequestWindow = Duration(minutes: 1);
+const int maxRequestBodyBytes = 1024 * 1024;
 
 const String _authPath = 'api/v1/auth';
 const String _clientErrorsPath = 'api/v1/client-errors';
 
+class RequestBodyTooLarge implements Exception {
+  RequestBodyTooLarge(this.limit, this.received);
+
+  final int limit;
+  final int received;
+
+  @override
+  String toString() =>
+      'RequestBodyTooLarge: body is over $limit bytes (read $received)';
+}
+
 class RequestLimits {
   RequestLimits({
     this.trustedProxies = TrustedProxies.none,
+    this.maxBodyBytes = maxRequestBodyBytes,
     DateTime Function()? now,
   }) : loginFailures = SlidingWindowLimiter(
          name: 'login-failures',
@@ -44,6 +57,7 @@ class RequestLimits {
        );
 
   final TrustedProxies trustedProxies;
+  final int maxBodyBytes;
   final SlidingWindowLimiter loginFailures;
   final SlidingWindowLimiter authRequests;
   final SlidingWindowLimiter clientErrorRequests;
@@ -54,9 +68,37 @@ class RequestLimits {
     'auth': '$authRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
     'clientErrors':
         '$clientErrorRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
+    'maxBodyBytes': maxBodyBytes,
     'trustedProxies': trustedProxies.describe(),
     'store': 'in-memory',
   };
+
+  Middleware bodySizeLimit() =>
+      (inner) => (request) async {
+        final declared = request.contentLength;
+        if (declared != null) {
+          if (declared <= maxBodyBytes) return inner(request);
+          _log.warning(
+            'request body too large ${request.method} '
+            '${request.requestedUri.path} ip=${clientIp(request, trustedProxies)} '
+            'contentLength=$declared limit=$maxBodyBytes → 413 without reading',
+          );
+          return _payloadTooLarge(maxBodyBytes);
+        }
+        try {
+          return await inner(
+            request.change(body: _limited(request.read(), maxBodyBytes)),
+          );
+        } on RequestBodyTooLarge catch (e) {
+          _log.warning(
+            'request body too large ${request.method} '
+            '${request.requestedUri.path} ip=${clientIp(request, trustedProxies)} '
+            'contentLength=none read=${e.received} limit=$maxBodyBytes '
+            '→ 413, rest of body not read',
+          );
+          return _payloadTooLarge(maxBodyBytes);
+        }
+      };
 
   Middleware ipRateLimit() =>
       (inner) => (request) {
@@ -182,6 +224,25 @@ class RequestLimits {
       return clientErrorRequests;
     }
     return null;
+  }
+}
+
+Response _payloadTooLarge(int limit) => errorResponse(
+  413,
+  ApiErrorCode.payloadTooLarge.code,
+  'Слишком большой запрос: не больше ${_sizeText(limit)}',
+);
+
+String _sizeText(int bytes) => bytes % (1024 * 1024) == 0
+    ? '${bytes ~/ (1024 * 1024)} МБ'
+    : '${(bytes + 1023) ~/ 1024} КБ';
+
+Stream<List<int>> _limited(Stream<List<int>> source, int limit) async* {
+  var received = 0;
+  await for (final chunk in source) {
+    received += chunk.length;
+    if (received > limit) throw RequestBodyTooLarge(limit, received);
+    yield chunk;
   }
 }
 

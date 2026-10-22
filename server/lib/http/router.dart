@@ -74,6 +74,7 @@ Handler buildHandler({
       .addMiddleware(accessLogMiddleware())
       .addMiddleware(errorMiddleware())
       .addMiddleware(requestLimits.ipRateLimit())
+      .addMiddleware(requestLimits.bodySizeLimit())
       .addHandler(router.call);
 }
 
