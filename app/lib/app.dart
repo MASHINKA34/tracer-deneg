@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import 'core/clock.dart';
 import 'core/router.dart';
 import 'core/system_ui.dart';
 import 'features/expense/expense_snackbar_layer.dart';
@@ -15,24 +17,24 @@ final _log = Logger('app');
 /// Корневой виджет: русская локаль, тема дизайн-системы (светлая/тёмная —
 /// как в системе), настроение — по сегодняшней дате, прозрачные системные
 /// панели, go_router.
-class MilionchikApp extends StatefulWidget {
+class MilionchikApp extends ConsumerStatefulWidget {
   const MilionchikApp({super.key, this.today});
 
-  /// «Сегодня» для настроения (тесты); по умолчанию — дата телефона.
+  /// «Сегодня» для настроения (тесты); по умолчанию — из [clockProvider].
   final LocalDate? today;
 
   @override
-  State<MilionchikApp> createState() => _MilionchikAppState();
+  ConsumerState<MilionchikApp> createState() => _MilionchikAppState();
 }
 
-class _MilionchikAppState extends State<MilionchikApp> {
+class _MilionchikAppState extends ConsumerState<MilionchikApp> {
   late final GoRouter _router = buildRouter();
-  late final Mood _mood = _moodToday();
+  LocalDate? _moodDay;
+  late Mood _mood;
 
   /// Настроение на сегодня (00-spec §7.6.3). Настроек праздников ещё нет
   /// (этап 13) — берём настройки по умолчанию: все праздники включены.
-  Mood _moodToday() {
-    final today = widget.today ?? LocalDate.fromDateTime(DateTime.now());
+  Mood _moodToday(LocalDate today) {
     final mood = moodOn(today, const HolidaySettings());
     _log.info('mood=${mood.name} today=$today (holiday settings: defaults)');
     return mood;
@@ -46,6 +48,11 @@ class _MilionchikAppState extends State<MilionchikApp> {
 
   @override
   Widget build(BuildContext context) {
+    final today = widget.today ?? ref.watch(clockProvider).today();
+    if (today != _moodDay) {
+      _moodDay = today;
+      _mood = _moodToday(today);
+    }
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       locale: const Locale('ru'),
