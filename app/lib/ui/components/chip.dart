@@ -68,14 +68,7 @@ class AppChip extends StatelessWidget {
                         style: AppText.labelM.copyWith(color: foreground),
                       ),
                     ),
-                    if (dropdown)
-                      ExcludeSemantics(
-                        child: Text(
-                          ' ▾',
-                          maxLines: 1,
-                          style: AppText.labelM.copyWith(color: foreground),
-                        ),
-                      ),
+                    if (dropdown) _DropdownMark(color: foreground),
                   ],
                 ),
               ),
@@ -85,4 +78,43 @@ class AppChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DropdownMark extends StatelessWidget {
+  const _DropdownMark({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppText.labelM;
+    final size = MediaQuery.textScalerOf(context).scale(style.fontSize!);
+    final k = size / style.fontSize!;
+    return CustomPaint(
+      size: Size(8 * k, size * style.height!),
+      painter: _TrianglePainter(color: color, scale: k),
+    );
+  }
+}
+
+class _TrianglePainter extends CustomPainter {
+  const _TrianglePainter({required this.color, required this.scale});
+
+  final Color color;
+  final double scale;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final top = size.height / 2 - 2 * scale;
+    final path = Path()
+      ..moveTo(3 * scale, top)
+      ..lineTo(8 * scale, top)
+      ..lineTo(5.5 * scale, top + 4.5 * scale)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.scale != scale;
 }
