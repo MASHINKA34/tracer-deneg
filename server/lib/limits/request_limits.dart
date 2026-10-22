@@ -1,0 +1,235 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:logging/logging.dart';
+import 'package:shared/shared.dart';
+import 'package:shelf/shelf.dart';
+
+import '../http/json.dart';
+import 'sliding_window.dart';
+import 'trusted_proxies.dart';
+
+final _log = Logger('limits');
+
+const int loginFailureLimit = 5;
+const Duration loginFailureWindow = Duration(minutes: 15);
+const int authRequestsPerIpLimit = 30;
+const int clientErrorRequestsPerIpLimit = 20;
+const Duration ipRequestWindow = Duration(minutes: 1);
+
+const String _authPath = 'api/v1/auth';
+const String _clientErrorsPath = 'api/v1/client-errors';
+
+class RequestLimits {
+  RequestLimits({
+    this.trustedProxies = TrustedProxies.none,
+    DateTime Function()? now,
+  }) : loginFailures = SlidingWindowLimiter(
+         name: 'login-failures',
+         limit: loginFailureLimit,
+         window: loginFailureWindow,
+         now: now,
+       ),
+       authRequests = SlidingWindowLimiter(
+         name: 'auth-ip',
+         limit: authRequestsPerIpLimit,
+         window: ipRequestWindow,
+         now: now,
+       ),
+       clientErrorRequests = SlidingWindowLimiter(
+         name: 'client-errors-ip',
+         limit: clientErrorRequestsPerIpLimit,
+         window: ipRequestWindow,
+         now: now,
+       );
+
+  final TrustedProxies trustedProxies;
+  final SlidingWindowLimiter loginFailures;
+  final SlidingWindowLimiter authRequests;
+  final SlidingWindowLimiter clientErrorRequests;
+
+  Map<String, Object?> toLogContext() => {
+    'loginFailures':
+        '$loginFailureLimit/${loginFailureWindow.inMinutes}m per login',
+    'auth': '$authRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
+    'clientErrors':
+        '$clientErrorRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
+    'trustedProxies': trustedProxies.describe(),
+    'store': 'in-memory',
+  };
+
+  Middleware ipRateLimit() =>
+      (inner) => (request) {
+        final limiter = _ipLimiterFor(request.url.path);
+        if (limiter == null) return inner(request);
+        final ip = clientIp(request, trustedProxies);
+        final wait = limiter.blockedFor(ip);
+        if (wait != null) {
+          final seconds = retryAfterSeconds(wait);
+          _log.warning(
+            'ip rate limit hit limiter=${limiter.name} ip=$ip '
+            '${request.method} ${request.requestedUri.path} '
+            'limit=${limiter.limit}/${limiter.window.inSeconds}s '
+            'retryAfter=${seconds}s',
+          );
+          return _tooMany(
+            seconds,
+            'Слишком много запросов. Попробуй через ${_waitText(seconds)}',
+          );
+        }
+        limiter.record(ip);
+        return inner(request);
+      };
+
+  Middleware loginAttempts(String operation) =>
+      (inner) => (request) async {
+        final bytes = await _collect(request.read());
+        final forward = request.change(body: bytes);
+        final login = _loginOf(bytes, operation);
+        if (login == null) {
+          _log.fine('$operation attempts not tracked: no login in body');
+          return inner(forward);
+        }
+        final key = normalizeLogin(login);
+        final invalid = validateLogin(key);
+        if (invalid != null) {
+          _log.fine(
+            '$operation attempts not tracked: login format invalid '
+            'reason=${invalid.code}',
+          );
+          return inner(forward);
+        }
+        final masked = maskLogin(key);
+
+        final wait = loginFailures.blockedFor(key);
+        if (wait != null) {
+          final seconds = retryAfterSeconds(wait);
+          _log.warning(
+            'login attempts limit hit operation=$operation login=$masked '
+            'failures=${loginFailures.count(key)}/$loginFailureLimit '
+            'window=${loginFailureWindow.inMinutes}m retryAfter=${seconds}s',
+          );
+          return _tooMany(
+            seconds,
+            'Слишком много неудачных попыток. '
+            'Попробуй через ${_waitText(seconds)}',
+          );
+        }
+
+        final attempt = loginFailures.record(key);
+        final Response response;
+        try {
+          response = await inner(forward);
+        } catch (e) {
+          loginFailures.forget(key, attempt);
+          _log.fine(
+            '$operation attempt not counted: handler threw '
+            '${e.runtimeType} login=$masked',
+          );
+          rethrow;
+        }
+
+        if (response.statusCode == 200) {
+          final cleared = loginFailures.reset(key) - 1;
+          if (cleared > 0) {
+            _log.fine(
+              '$operation ok → failures reset login=$masked cleared=$cleared',
+            );
+          }
+          return response;
+        }
+        if (response.statusCode != 401) {
+          loginFailures.forget(key, attempt);
+          _log.fine(
+            '$operation attempt not counted: status=${response.statusCode} '
+            'login=$masked',
+          );
+          return response;
+        }
+
+        final text = await response.readAsString();
+        if (_errorCodeOf(text, operation) != ApiErrorCode.badCredentials.code) {
+          loginFailures.forget(key, attempt);
+          _log.fine(
+            '$operation attempt not counted: 401 without bad_credentials '
+            'login=$masked',
+          );
+          return response.change(body: text);
+        }
+        final failures = loginFailures.count(key);
+        if (failures >= loginFailureLimit) {
+          final seconds = retryAfterSeconds(loginFailures.blockedFor(key)!);
+          _log.warning(
+            'login attempts exhausted operation=$operation login=$masked '
+            'failures=$failures/$loginFailureLimit '
+            'window=${loginFailureWindow.inMinutes}m → next attempts blocked '
+            'for ${seconds}s',
+          );
+        } else {
+          _log.fine(
+            '$operation failure recorded login=$masked '
+            'failures=$failures/$loginFailureLimit',
+          );
+        }
+        return response.change(body: text);
+      };
+
+  SlidingWindowLimiter? _ipLimiterFor(String path) {
+    if (path == _authPath || path.startsWith('$_authPath/')) {
+      return authRequests;
+    }
+    if (path == _clientErrorsPath || path.startsWith('$_clientErrorsPath/')) {
+      return clientErrorRequests;
+    }
+    return null;
+  }
+}
+
+Response _tooMany(int seconds, String message) => errorResponse(
+  429,
+  ApiErrorCode.tooManyAttempts.code,
+  message,
+).change(headers: {'retry-after': '$seconds'});
+
+String _waitText(int seconds) =>
+    seconds < 60 ? '$seconds с' : '${(seconds + 59) ~/ 60} мин';
+
+Future<List<int>> _collect(Stream<List<int>> stream) async {
+  final builder = BytesBuilder(copy: false);
+  await for (final chunk in stream) {
+    builder.add(chunk);
+  }
+  return builder.takeBytes();
+}
+
+String? _loginOf(List<int> bytes, String operation) {
+  try {
+    final decoded = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+    if (decoded is! Map<String, Object?>) return null;
+    final login = decoded['login'];
+    return login is String ? login : null;
+  } on FormatException catch (e) {
+    _log.fine(
+      '$operation body is not JSON (${e.message}, ${bytes.length} bytes) '
+      '→ left to the handler',
+    );
+    return null;
+  }
+}
+
+String? _errorCodeOf(String text, String operation) {
+  try {
+    final decoded = jsonDecode(text);
+    if (decoded is! Map<String, Object?>) return null;
+    final error = decoded['error'];
+    if (error is! Map<String, Object?>) return null;
+    final code = error['code'];
+    return code is String ? code : null;
+  } on FormatException catch (e) {
+    _log.warning(
+      '$operation 401 response is not JSON (${e.message}) '
+      '→ attempt not counted',
+    );
+    return null;
+  }
+}

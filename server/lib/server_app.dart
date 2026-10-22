@@ -13,6 +13,7 @@ import 'config/dotenv.dart';
 import 'db/database.dart';
 import 'db/migrator.dart';
 import 'http/router.dart';
+import 'limits/request_limits.dart';
 import 'version.dart';
 
 final _log = Logger('server');
@@ -102,11 +103,14 @@ Future<RunningServer> startServer(
     'refresh=${refreshTokenTtl.inDays}d',
   );
 
+  final limits = RequestLimits(trustedProxies: config.trustedProxies);
+  _log.info('limits ready ${formatContext(limits.toLogContext())}');
+
   final sw = Stopwatch()..start();
   _log.info('starting HTTP server on ${config.host}:${config.port}');
   try {
     final http = await shelf_io.serve(
-      buildHandler(db: db, auth: auth),
+      buildHandler(db: db, auth: auth, limits: limits),
       config.host,
       config.port,
     );

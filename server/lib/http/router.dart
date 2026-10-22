@@ -5,6 +5,7 @@ import '../account/account_service.dart';
 import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
 import '../db/database.dart';
+import '../limits/request_limits.dart';
 import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'health.dart';
@@ -13,15 +14,30 @@ import 'middleware.dart';
 
 /// Обработчик всех запросов: id запроса → лог запроса → перехват ошибок →
 /// маршруты `/api/v1/…`.
-Handler buildHandler({required Database db, required AuthService auth}) {
+Handler buildHandler({
+  required Database db,
+  required AuthService auth,
+  RequestLimits? limits,
+}) {
+  final requestLimits = limits ?? RequestLimits();
   final requireAuth = authMiddleware(auth);
   final account = AccountService(db: db, hasher: auth.hasher);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))
-    ..post('/api/v1/auth/login', loginHandler(auth))
+    ..post(
+      '/api/v1/auth/login',
+      const Pipeline()
+          .addMiddleware(requestLimits.loginAttempts('login'))
+          .addHandler(loginHandler(auth)),
+    )
     ..post('/api/v1/auth/refresh', refreshHandler(auth))
-    ..post('/api/v1/auth/recover', recoverHandler(auth))
+    ..post(
+      '/api/v1/auth/recover',
+      const Pipeline()
+          .addMiddleware(requestLimits.loginAttempts('recover'))
+          .addHandler(recoverHandler(auth)),
+    )
     ..post(
       '/api/v1/auth/recovery-code',
       const Pipeline()
@@ -57,6 +73,7 @@ Handler buildHandler({required Database db, required AuthService auth}) {
       .addMiddleware(requestIdMiddleware())
       .addMiddleware(accessLogMiddleware())
       .addMiddleware(errorMiddleware())
+      .addMiddleware(requestLimits.ipRateLimit())
       .addHandler(router.call);
 }
 
