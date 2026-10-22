@@ -89,23 +89,25 @@ void main() {
     expect(expense.recurringMonth, YearMonth(2026, 10));
   });
 
-  test('правило на прошедшее число: первая трата только в следующем месяце',
-      () async {
-    final rule = await r.rule(
-      day: 20,
-      from: startMonthForNewRule(20, r.today),
-    );
+  test(
+    'правило на прошедшее число: первая трата только в следующем месяце',
+    () async {
+      final rule = await r.rule(
+        day: 20,
+        from: startMonthForNewRule(20, r.today),
+      );
 
-    expect((await r.run()).created, 0);
-    expect(await r.expensesOf(rule.id), isEmpty);
+      expect((await r.run()).created, 0);
+      expect(await r.expensesOf(rule.id), isEmpty);
 
-    r.today = LocalDate(2026, 11, 20);
-    expect((await r.run()).created, 1);
-    expect(
-      (await r.expensesOf(rule.id)).single.spentOn,
-      LocalDate(2026, 11, 20),
-    );
-  });
+      r.today = LocalDate(2026, 11, 20);
+      expect((await r.run()).created, 1);
+      expect(
+        (await r.expensesOf(rule.id)).single.spentOn,
+        LocalDate(2026, 11, 20),
+      );
+    },
+  );
 
   test('правила всех бюджетов: личный и общий', () async {
     final shared = await r.repo.seedBudget(kind: BudgetKind.shared);

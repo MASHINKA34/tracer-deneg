@@ -40,21 +40,23 @@ void main() {
     expect(after.last.comment, 'Домашний интернет');
   });
 
-  test('удалённое правило не генерирует, уже созданные траты остаются',
-      () async {
-    final rule = await r.rule(day: 5, from: YearMonth(2026, 10));
-    await r.run();
-    final created = await r.expensesOf(rule.id);
-    expect(created, hasLength(1));
+  test(
+    'удалённое правило не генерирует, уже созданные траты остаются',
+    () async {
+      final rule = await r.rule(day: 5, from: YearMonth(2026, 10));
+      await r.run();
+      final created = await r.expensesOf(rule.id);
+      expect(created, hasLength(1));
 
-    await r.repo.recurring.delete(rule.id);
-    r.today = LocalDate(2026, 12, 6);
-    final result = await r.run();
+      await r.repo.recurring.delete(rule.id);
+      r.today = LocalDate(2026, 12, 6);
+      final result = await r.run();
 
-    expect(result.rules, 0);
-    expect(result.created, 0);
-    expect(await r.expensesOf(rule.id), created);
-  });
+      expect(result.rules, 0);
+      expect(result.created, 0);
+      expect(await r.expensesOf(rule.id), created);
+    },
+  );
 
   test('правило, удалённое до первого списания, не создаёт ничего', () async {
     final rule = await r.rule(day: 5, from: YearMonth(2026, 8));

@@ -11,22 +11,24 @@ void main() {
 
   tearDown(() => r.dispose());
 
-  test('повторный запуск: дублей нет, outbox не растёт, в итоге — «уже есть»',
-      () async {
-    final rule = await r.rule(day: 5, from: YearMonth(2026, 8));
-    expect((await r.run()).created, 3);
-    final expenses = await r.expensesOf(rule.id);
-    final outbox = (await r.repo.outboxRows()).length;
+  test(
+    'повторный запуск: дублей нет, outbox не растёт, в итоге — «уже есть»',
+    () async {
+      final rule = await r.rule(day: 5, from: YearMonth(2026, 8));
+      expect((await r.run()).created, 3);
+      final expenses = await r.expensesOf(rule.id);
+      final outbox = (await r.repo.outboxRows()).length;
 
-    final again = await r.run();
+      final again = await r.run();
 
-    expect(again.created, 0);
-    expect(again.skippedExisting, 3);
-    expect(again.skippedDeleted, 0);
-    expect(await r.expensesOf(rule.id), expenses);
-    expect(await r.expenseCount(), 3);
-    expect((await r.repo.outboxRows()).length, outbox);
-  });
+      expect(again.created, 0);
+      expect(again.skippedExisting, 3);
+      expect(again.skippedDeleted, 0);
+      expect(await r.expensesOf(rule.id), expenses);
+      expect(await r.expenseCount(), 3);
+      expect((await r.repo.outboxRows()).length, outbox);
+    },
+  );
 
   test('удалённая пользователем сгенерированная трата не возвращается — ни '
       'сразу, ни после окна отмены', () async {

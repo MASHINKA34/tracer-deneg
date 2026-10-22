@@ -31,10 +31,7 @@ void main() {
       LocalDate(2026, 2, 28),
     ]);
     expect(expenses.last.recurringMonth, YearMonth(2026, 2));
-    expect(
-      expenses.last.id,
-      recurringExpenseId(rule.id, YearMonth(2026, 2)),
-    );
+    expect(expenses.last.id, recurringExpenseId(rule.id, YearMonth(2026, 2)));
   });
 
   test('правило на 31-е, високосный 2028: 28 февраля — ещё нет, '
