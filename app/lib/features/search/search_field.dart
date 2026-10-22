@@ -83,7 +83,7 @@ class _SearchFieldState extends State<SearchField> {
 
     final field = Container(
       constraints: const BoxConstraints(minHeight: SearchField.height),
-      padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
+      padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
       decoration: ShapeDecoration(
         color: _focused ? colors.bgSurface : colors.bgSurface2,
         shape: StadiumBorder(
@@ -111,6 +111,7 @@ class _SearchFieldState extends State<SearchField> {
               cursorColor: mood.accent,
               decoration: InputDecoration(
                 isCollapsed: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 9),
                 border: InputBorder.none,
                 hintText: l10n.searchTitle,
                 hintStyle: style.copyWith(color: colors.textTertiary),
@@ -133,7 +134,13 @@ class _SearchFieldState extends State<SearchField> {
             bottom: (kMinTapTarget - SearchField.height) / 2,
             right: SearchField.endInset,
           ),
-          child: field,
+          child: TextFieldTapRegion(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.focusNode.requestFocus,
+              child: field,
+            ),
+          ),
         ),
         if (hasText)
           Positioned(
