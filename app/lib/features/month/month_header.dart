@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import '../../core/clock.dart';
 import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
@@ -15,6 +18,7 @@ import '../../ui/components/tap_target.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/tokens/tokens.g.dart';
 
 final _log = Logger('month');
 
@@ -39,8 +43,10 @@ class MonthHeader extends ConsumerWidget {
     final budget = budgetId == null
         ? null
         : ref.watch(budgetProvider(budgetId)).value;
+    final debugToday = kDebugMode ? ref.watch(todayOverrideProvider) : null;
 
     return MonthHeaderView(
+      debugToday: debugToday,
       budgetName: budget?.name,
       budgetEmoji: budget?.emoji,
       avatarLetter: budget == null ? '' : avatarLetterOf(budget.name),
@@ -128,6 +134,7 @@ class MonthHeaderView extends StatelessWidget {
     this.onBudgetTap,
     this.onSearchTap,
     this.onAvatarTap,
+    this.debugToday,
   });
 
   final String? budgetName;
@@ -137,12 +144,14 @@ class MonthHeaderView extends StatelessWidget {
   final VoidCallback? onBudgetTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onAvatarTap;
+  final LocalDate? debugToday;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = AppLocalizations.of(context);
     final name = budgetName;
+    final debugDay = debugToday;
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 52),
       child: Padding(
@@ -166,6 +175,7 @@ class MonthHeaderView extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6 - _HeaderButton.overhang),
+            if (debugDay != null) _DebugTodayLabel(day: debugDay),
             _HeaderButton(
               label: l10n.a11ySearch,
               onTap: onSearchTap,
@@ -206,6 +216,43 @@ class MonthHeaderView extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DebugTodayLabel extends StatelessWidget {
+  const _DebugTodayLabel({required this.day});
+
+  final LocalDate day;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final pattern = day.year == DateTime.now().year ? 'dd.MM' : 'dd.MM.yyyy';
+    final date = DateFormat(
+      pattern,
+      'ru',
+    ).format(DateTime(day.year, day.month, day.day));
+    final text = 'debug $date';
+    return Semantics(
+      container: true,
+      label: text,
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.statusDanger,
+          borderRadius: BorderRadius.circular(RadiusTokens.xs),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Text(
+            text,
+            maxLines: 1,
+            softWrap: false,
+            style: AppText.micro.copyWith(color: colors.textInverse),
+          ),
         ),
       ),
     );
