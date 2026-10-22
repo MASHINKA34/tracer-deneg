@@ -29,22 +29,47 @@ List<double> yearBarHeights(List<Money> totals) {
   ];
 }
 
-class YearChart extends StatelessWidget {
+class YearChart extends StatefulWidget {
   const YearChart({
     super.key,
     required this.year,
     required this.today,
     required this.totals,
+    required this.onMonthTap,
   });
 
   final int year;
   final LocalDate today;
   final List<Money> totals;
+  final ValueChanged<YearMonth> onMonthTap;
+
+  @override
+  State<YearChart> createState() => _YearChartState();
+}
+
+class _YearChartState extends State<YearChart> {
+  final List<GlobalKey> _keys = List.generate(12, (_) => GlobalKey());
+
+  YearMonth? _nearest(Offset global) {
+    YearMonth? best;
+    var distance = double.infinity;
+    for (var i = 0; i < 12; i++) {
+      final box = _keys[i].currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) continue;
+      final center = box.localToGlobal(box.size.center(Offset.zero));
+      final d = (center.dx - global.dx).abs();
+      if (d < distance) {
+        distance = d;
+        best = YearMonth(widget.year, i + 1);
+      }
+    }
+    return best;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final heights = yearBarHeights(totals);
-    final priciest = priciestMonth(totals);
+    final heights = yearBarHeights(widget.totals);
+    final priciest = priciestMonth(widget.totals);
     final row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -52,22 +77,32 @@ class YearChart extends StatelessWidget {
         for (var m = 1; m <= 12; m++) ...[
           if (m > 1) const SizedBox(width: yearBarMinGap),
           YearChartColumn(
-            month: YearMonth(year, m),
-            kind: statsYearMonthKind(YearMonth(year, m), today),
-            total: totals[m - 1],
+            key: _keys[m - 1],
+            month: YearMonth(widget.year, m),
+            kind: statsYearMonthKind(YearMonth(widget.year, m), widget.today),
+            total: widget.totals[m - 1],
             height: heights[m - 1],
-            maxLabel: m == priciest ? totals[m - 1].formatCell() : null,
+            maxLabel: m == priciest ? widget.totals[m - 1].formatCell() : null,
+            onTap: widget.onMonthTap,
           ),
         ],
       ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) => FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.bottomLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: constraints.maxWidth),
-          child: row,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTapUp: (details) {
+        final month = _nearest(details.globalPosition);
+        if (month != null) widget.onMonthTap(month);
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: row,
+          ),
         ),
       ),
     );
@@ -81,6 +116,7 @@ class YearChartColumn extends StatelessWidget {
     required this.kind,
     required this.total,
     required this.height,
+    required this.onTap,
     this.maxLabel,
   });
 
@@ -89,6 +125,7 @@ class YearChartColumn extends StatelessWidget {
   final Money total;
   final double height;
   final String? maxLabel;
+  final ValueChanged<YearMonth> onTap;
 
   Color barColor(BuildContext context) => switch (kind) {
     StatsYearMonthKind.past => context.mood.heat3,
@@ -110,10 +147,13 @@ class YearChartColumn extends StatelessWidget {
     final title = monthTitle(month);
     final label = maxLabel;
     return Semantics(
+      button: !future,
+      enabled: !future,
       label: future
           ? l10n.a11yStatsYearBarFuture(title)
           : l10n.a11yStatsYearBar(title, l10n.a11yRubles(total.roundedRubles)),
       excludeSemantics: true,
+      onTap: future ? null : () => onTap(month),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

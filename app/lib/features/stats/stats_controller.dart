@@ -18,22 +18,22 @@ final class StatsMonthController extends Notifier<YearMonth> {
     return month;
   }
 
-  bool open(YearMonth month) {
+  bool open(YearMonth month, {String by = 'picker'}) {
     final today = ref.read(clockProvider).today();
     final from = state;
     if (isFutureMonth(month, today)) {
       _log.warning(
-        'stats month open $month by=picker ignored: future month '
+        'stats month open $month by=$by ignored: future month '
         'today=$today, staying on $from',
       );
       return false;
     }
     if (month == from) {
-      _log.fine('stats month open $month by=picker: already shown');
+      _log.fine('stats month open $month by=$by: already shown');
       return true;
     }
     state = month;
-    _log.fine('stats month $from → $state by=picker');
+    _log.fine('stats month $from → $state by=$by');
     return true;
   }
 }

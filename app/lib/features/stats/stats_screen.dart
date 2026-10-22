@@ -312,6 +312,19 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         .open(year + delta, by: 'arrow');
   }
 
+  void _openMonth(YearMonth month) {
+    final today = ref.read(clockProvider).today();
+    if (isFutureMonth(month, today)) {
+      _log.fine(
+        'stats year bar tap month=$month ignored: future month today=$today',
+      );
+      return;
+    }
+    _log.fine('stats year bar tap month=$month → month mode');
+    ref.read(statsMonthControllerProvider.notifier).open(month, by: 'year-bar');
+    setState(() => _mode = StatsMode.month);
+  }
+
   void _openYearCategory(StatsYear stats, StatsCategory category, int index) {
     final from = stats.from;
     final to = stats.to;
@@ -367,6 +380,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           content = _YearStats(
             stats: stats,
             today: today,
+            onMonthTap: _openMonth,
             onCategoryTap: (category, index) =>
                 _openYearCategory(stats, category, index),
           );
@@ -926,11 +940,13 @@ class _YearStats extends StatelessWidget {
   const _YearStats({
     required this.stats,
     required this.today,
+    required this.onMonthTap,
     required this.onCategoryTap,
   });
 
   final StatsYear stats;
   final LocalDate today;
+  final ValueChanged<YearMonth> onMonthTap;
   final void Function(StatsCategory category, int index) onCategoryTap;
 
   @override
@@ -940,7 +956,7 @@ class _YearStats extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _YearCard(stats: stats, today: today),
+        _YearCard(stats: stats, today: today, onMonthTap: onMonthTap),
         const SizedBox(height: 14),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -977,10 +993,15 @@ class _YearStats extends StatelessWidget {
 }
 
 class _YearCard extends StatelessWidget {
-  const _YearCard({required this.stats, required this.today});
+  const _YearCard({
+    required this.stats,
+    required this.today,
+    required this.onMonthTap,
+  });
 
   final StatsYear stats;
   final LocalDate today;
+  final ValueChanged<YearMonth> onMonthTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1013,7 +1034,12 @@ class _YearCard extends StatelessWidget {
           children: [
             _YearTotals(stats: stats),
             const SizedBox(height: 12),
-            YearChart(year: stats.year, today: today, totals: stats.months),
+            YearChart(
+              year: stats.year,
+              today: today,
+              totals: stats.months,
+              onMonthTap: onMonthTap,
+            ),
             if (caption.isNotEmpty) ...[
               const SizedBox(height: 12),
               FittingText(
