@@ -84,17 +84,15 @@ void main() {
             'month=2026-10 → 2026-10 rules=5 → 5 upcoming=2 → 3 '
             'charged=3 → 2',
         'recurring add tap from=header → /recurring/new',
+        'recurring editor opened new',
         'recurring rule tap section=upcoming #0 id=${music.id} day=24 '
             '→ /recurring/:id',
+        'recurring editor opened id=${music.id}',
       ]),
     );
     expect(
       h.navDebug(),
-      containsAllInOrder([
-        'recurring editor stub opened rule=new',
-        'recurring editor stub rule=new closed by back',
-        'recurring editor stub opened rule=id=${music.id}',
-      ]),
+      containsAllInOrder(['recurring editor closed new by back']),
     );
     expect(_recurring(h.records, Level.SEVERE), isEmpty);
     expect(_recurring(h.records, Level.WARNING), isEmpty);

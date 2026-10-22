@@ -35,6 +35,8 @@ class AppTextField extends StatefulWidget {
     this.inputFormatters,
     this.autofocus = false,
     this.enabled = true,
+    this.readOnly = false,
+    this.onTap,
     this.onChanged,
     this.onSubmitted,
   });
@@ -66,6 +68,8 @@ class AppTextField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final bool autofocus;
   final bool enabled;
+  final bool readOnly;
+  final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
@@ -137,6 +141,10 @@ class _AppTextFieldState extends State<AppTextField> {
       inputFormatters: widget.inputFormatters,
       autofocus: widget.autofocus,
       enabled: widget.enabled,
+      readOnly: widget.readOnly,
+      showCursor: widget.readOnly ? false : null,
+      enableInteractiveSelection: !widget.readOnly,
+      onTap: widget.onTap,
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
       style: valueStyle,

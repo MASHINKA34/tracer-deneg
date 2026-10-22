@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:milionchik/features/recurring/recurring_editor_screen.dart';
 import 'package:milionchik/features/recurring/recurring_screen.dart';
-import 'package:milionchik/features/shell/recurring_editor_stub_screen.dart';
 import 'package:milionchik/ui/components/expense_row.dart';
 import 'package:milionchik/ui/icons/app_icon.dart';
 import 'package:milionchik/ui/theme/app_theme.dart';
@@ -84,24 +84,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«+» в шапке и тап по правилу открывают заглушку редактора '
+  testWidgets('«+» в шапке и тап по правилу открывают редактор '
       'поверх меню, «назад» возвращает на вкладку', (tester) async {
     final (h, budget) = await _openMockup(tester);
 
     await tester.tap(find.bySemanticsLabel('Добавить регулярную трату'));
     await tester.pumpAndSettle();
-    expect(find.byType(RecurringEditorStubScreen), findsOneWidget);
-    expect(find.text('Регулярная трата'), findsOneWidget);
+    expect(find.byType(RecurringEditorScreen), findsOneWidget);
+    expect(find.text('Новая регулярная трата'), findsOneWidget);
     expect(
       tester
-          .widget<RecurringEditorStubScreen>(
-            find.byType(RecurringEditorStubScreen),
-          )
+          .widget<RecurringEditorScreen>(find.byType(RecurringEditorScreen))
           .ruleId,
       isNull,
     );
     await h.systemBack();
-    expect(find.byType(RecurringEditorStubScreen), findsNothing);
+    expect(find.byType(RecurringEditorScreen), findsNothing);
     expect(find.byType(RecurringScreen), findsOneWidget);
     expect(_location(tester), '/recurring');
 
@@ -110,30 +108,26 @@ void main() {
     final gym = budget.rules['Спортзал «Территория»']!;
     expect(
       tester
-          .widget<RecurringEditorStubScreen>(
-            find.byType(RecurringEditorStubScreen),
-          )
+          .widget<RecurringEditorScreen>(find.byType(RecurringEditorScreen))
           .ruleId,
       gym.id,
     );
     await tester.tap(find.bySemanticsLabel('Назад'));
     await tester.pumpAndSettle();
-    expect(find.byType(RecurringEditorStubScreen), findsNothing);
+    expect(find.byType(RecurringEditorScreen), findsNothing);
 
     await tester.tap(find.text('Музыка'));
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<RecurringEditorStubScreen>(
-            find.byType(RecurringEditorStubScreen),
-          )
+          .widget<RecurringEditorScreen>(find.byType(RecurringEditorScreen))
           .ruleId,
       budget.rules['Музыка']!.id,
     );
   });
 
   testWidgets('правил нет — 47:5951: заголовок, пояснение и кнопка, «+» в '
-      'шапке нет; кнопка открывает заглушку редактора', (tester) async {
+      'шапке нет; кнопка открывает редактор', (tester) async {
     await loadTestFonts();
     final db = openTestDatabase();
     await tester.runAsync(() => seedRecurringBudget(db));
@@ -154,12 +148,10 @@ void main() {
 
     await tester.tap(find.text('Добавить регулярную трату'));
     await tester.pumpAndSettle();
-    expect(find.byType(RecurringEditorStubScreen), findsOneWidget);
+    expect(find.byType(RecurringEditorScreen), findsOneWidget);
     expect(
       tester
-          .widget<RecurringEditorStubScreen>(
-            find.byType(RecurringEditorStubScreen),
-          )
+          .widget<RecurringEditorScreen>(find.byType(RecurringEditorScreen))
           .ruleId,
       isNull,
     );

@@ -173,7 +173,97 @@
   "recurringLoadFailed": "Не удалось загрузить регулярные траты. Открой вкладку позже.",
   "@recurringLoadFailed": { "description": "Регулярные: ошибка чтения правил или трат из базы на телефоне, текст вместо списка" },
   "recurringEditorTitle": "Регулярная трата",
-  "@recurringEditorTitle": { "description": "Заголовок редактора регулярной траты (44:5102); пока заглушка, экран делает промт редактора" },
+  "@recurringEditorTitle": { "description": "Заголовок редактора существующей регулярной траты (44:5102)" },
+  "recurringNewTitle": "Новая регулярная трата",
+  "@recurringNewTitle": { "description": "Заголовок редактора новой регулярной траты (открывается «+» на вкладке «Регулярные»)" },
+  "recurringEditorName": "Название",
+  "@recurringEditorName": { "description": "Редактор регулярной траты (44:5102): подпись над полем названия (1–40 символов)" },
+  "recurringEditorAmount": "Сумма в месяц",
+  "@recurringEditorAmount": { "description": "Редактор регулярной траты (44:5102): подпись над полем суммы; тап по полю открывает шторку с клавиатурой суммы" },
+  "recurringEditorCategory": "Категория",
+  "@recurringEditorCategory": { "description": "Редактор регулярной траты (44:5102): строка категории, тап открывает шторку всех категорий" },
+  "recurringEditorNoCategory": "Не выбрана",
+  "@recurringEditorNoCategory": { "description": "Редактор регулярной траты: значение строки категории у новой траты, пока категорию не выбрали" },
+  "recurringEditorDay": "День списания",
+  "@recurringEditorDay": { "description": "Редактор регулярной траты (44:5102): строка дня списания; заголовок шторки с сеткой 1–31" },
+  "recurringEditorDayValue": "{day}-е число",
+  "@recurringEditorDayValue": {
+    "description": "Редактор регулярной траты (44:5102): значение строки дня списания; TalkBack: ячейка сетки дней",
+    "placeholders": {
+      "day": { "type": "int" }
+    }
+  },
+  "recurringEditorBudget": "Бюджет",
+  "@recurringEditorBudget": { "description": "Редактор регулярной траты (44:5102): строка бюджета (выбор другого бюджета появится позже)" },
+  "recurringEditorHint": "Трата сама появится в календаре в этот день каждого месяца.",
+  "@recurringEditorHint": { "description": "Редактор регулярной траты (44:5102): подсказка под полями" },
+  "recurringEditorShortMonths": "Если в месяце нет такого дня (например, {day, select, 29{29-го в феврале} 30{30-го в феврале} other{31-го в апреле}}) — спишем в последний день месяца.",
+  "@recurringEditorShortMonths": {
+    "description": "Редактор регулярной траты (44:5102): вторая часть подсказки, только для дней 29–31; day — выбранный день",
+    "placeholders": {
+      "day": { "type": "String", "example": "31" }
+    }
+  },
+  "recurringFirstCharge": "Первая трата появится {date}.",
+  "@recurringFirstCharge": {
+    "description": "Редактор новой регулярной траты: когда будет первая трата (00-spec §2.1); date — день и месяц",
+    "placeholders": {
+      "date": { "type": "String", "example": "12 ноября" }
+    }
+  },
+  "recurringFirstChargeToday": "Первая трата появится сегодня, {date}.",
+  "@recurringFirstChargeToday": {
+    "description": "Редактор новой регулярной траты: день списания сегодня — трата появится сразу после сохранения; date — день и месяц",
+    "placeholders": {
+      "date": { "type": "String", "example": "22 октября" }
+    }
+  },
+  "recurringEditorSave": "Сохранить",
+  "@recurringEditorSave": { "description": "Редактор регулярной траты (44:5102): кнопка, сохраняет правило и сразу создаёт траты, которые уже пора" },
+  "recurringEditorDelete": "Удалить регулярную трату",
+  "@recurringEditorDelete": { "description": "Редактор регулярной траты (44:5102): кнопка, открывает диалог удаления; у новой траты её нет" },
+  "recurringEditorKeepHint": "Уже созданные траты останутся в календаре.",
+  "@recurringEditorKeepHint": { "description": "Редактор регулярной траты (44:5102): подпись внизу экрана существующей траты" },
+  "recurringTitleEmpty": "Введи название",
+  "@recurringTitleEmpty": { "description": "Редактор регулярной траты: ошибка под полем, название пустое (recurring_title_empty)" },
+  "recurringTitleTooLong": "Не длиннее {max} символов",
+  "@recurringTitleTooLong": {
+    "description": "Редактор регулярной траты: ошибка под полем, название длиннее 40 символов (recurring_title_too_long)",
+    "placeholders": {
+      "max": { "type": "int" }
+    }
+  },
+  "recurringAmountEmpty": "Введи сумму",
+  "@recurringAmountEmpty": { "description": "Редактор регулярной траты: ошибка под полем суммы, сумма не введена (amount_empty)" },
+  "recurringCategoryEmpty": "Выбери категорию",
+  "@recurringCategoryEmpty": { "description": "Редактор регулярной траты: значение строки категории красным, если сохраняют без категории" },
+  "recurringSaveFailed": "Не удалось сохранить регулярную трату. Попробуй ещё раз",
+  "@recurringSaveFailed": { "description": "Редактор регулярной траты: снекбар, если правило не записалось в базу на телефоне" },
+  "recurringDeleteTitle": "Удалить регулярную трату?",
+  "@recurringDeleteTitle": { "description": "Диалог удаления регулярной траты: заголовок" },
+  "recurringDeleteMessage": "Новые траты «{title}» больше не появятся. Уже созданные траты останутся в календаре.",
+  "@recurringDeleteMessage": {
+    "description": "Диалог удаления регулярной траты: что будет с тратами (00-spec §7.5); title — название правила",
+    "placeholders": {
+      "title": { "type": "String", "example": "Спортзал" }
+    }
+  },
+  "recurringDeleteConfirm": "Удалить",
+  "@recurringDeleteConfirm": { "description": "Диалог удаления регулярной траты: красная кнопка, удаляет правило" },
+  "recurringDeleteCancel": "Отмена",
+  "@recurringDeleteCancel": { "description": "Диалог удаления регулярной траты: закрыть диалог, ничего не удалять" },
+  "recurringDeleteFailed": "Не удалось удалить регулярную трату. Попробуй ещё раз",
+  "@recurringDeleteFailed": { "description": "Редактор регулярной траты: снекбар, если правило не удалилось" },
+  "recurringMissingTitle": "Регулярная трата не найдена",
+  "@recurringMissingTitle": { "description": "Редактор регулярной траты: правило удалили или его нет на телефоне, заголовок" },
+  "recurringMissingText": "Возможно, её удалили — здесь или на другом телефоне.",
+  "@recurringMissingText": { "description": "Редактор регулярной траты: правило удалили или его нет на телефоне, пояснение" },
+  "recurringLoadFailedTitle": "Не удалось открыть регулярную трату",
+  "@recurringLoadFailedTitle": { "description": "Редактор регулярной траты: ошибка чтения правила из базы на телефоне, заголовок" },
+  "recurringLoadFailedText": "Вернись назад и попробуй ещё раз.",
+  "@recurringLoadFailedText": { "description": "Редактор регулярной траты: ошибка чтения правила из базы на телефоне, что делать" },
+  "recurringBack": "Назад",
+  "@recurringBack": { "description": "Редактор регулярной траты, когда правило не найдено или не открылось: кнопка, возвращает к списку" },
   "a11yRecurringMonthly": "Каждый месяц {amount}. {summary}",
   "@a11yRecurringMonthly": {
     "description": "TalkBack: карточка суммы на вкладке «Регулярные»; amount — сумма словами, summary — recurringSummary",

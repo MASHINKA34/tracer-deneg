@@ -14,10 +14,10 @@ import '../features/expense/new_expense_screen.dart';
 import '../features/export/export_profile_entry.dart';
 import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
+import '../features/recurring/recurring_editor_screen.dart';
 import '../features/recurring/recurring_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/app_shell.dart';
-import '../features/shell/recurring_editor_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
@@ -226,14 +226,14 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
                     name: AppRoutes.newRecurringName,
                     parentNavigatorKey: rootKey,
                     builder: (context, state) =>
-                        const AppFrame(child: RecurringEditorStubScreen()),
+                        const AppFrame(child: RecurringEditorScreen()),
                   ),
                   GoRoute(
                     path: ':id',
                     name: AppRoutes.recurringRuleName,
                     parentNavigatorKey: rootKey,
                     builder: (context, state) => AppFrame(
-                      child: RecurringEditorStubScreen(
+                      child: RecurringEditorScreen(
                         ruleId: state.pathParameters['id'],
                       ),
                     ),
