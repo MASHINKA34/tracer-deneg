@@ -11,6 +11,8 @@ import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
 import '../features/expense/edit_expense_screen.dart';
 import '../features/expense/new_expense_screen.dart';
+import '../features/export/export_profile_entry.dart';
+import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/app_shell.dart';
@@ -33,6 +35,7 @@ abstract final class AppRoutes {
   static const String categories = '/categories';
   static const String newCategory = '/categories/new';
   static const String category = '/categories/:id';
+  static const String export = '/export';
   static const String catalog = '/catalog';
 
   static const String newExpenseName = 'newExpense';
@@ -41,6 +44,7 @@ abstract final class AppRoutes {
   static const String categoriesName = 'categories';
   static const String newCategoryName = 'newCategory';
   static const String categoryName = 'category';
+  static const String exportName = 'export';
 
   static const String deepLinkScheme = 'milionchik';
   static const String addDeepLinkHost = 'add';
@@ -216,8 +220,10 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
               GoRoute(
                 path: AppRoutes.profile,
                 name: 'profile',
-                builder: (context, state) =>
-                    TabStubScreen(title: (l10n) => l10n.profileTitle),
+                builder: (context, state) => TabStubScreen(
+                  title: (l10n) => l10n.profileTitle,
+                  children: const [ExportProfileEntry()],
+                ),
               ),
             ],
           ),
@@ -280,6 +286,12 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         parentNavigatorKey: rootKey,
         builder: (context, state) =>
             AppFrame(child: SearchScreen(query: state.uri.queryParameters)),
+      ),
+      GoRoute(
+        path: AppRoutes.export,
+        name: AppRoutes.exportName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const AppFrame(child: ExportScreen()),
       ),
       if (kDebugMode)
         GoRoute(

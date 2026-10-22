@@ -689,6 +689,67 @@
   "expenseUndoFailed": "Не удалось вернуть трату",
   "@expenseUndoFailed": { "description": "Снекбар: «Отменить» не вернуло трату — окно 5 секунд уже прошло или ошибка базы на телефоне; трата остаётся удалённой" },
 
+  "profileExport": "Экспорт трат в CSV",
+  "@profileExport": { "description": "Профиль (47:13952): строка, открывает экран экспорта; пока временная строка на заглушке профиля" },
+  "exportTitle": "Экспорт трат",
+  "@exportTitle": { "description": "Экспорт в CSV (46:5585): заголовок экрана" },
+  "exportBudget": "Бюджет",
+  "@exportBudget": { "description": "Экспорт в CSV (46:5585): строка выбора бюджета и заголовок шторки бюджетов" },
+  "exportPersonalBudget": "Личный",
+  "@exportPersonalBudget": { "description": "Экспорт в CSV (46:5585): название личного бюджета в строке бюджета, в имени файла и в колонке «Бюджет»" },
+  "exportPeriod": "Период",
+  "@exportPeriod": { "description": "Экспорт в CSV (46:5585): подпись над чипами периода" },
+  "exportPeriodYear": "{year} год",
+  "@exportPeriodYear": {
+    "description": "Экспорт в CSV (46:5585): чип текущего года",
+    "placeholders": {
+      "year": { "type": "String", "example": "2026" }
+    }
+  },
+  "exportPeriodCustom": "Свои даты",
+  "@exportPeriodCustom": { "description": "Экспорт в CSV (46:5585): чип своих дат, открывает системный выбор диапазона" },
+  "exportPeriodRange": "{from} – {to}",
+  "@exportPeriodRange": {
+    "description": "Экспорт в CSV: чип своих дат после выбора диапазона",
+    "placeholders": {
+      "from": { "type": "String", "example": "01.09.2026" },
+      "to": { "type": "String", "example": "30.09.2026" }
+    }
+  },
+  "exportSummary": "{count, plural, one{{count} трата} few{{count} траты} many{{count} трат} other{{count} траты}} · {total}",
+  "@exportSummary": {
+    "description": "Экспорт в CSV (46:5585): карточка файла — сколько трат попадёт в файл и их сумма",
+    "placeholders": {
+      "count": { "type": "int" },
+      "total": { "type": "String", "example": "18 300 ₽" }
+    }
+  },
+  "a11yExportFile": "Файл {name}, {count, plural, one{{count} трата} few{{count} траты} many{{count} трат} other{{count} траты}}, {amount}",
+  "@a11yExportFile": {
+    "description": "TalkBack: карточка файла экспорта",
+    "placeholders": {
+      "name": { "type": "String", "example": "milionchik_lichnyj_2026-10.csv" },
+      "count": { "type": "int" },
+      "amount": { "type": "String", "example": "18 300 рублей" }
+    }
+  },
+  "exportColumns": "Колонки: дата, сумма, категория, комментарий, бюджет, кто добавил. Разделитель «;», кодировка UTF-8 с BOM — файл сразу открывается в русском Excel.",
+  "@exportColumns": { "description": "Экспорт в CSV (46:5585): пояснение под карточкой файла" },
+  "exportShare": "Поделиться файлом",
+  "@exportShare": { "description": "Экспорт в CSV (46:5585): кнопка, сохраняет файл и открывает системное «Поделиться»" },
+  "exportEmpty": "За этот период трат нет — выгружать нечего",
+  "@exportEmpty": { "description": "Экспорт в CSV: подпись под неактивной кнопкой, когда за период ноль трат" },
+  "exportLoadFailed": "Не получилось посчитать траты. Попробуй ещё раз",
+  "@exportLoadFailed": { "description": "Экспорт в CSV: подпись под неактивной кнопкой, когда траты периода не прочитались из базы на телефоне" },
+  "exportWriteFailed": "Не получилось сохранить файл. Попробуй ещё раз",
+  "@exportWriteFailed": { "description": "Снекбар экспорта: файл не подготовился или не записался во временную папку" },
+  "exportShareFailed": "Не получилось открыть «Поделиться». Попробуй ещё раз",
+  "@exportShareFailed": { "description": "Снекбар экспорта: системное «Поделиться» не открылось" },
+  "exportAuthorMe": "Я",
+  "@exportAuthorMe": { "description": "Экспорт в CSV: колонка «Кто добавил» для своих трат, пока у аккаунта нет имени на телефоне (вход ещё не сделан)" },
+  "exportAuthorRemoved": "Удалённый участник",
+  "@exportAuthorRemoved": { "description": "Экспорт в CSV: колонка «Кто добавил», если профиля автора на телефоне нет" },
+
   "databaseErrorTitle": "Не удалось открыть траты",
   "@databaseErrorTitle": {
     "description": "Экран-заглушка при старте: локальная база на телефоне не открылась, заголовок"
