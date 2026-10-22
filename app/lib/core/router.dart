@@ -15,6 +15,7 @@ import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
+import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'app_frame.dart';
 import 'logging/navigation_logger.dart';
@@ -123,8 +124,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
               GoRoute(
                 path: AppRoutes.stats,
                 name: 'stats',
-                builder: (context, state) =>
-                    TabStubScreen(title: (l10n) => l10n.statsTitle),
+                builder: (context, state) => const StatsScreen(),
               ),
             ],
           ),

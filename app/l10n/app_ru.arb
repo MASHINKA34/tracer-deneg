@@ -281,6 +281,101 @@
   "searchTitle": "Поиск",
   "@searchTitle": { "description": "Заголовок экрана «Поиск» (46:5267), открывается иконкой поиска в шапке главной" },
 
+  "statsModeMonth": "Месяц",
+  "@statsModeMonth": { "description": "Статистика (12:820): вариант переключателя «Месяц / Год»" },
+  "statsModeYear": "Год",
+  "@statsModeYear": { "description": "Статистика (12:820): вариант переключателя «Месяц / Год» (режим «Год» — промт 25)" },
+  "a11yStatsChoosePeriod": "{period}, выбрать месяц",
+  "@a11yStatsChoosePeriod": {
+    "description": "TalkBack: чип периода в шапке статистики (открывает выбор месяца)",
+    "placeholders": {
+      "period": { "type": "String", "example": "Октябрь 2026" }
+    }
+  },
+  "statsCategoriesCount": "{count, plural, one{категория} few{категории} many{категорий} other{категории}}",
+  "@statsCategoriesCount": {
+    "description": "Статистика (12:820): подпись под числом в центре кольцевой диаграммы — сколько категорий с тратами",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "a11yStatsDonut": "Диаграмма по категориям: {count, plural, one{{count} категория} few{{count} категории} many{{count} категорий} other{{count} категории}}",
+  "@a11yStatsDonut": {
+    "description": "TalkBack: кольцевая диаграмма статистики",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsTotal": "Всего за {month}",
+  "@statsTotal": {
+    "description": "Статистика (12:820): подпись над итогом месяца; месяц строчными («октябрь»)",
+    "placeholders": {
+      "month": { "type": "String", "example": "октябрь" }
+    }
+  },
+  "monthDative": "{month, select, january{январю} february{февралю} march{марту} april{апрелю} may{маю} june{июню} july{июлю} august{августу} september{сентябрю} october{октябрю} november{ноябрю} december{декабрю} other{прошлому месяцу}}",
+  "@monthDative": {
+    "description": "Название месяца в дательном падеже для «к сентябрю»; ключ — английское имя месяца",
+    "placeholders": {
+      "month": { "type": "String", "example": "september" }
+    }
+  },
+  "statsComparison": "{percent} к {month}",
+  "@statsComparison": {
+    "description": "Статистика (12:820): плашка сравнения с прошлым месяцем («−10% к сентябрю»; 00-spec §7.3)",
+    "placeholders": {
+      "percent": { "type": "String", "example": "−10%" },
+      "month": { "type": "String", "example": "сентябрю" }
+    }
+  },
+  "statsAverage": "В среднем {amount} в день",
+  "@statsAverage": {
+    "description": "Статистика (12:820): среднее в день за месяц (00-spec §7.3)",
+    "placeholders": {
+      "amount": { "type": "String", "example": "963 ₽" }
+    }
+  },
+  "statsByCategory": "По категориям",
+  "@statsByCategory": { "description": "Статистика (12:820): заголовок списка категорий" },
+  "statsBySum": "по сумме ↓",
+  "@statsBySum": { "description": "Статистика (12:820): подпись порядка списка категорий — по убыванию суммы" },
+  "statsExpenses": "{count, plural, one{{count} трата} few{{count} траты} many{{count} трат} other{{count} траты}}",
+  "@statsExpenses": {
+    "description": "Статистика (12:820): число трат категории за месяц в строке списка",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsShare": "{percent}% · {expenses}",
+  "@statsShare": {
+    "description": "Статистика (12:820): подпись строки категории — доля в процентах (сумма долей 100) и число трат",
+    "placeholders": {
+      "percent": { "type": "int" },
+      "expenses": { "type": "String", "example": "18 трат" }
+    }
+  },
+  "a11yStatsRow": "{name}, {percent} %, {expenses}, {amount}",
+  "@a11yStatsRow": {
+    "description": "TalkBack: строка категории в статистике, нажатие открывает поиск по категории за месяц",
+    "placeholders": {
+      "name": { "type": "String", "example": "Кафе" },
+      "percent": { "type": "int" },
+      "expenses": { "type": "String", "example": "11 трат" },
+      "amount": { "type": "String", "example": "3 180 рублей" }
+    }
+  },
+  "statsEmptyTitle": "В {month} трат нет",
+  "@statsEmptyTitle": {
+    "description": "Статистика: пустой месяц (в духе 47:5951), заголовок; месяц в предложном падеже («октябре»)",
+    "placeholders": {
+      "month": { "type": "String", "example": "октябре" }
+    }
+  },
+  "statsEmptyText": "Когда появятся траты, здесь будет диаграмма по категориям и сравнение с прошлым месяцем.",
+  "@statsEmptyText": { "description": "Статистика: пустой месяц, пояснение под заголовком" },
+  "statsLoadFailed": "Не удалось посчитать статистику. Выбери другой месяц или открой вкладку позже.",
+  "@statsLoadFailed": { "description": "Статистика: ошибка чтения трат из базы на телефоне" },
+
   "syncDone": "Синхронизировано",
   "@syncDone": { "description": "Статус синхронизации: всё на сервере" },
   "syncWaiting": "Ждёт сети · {count}",

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/expense/new_expense_screen.dart';
-import 'package:milionchik/features/shell/tab_stub_screen.dart';
+import 'package:milionchik/features/stats/stats_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/fab.dart';
 
@@ -92,7 +92,7 @@ void main() {
 
     expect(find.byType(NewExpenseScreen), findsNothing);
     expect(h.activeTab, AppNavTab.stats);
-    expect(find.byType(TabStubScreen), findsOneWidget);
+    expect(find.byType(StatsScreen), findsOneWidget);
     expect(location(tester), AppRoutes.stats);
     expect(
       h.navDebug(),

@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
+import 'package:milionchik/features/stats/stats_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/catalog/catalog_screen.dart';
 import 'package:milionchik/ui/components/fab.dart';
@@ -32,7 +33,7 @@ void main() {
 
     await h.tapTab('Статистика');
     expect(h.activeTab, AppNavTab.stats);
-    expect(stubTitle('Статистика'), findsOneWidget);
+    expect(find.byType(StatsScreen), findsOneWidget);
     expect(find.byType(MonthScreen), findsNothing);
 
     await h.tapTab('Регулярные');
