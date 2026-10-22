@@ -222,6 +222,14 @@ final expenseProvider = StreamProvider.autoDispose.family<Expense?, String>(
   retry: _noRetry,
 );
 
+final recurringRuleWithDeletedProvider = StreamProvider.autoDispose
+    .family<RecurringRule?, String>(
+      (ref, id) =>
+          ref.watch(recurringRepositoryProvider).watchByIdWithDeleted(id),
+      name: 'recurringRuleWithDeleted',
+      retry: _noRetry,
+    );
+
 final budgetProvider = StreamProvider.autoDispose.family<Budget?, String>(
   (ref, budgetId) => ref.watch(budgetsRepositoryProvider).watchById(budgetId),
   name: 'budget',

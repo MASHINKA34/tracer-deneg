@@ -13,6 +13,8 @@ abstract interface class RecurringRepository {
 
   Stream<RecurringRule?> watchById(String id);
 
+  Stream<RecurringRule?> watchByIdWithDeleted(String id);
+
   Future<List<RecurringRule>> liveRulesOfLiveBudgets();
 
   Future<RecurringRule> create({
@@ -79,6 +81,15 @@ final class DriftRecurringRepository implements RecurringRepository {
     'id=$id',
     (_db.select(_db.recurringRules)
           ..where((r) => r.id.equals(id) & r.deletedAt.isNull()))
+        .watchSingleOrNull()
+        .map((r) => r == null ? null : recurringFromRow(r)),
+  );
+
+  @override
+  Stream<RecurringRule?> watchByIdWithDeleted(String id) => _writer.watch(
+    _entity,
+    'id=$id with deleted',
+    (_db.select(_db.recurringRules)..where((r) => r.id.equals(id)))
         .watchSingleOrNull()
         .map((r) => r == null ? null : recurringFromRow(r)),
   );

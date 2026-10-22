@@ -74,6 +74,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
   final Stopwatch _sinceOpen = Stopwatch()..start();
   String _closedBy = 'back';
   String? _warnedCategory;
+  String? _loggedMissingRule;
   Expense? _deleted;
 
   String get _id => widget.expenseId;
@@ -317,6 +318,25 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     return category;
   }
 
+  String _recurringCaption(AppLocalizations l10n, String recurringId) {
+    final value = ref.watch(recurringRuleWithDeletedProvider(recurringId));
+    if (value case AsyncData(value: final rule)) {
+      if (rule != null && rule.deletedAt == null) {
+        return l10n.expenseEditRecurringNamed(rule.title);
+      }
+      if (_loggedMissingRule != recurringId) {
+        _loggedMissingRule = recurringId;
+        _log.fine(
+          'recurring rule not found for expense id=$_id '
+          'recurringId=$recurringId '
+          'reason=${rule == null ? 'missing' : 'deleted'} → caption without '
+          'rule name',
+        );
+      }
+    }
+    return l10n.expenseEditRecurring;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -388,6 +408,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final budget = budgetValue.hasError ? null : budgetValue.value;
     final changed = edits.changedFields(expense);
     final comment = edits.commentOf(expense);
+    final recurringId = expense.recurringId;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return SingleChildScrollView(
@@ -444,6 +465,11 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (recurringId != null)
+            Text(
+              _recurringCaption(l10n, recurringId),
+              style: AppText.caption.copyWith(color: colors.textTertiary),
+            ),
           Text(
             l10n.expenseEditSyncHint,
             style: AppText.caption.copyWith(color: colors.textTertiary),

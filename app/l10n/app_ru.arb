@@ -665,6 +665,15 @@
   "@expenseEditDeleteSoon": { "description": "Трата · редактирование: снекбар-заглушка на «Удалить трату», пока удаления нет" },
   "expenseEditSaveFailed": "Не удалось сохранить изменения. Попробуй ещё раз",
   "@expenseEditSaveFailed": { "description": "Трата · редактирование: снекбар, если изменения не записались в базу на телефоне" },
+  "expenseEditRecurringNamed": "Создано регулярной тратой «{title}»",
+  "@expenseEditRecurringNamed": {
+    "description": "Трата · редактирование (43:4368): подпись под полями у траты, созданной регулярной; title — название правила",
+    "placeholders": {
+      "title": { "type": "String", "example": "Спортзал" }
+    }
+  },
+  "expenseEditRecurring": "Создано регулярной тратой",
+  "@expenseEditRecurring": { "description": "Трата · редактирование (43:4368): подпись под полями у траты, созданной регулярной, когда правило удалено или его нет на телефоне" },
   "expenseMissingTitle": "Трата не найдена",
   "@expenseMissingTitle": { "description": "Экран траты: трату удалили или её нет на телефоне, заголовок" },
   "expenseMissingText": "Возможно, её удалили — здесь или на другом телефоне.",
