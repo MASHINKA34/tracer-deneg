@@ -4,7 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_picker_sheet.dart';
-import 'package:milionchik/features/shell/search_stub_screen.dart';
+import 'package:milionchik/features/search/search_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 
 import '../../support/app_scope.dart';
@@ -111,7 +111,7 @@ void main() {
           tester,
           tester.getRect(search).bottomLeft + const Offset(1, -1),
         );
-        expect(find.byType(SearchStubScreen), findsOneWidget);
+        expect(find.byType(SearchScreen), findsOneWidget);
         await h.systemBack();
         await _tapAt(
           tester,

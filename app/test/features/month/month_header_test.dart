@@ -6,7 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
-import 'package:milionchik/features/shell/search_stub_screen.dart';
+import 'package:milionchik/features/search/search_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/avatar.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
@@ -107,16 +107,16 @@ void main() {
     await tester.tap(_icon(AppIcons.search));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchStubScreen), findsOneWidget);
+    expect(find.byType(SearchScreen), findsOneWidget);
     expect(find.text('Поиск'), findsOneWidget);
     expect(find.byType(AppBottomNav), findsNothing);
-    final router = GoRouter.of(tester.element(find.byType(SearchStubScreen)));
+    final router = GoRouter.of(tester.element(find.byType(SearchScreen)));
     expect(router.state.uri.path, AppRoutes.search);
     expect(_monthDebug(h), contains('header search tap → /search'));
 
     await tester.tap(find.bySemanticsLabel('Назад'));
     await tester.pumpAndSettle();
-    expect(find.byType(SearchStubScreen), findsNothing);
+    expect(find.byType(SearchScreen), findsNothing);
     expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(router.state.uri.path, AppRoutes.month);
@@ -124,7 +124,7 @@ void main() {
     await tester.tap(_icon(AppIcons.search));
     await tester.pumpAndSettle();
     await h.systemBack();
-    expect(find.byType(SearchStubScreen), findsNothing);
+    expect(find.byType(SearchScreen), findsNothing);
     expect(find.byType(MonthScreen), findsOneWidget);
     expect(h.systemPops, 0);
     expect(

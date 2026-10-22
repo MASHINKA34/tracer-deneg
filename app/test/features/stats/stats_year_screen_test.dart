@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/data/db/app_database.dart';
-import 'package:milionchik/features/shell/search_stub_screen.dart';
+import 'package:milionchik/features/search/search_screen.dart';
 import 'package:milionchik/features/stats/donut_chart.dart';
 import 'package:milionchik/features/stats/stats_screen.dart';
 import 'package:milionchik/features/stats/stats_year.dart';
@@ -390,8 +390,8 @@ void main() {
     await tester.tap(row);
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchStubScreen), findsOneWidget);
-    final uri = GoRouter.of(tester.element(find.byType(SearchStubScreen)))
+    expect(find.byType(SearchScreen), findsOneWidget);
+    final uri = GoRouter.of(tester.element(find.byType(SearchScreen)))
         .state
         .uri;
     expect(uri.path, AppRoutes.search);

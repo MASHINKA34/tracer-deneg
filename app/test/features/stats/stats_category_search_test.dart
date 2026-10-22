@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
-import 'package:milionchik/features/shell/search_stub_screen.dart';
+import 'package:milionchik/features/search/search_period.dart';
+import 'package:milionchik/features/search/search_screen.dart';
 import 'package:milionchik/features/stats/stats_screen.dart';
 import 'package:milionchik/l10n/app_localizations_ru.dart';
 import 'package:milionchik/ui/components/chip.dart';
@@ -56,8 +57,8 @@ void main() {
 
     await _tapRow(tester, 'Кафе');
 
-    expect(find.byType(SearchStubScreen), findsOneWidget);
-    final uri = _location(tester, SearchStubScreen);
+    expect(find.byType(SearchScreen), findsOneWidget);
+    final uri = _location(tester, SearchScreen);
     expect(uri.path, AppRoutes.search);
     expect(uri.queryParameters, {
       'category': cafeId,
@@ -66,7 +67,7 @@ void main() {
     });
     expect(
       find.descendant(
-        of: find.byType(SearchStubScreen),
+        of: find.byType(SearchScreen),
         matching: find.widgetWithText(AppChip, 'Кафе'),
       ),
       findsOneWidget,
@@ -75,7 +76,7 @@ void main() {
       tester
           .widget<AppChip>(
             find.descendant(
-              of: find.byType(SearchStubScreen),
+              of: find.byType(SearchScreen),
               matching: find.widgetWithText(AppChip, 'Кафе'),
             ),
           )
@@ -84,7 +85,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byType(SearchStubScreen),
+        of: find.byType(SearchScreen),
         matching: find.widgetWithText(AppChip, 'Октябрь 2026'),
       ),
       findsOneWidget,
@@ -107,7 +108,7 @@ void main() {
     );
 
     await h.systemBack();
-    expect(find.byType(SearchStubScreen), findsNothing);
+    expect(find.byType(SearchScreen), findsNothing);
     expect(find.byType(StatsScreen), findsOneWidget);
     expect(_location(tester, StatsScreen).path, AppRoutes.stats);
   });
@@ -124,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
     semantics.dispose();
 
-    expect(find.byType(SearchStubScreen), findsOneWidget);
+    expect(find.byType(SearchScreen), findsOneWidget);
   });
 
   group('SearchRouteFilter.fromQuery', () {

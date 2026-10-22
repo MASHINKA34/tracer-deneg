@@ -14,6 +14,7 @@ class AppChip extends StatelessWidget {
     this.emoji,
     this.selected = false,
     this.onTap,
+    this.dropdown = false,
   });
 
   final String label;
@@ -22,6 +23,7 @@ class AppChip extends StatelessWidget {
   final String? emoji;
   final bool selected;
   final VoidCallback? onTap;
+  final bool dropdown;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +68,14 @@ class AppChip extends StatelessWidget {
                         style: AppText.labelM.copyWith(color: foreground),
                       ),
                     ),
+                    if (dropdown)
+                      ExcludeSemantics(
+                        child: Text(
+                          ' ▾',
+                          maxLines: 1,
+                          style: AppText.labelM.copyWith(color: foreground),
+                        ),
+                      ),
                   ],
                 ),
               ),

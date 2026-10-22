@@ -8,7 +8,7 @@ import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/month/today_block.dart';
 import 'package:milionchik/features/expense/edit_expense_screen.dart';
 import 'package:milionchik/features/expense/new_expense_screen.dart';
-import 'package:milionchik/features/shell/search_stub_screen.dart';
+import 'package:milionchik/features/search/search_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/components/month_card.dart';
 import 'package:milionchik/ui/components/sheet.dart';
@@ -278,7 +278,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Поиск'));
     await tester.pumpAndSettle();
     expect(
-      _rect(tester, SearchStubScreen),
+      _rect(tester, SearchScreen),
       const Rect.fromLTWH(400, 0, maxContentWidth, 800),
     );
     await h.systemBack();

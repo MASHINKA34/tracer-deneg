@@ -288,6 +288,56 @@
       "to": { "type": "String", "example": "19.10.2026" }
     }
   },
+  "searchClear": "Очистить",
+  "@searchClear": { "description": "TalkBack: крестик в строке поиска (46:5267), стирает запрос" },
+  "searchPeriodAll": "За всё время",
+  "@searchPeriodAll": { "description": "Поиск (46:5267): чип периода без фильтра и вариант в шторке периода" },
+  "searchPeriodMonth": "Этот месяц",
+  "@searchPeriodMonth": { "description": "Поиск: шторка периода, вариант «текущий месяц» (на чипе — название месяца)" },
+  "searchPeriodYear": "Этот год",
+  "@searchPeriodYear": { "description": "Поиск: шторка периода, вариант «текущий год» (на чипе — «2026 год»)" },
+  "searchPeriodYearChip": "{year} год",
+  "@searchPeriodYearChip": {
+    "description": "Поиск: чип периода, выбран текущий год",
+    "placeholders": {
+      "year": { "type": "String", "example": "2026" }
+    }
+  },
+  "searchPeriodCustom": "Свои даты",
+  "@searchPeriodCustom": { "description": "Поиск: шторка периода, вариант «свои даты» — открывает системный выбор диапазона" },
+  "searchPeriodTitle": "Период",
+  "@searchPeriodTitle": { "description": "Поиск: заголовок шторки периода" },
+  "searchCategoriesAll": "Все категории",
+  "@searchCategoriesAll": { "description": "Поиск (46:5267): чип категорий без фильтра и строка «все» в шторке категорий" },
+  "searchCategoriesCount": "{count, plural, one{{count} категория} few{{count} категории} many{{count} категорий} other{{count} категории}}",
+  "@searchCategoriesCount": {
+    "description": "Поиск: чип категорий, выбрано несколько категорий",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "searchCategoriesTitle": "Категории",
+  "@searchCategoriesTitle": { "description": "Поиск: заголовок шторки выбора категорий (можно несколько)" },
+  "searchCategoriesDone": "Готово",
+  "@searchCategoriesDone": { "description": "Поиск: кнопка шторки категорий, закрывает шторку (выбор применяется сразу)" },
+  "searchPersonalBudget": "Личный",
+  "@searchPersonalBudget": { "description": "Поиск (46:5267): чип личного бюджета" },
+  "searchFound": "{count, plural, one{Найдена {count} трата} few{Найдено {count} траты} many{Найдено {count} трат} other{Найдено {count} траты}} · {total}",
+  "@searchFound": {
+    "description": "Поиск (46:5267): итог над результатами — число трат и их сумма",
+    "placeholders": {
+      "count": { "type": "int" },
+      "total": { "type": "String", "example": "1 470 ₽" }
+    }
+  },
+  "searchEmptyTitle": "Ничего не нашли",
+  "@searchEmptyTitle": { "description": "Поиск · ничего не найдено (46:5355): заголовок" },
+  "searchEmptyText": "Попробуй другое слово или сбрось фильтры. Ищем по комментарию, названию категории и сумме.",
+  "@searchEmptyText": { "description": "Поиск · ничего не найдено (46:5355): пояснение" },
+  "searchEmptyReset": "Сбросить фильтры",
+  "@searchEmptyReset": { "description": "Поиск · ничего не найдено (46:5355): кнопка — сбрасывает период и категории, а если они не заданы, стирает запрос" },
+  "searchFailed": "Не получилось найти траты. Попробуй ещё раз",
+  "@searchFailed": { "description": "Поиск: запрос к базе на телефоне упал, вместо результатов" },
 
   "statsModeMonth": "Месяц",
   "@statsModeMonth": { "description": "Статистика (12:820): вариант переключателя «Месяц / Год»" },
