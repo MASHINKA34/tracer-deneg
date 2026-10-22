@@ -7,6 +7,7 @@ import 'current_user.dart';
 import 'db/app_database.dart';
 import 'queries/category_queries.dart';
 import 'queries/month_queries.dart';
+import 'queries/recurring_queries.dart';
 import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
 import 'queries/today_queries.dart';
@@ -126,6 +127,11 @@ final categoryQueriesProvider = Provider<CategoryQueries>(
   name: 'categoryQueries',
 );
 
+final recurringQueriesProvider = Provider<RecurringQueries>(
+  (ref) => DriftRecurringQueries(ref.watch(appDatabaseProvider)),
+  name: 'recurringQueries',
+);
+
 final dayTotalsProvider = StreamProvider.autoDispose
     .family<Map<int, Money>, BudgetMonth>(
       (ref, arg) => ref
@@ -227,6 +233,23 @@ final recurringRuleWithDeletedProvider = StreamProvider.autoDispose
       (ref, id) =>
           ref.watch(recurringRepositoryProvider).watchByIdWithDeleted(id),
       name: 'recurringRuleWithDeleted',
+      retry: _noRetry,
+    );
+
+final recurringRulesProvider = StreamProvider.autoDispose
+    .family<List<RecurringRule>, String>(
+      (ref, budgetId) =>
+          ref.watch(recurringRepositoryProvider).watchByBudget(budgetId),
+      name: 'recurringRules',
+      retry: _noRetry,
+    );
+
+final recurringChargesProvider = StreamProvider.autoDispose
+    .family<Map<String, Expense>, BudgetMonth>(
+      (ref, arg) => ref
+          .watch(recurringQueriesProvider)
+          .watchMonthCharges(arg.budgetId, arg.month),
+      name: 'recurringCharges',
       retry: _noRetry,
     );
 
