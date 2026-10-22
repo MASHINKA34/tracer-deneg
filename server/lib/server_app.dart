@@ -5,6 +5,9 @@ import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
+import 'auth/auth_service.dart';
+import 'auth/password_hasher.dart';
+import 'auth/tokens.dart';
 import 'config/config.dart';
 import 'config/dotenv.dart';
 import 'db/database.dart';
@@ -74,11 +77,22 @@ Future<RunningServer> startServer(
     rethrow;
   }
 
+  final hasher = PasswordHasher();
+  final auth = AuthService(
+    db: db,
+    hasher: hasher,
+    accessTokens: AccessTokens(config.jwtSecret),
+  );
+  _log.info(
+    'auth ready: argon2id ${hasher.params.phc} '
+    'access=${accessTokenTtl.inMinutes}m refresh=${refreshTokenTtl.inDays}d',
+  );
+
   final sw = Stopwatch()..start();
   _log.info('starting HTTP server on ${config.host}:${config.port}');
   try {
     final http = await shelf_io.serve(
-      buildHandler(db: db),
+      buildHandler(db: db, auth: auth),
       config.host,
       config.port,
     );
