@@ -8,6 +8,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'config/config.dart';
 import 'config/dotenv.dart';
 import 'db/database.dart';
+import 'db/migrator.dart';
 import 'http/router.dart';
 import 'version.dart';
 
@@ -64,6 +65,14 @@ Future<RunningServer> startServer(
           attempts: dbConnectAttempts,
           delays: dbRetryDelays,
         );
+
+  try {
+    await Migrator(db, directory: Directory(config.migrationsDir)).run();
+  } catch (e) {
+    _log.severe('migrations failed → HTTP server not started');
+    await db.close(reason: 'migrations failed');
+    rethrow;
+  }
 
   final sw = Stopwatch()..start();
   _log.info('starting HTTP server on ${config.host}:${config.port}');

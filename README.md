@@ -41,6 +41,7 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
    cd server
    dart run bin/server.dart
    ```
+   При старте сервер применяет новые миграции из `server/migrations` (`NNNN_имя.sql`, каждая в своей транзакции, под `pg_advisory_lock` — два сервера на одной базе не мешают друг другу) и пишет в лог каждую. Ошибка миграции — сервер не стартует, в логе файл, строка и SQLSTATE.
 4. Проверка:
    ```powershell
    curl.exe http://127.0.0.1:8080/api/v1/health
@@ -55,6 +56,7 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 | `HOST` | нет | `0.0.0.0` | Адрес HTTP |
 | `PORT` | нет | `8080` | Порт HTTP |
 | `LOG_LEVEL` | нет | `info` | `debug`, `info`, `warn`, `error` |
+| `MIGRATIONS_DIR` | нет | `migrations` | Папка SQL-миграций (относительный путь — от папки запуска) |
 
 ## Приложение
 
