@@ -189,6 +189,95 @@
   "@expenseCommentRecent": { "description": "Шторка комментария траты: заголовок недавних комментариев бюджета (до 6, тап подставляет в поле)" },
   "categoriesTitle": "Категории",
   "@categoriesTitle": { "description": "Заголовок экрана «Категории» (44:4792), открывается «Настроить» в «Новой трате»" },
+  "categoriesExpenses": "{count, plural, one{{count} трата} few{{count} траты} many{{count} трат} other{{count} траты}}",
+  "@categoriesExpenses": {
+    "description": "Категории (44:4792): подпись под названием категории — сколько в ней трат за всё время",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categoriesOtherHint": "Сюда переходят траты удалённых категорий · удалить нельзя",
+  "@categoriesOtherHint": { "description": "Категории (44:4792): подпись под системной «Другое» вместо числа трат, строка без шеврона и без нажатия" },
+  "categoriesOrderHint": "Порядок категорий в сетке «Новой траты» — как в этом списке. Первые 7 видны сразу, остальные под «Все».",
+  "@categoriesOrderHint": { "description": "Категории (44:4792): подпись под списком" },
+  "categoriesLoadFailed": "Не удалось загрузить категории. Вернись назад и попробуй ещё раз.",
+  "@categoriesLoadFailed": { "description": "Категории: ошибка чтения категорий из базы на телефоне, текст вместо списка" },
+  "categoryTitle": "Категория",
+  "@categoryTitle": { "description": "Категория · редактор (44:4902): заголовок экрана правки категории" },
+  "categoryNewTitle": "Новая категория",
+  "@categoryNewTitle": { "description": "Заголовок редактора новой категории; TalkBack: кнопка «+» в шапке экрана «Категории»" },
+  "categoryName": "Название",
+  "@categoryName": { "description": "Категория · редактор: подпись над полем названия (1–24 символа)" },
+  "categoryNameEmpty": "Введи название",
+  "@categoryNameEmpty": { "description": "Категория · редактор: ошибка под полем, название пустое (category_name_empty)" },
+  "categoryNameTooLong": "Не длиннее {max} символов",
+  "@categoryNameTooLong": {
+    "description": "Категория · редактор: ошибка под полем, название длиннее 24 символов (category_name_too_long)",
+    "placeholders": {
+      "max": { "type": "int" }
+    }
+  },
+  "categoryEmoji": "Эмодзи",
+  "@categoryEmoji": { "description": "Категория · редактор: подпись над сеткой эмодзи; подпись поля в шторке своего эмодзи" },
+  "categoryEmojiOther": "Другой эмодзи",
+  "@categoryEmojiOther": { "description": "TalkBack: плитка «➕» в сетке эмодзи, открывает шторку с эмодзи-клавиатурой" },
+  "categoryEmojiHint": "«➕» открывает системный выбор эмодзи.",
+  "@categoryEmojiHint": { "description": "Категория · редактор (44:4902): подпись внизу экрана" },
+  "categoryEmojiSheetTitle": "Свой эмодзи",
+  "@categoryEmojiSheetTitle": { "description": "Шторка по «➕»: заголовок, поле с системной клавиатурой для выбора эмодзи" },
+  "categoryEmojiSheetHint": "Открой эмодзи на клавиатуре и нажми на любой — он сразу станет значком категории.",
+  "@categoryEmojiSheetHint": { "description": "Шторка по «➕»: подсказка под полем" },
+  "categoryEmojiInvalid": "Это не эмодзи — выбери значок на эмодзи-клавиатуре",
+  "@categoryEmojiInvalid": { "description": "Шторка по «➕»: ошибка под полем, введена буква, цифра или пробел" },
+  "categoryColor": "Цвет",
+  "@categoryColor": { "description": "Категория · редактор: подпись над рядом из 10 цветов" },
+  "categoryColorName": "{color, select, green{Зелёный} orange{Оранжевый} yellow{Жёлтый} blue{Синий} red{Красный} purple{Фиолетовый} pink{Розовый} teal{Бирюзовый} indigo{Индиго} rose{Коралловый} other{Цвет}}",
+  "@categoryColorName": {
+    "description": "TalkBack: кружок цвета в редакторе категории, ключ цвета из CategoryColor",
+    "placeholders": {
+      "color": { "type": "String" }
+    }
+  },
+  "categorySave": "Сохранить",
+  "@categorySave": { "description": "Категория · редактор: кнопка, сохраняет и возвращает к списку категорий" },
+  "categorySaveFailed": "Не удалось сохранить категорию. Попробуй ещё раз",
+  "@categorySaveFailed": { "description": "Категория · редактор: снекбар, если категория не записалась в базу на телефоне" },
+  "categoryDelete": "Удалить категорию",
+  "@categoryDelete": { "description": "Категория · редактор: кнопка, открывает диалог «Удалить «…»?» (44:5010); у новой категории её нет" },
+  "categoryDeleteTitle": "Удалить «{name}»?",
+  "@categoryDeleteTitle": {
+    "description": "Диалог удаления категории (44:5010): заголовок с названием категории",
+    "placeholders": {
+      "name": { "type": "String", "example": "Кафе" }
+    }
+  },
+  "categoryDeleteMessage": "{count, plural, =0{Трат в этой категории нет. Отменить удаление нельзя.} one{{count} трата перейдёт в категорию «Другое». Сами траты и суммы не пропадут. Отменить удаление нельзя.} few{{count} траты перейдут в категорию «Другое». Сами траты и суммы не пропадут. Отменить удаление нельзя.} many{{count} трат перейдут в категорию «Другое». Сами траты и суммы не пропадут. Отменить удаление нельзя.} other{{count} траты перейдут в категорию «Другое». Сами траты и суммы не пропадут. Отменить удаление нельзя.}}",
+  "@categoryDeleteMessage": {
+    "description": "Диалог удаления категории (44:5010): сколько трат перейдёт в «Другое» (настоящее число из базы)",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categoryDeleteConfirm": "Удалить",
+  "@categoryDeleteConfirm": { "description": "Диалог удаления категории: красная кнопка, удаляет категорию и переносит траты в «Другое»" },
+  "categoryDeleteCancel": "Отмена",
+  "@categoryDeleteCancel": { "description": "Диалог удаления категории: закрыть диалог, ничего не удалять" },
+  "categoryDeleteFailed": "Не удалось удалить категорию. Попробуй ещё раз",
+  "@categoryDeleteFailed": { "description": "Категория · редактор: снекбар, если категория не удалилась или не удалось посчитать её траты" },
+  "categoryMissingTitle": "Категория не найдена",
+  "@categoryMissingTitle": { "description": "Редактор категории: категорию удалили или её нет на телефоне, заголовок" },
+  "categoryMissingText": "Возможно, её удалили — здесь или на другом телефоне.",
+  "@categoryMissingText": { "description": "Редактор категории: категорию удалили или её нет на телефоне, пояснение" },
+  "categoryLoadFailedTitle": "Не удалось открыть категорию",
+  "@categoryLoadFailedTitle": { "description": "Редактор категории: ошибка чтения категории из базы на телефоне, заголовок" },
+  "categoryLoadFailedText": "Вернись назад и попробуй ещё раз.",
+  "@categoryLoadFailedText": { "description": "Редактор категории: ошибка чтения категории из базы на телефоне, что делать" },
+  "categorySystemTitle": "«Другое» не меняется",
+  "@categorySystemTitle": { "description": "Редактор категории, открытый по адресу системной «Другое»: заголовок" },
+  "categorySystemText": "Сюда переходят траты удалённых категорий, поэтому её нельзя переименовать или удалить.",
+  "@categorySystemText": { "description": "Редактор категории, открытый по адресу системной «Другое»: пояснение" },
+  "categoryBack": "Назад",
+  "@categoryBack": { "description": "Редактор категории, когда категория не найдена, не открылась или это «Другое»: кнопка, возвращает к списку" },
   "searchTitle": "Поиск",
   "@searchTitle": { "description": "Заголовок экрана «Поиск» (46:5267), открывается иконкой поиска в шапке главной" },
 

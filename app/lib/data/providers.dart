@@ -5,6 +5,7 @@ import 'package:shared/shared.dart';
 import '../core/clock.dart';
 import 'current_user.dart';
 import 'db/app_database.dart';
+import 'queries/category_queries.dart';
 import 'queries/month_queries.dart';
 import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
@@ -120,6 +121,11 @@ final todayQueriesProvider = Provider<TodayQueries>(
   name: 'todayQueries',
 );
 
+final categoryQueriesProvider = Provider<CategoryQueries>(
+  (ref) => DriftCategoryQueries(ref.watch(appDatabaseProvider)),
+  name: 'categoryQueries',
+);
+
 final dayTotalsProvider = StreamProvider.autoDispose
     .family<Map<int, Money>, BudgetMonth>(
       (ref, arg) => ref
@@ -193,6 +199,20 @@ final categoriesProvider = StreamProvider.autoDispose
       (ref, budgetId) =>
           ref.watch(categoriesRepositoryProvider).watchByBudget(budgetId),
       name: 'categories',
+      retry: _noRetry,
+    );
+
+final categoryProvider = StreamProvider.autoDispose.family<Category?, String>(
+  (ref, id) => ref.watch(categoriesRepositoryProvider).watchById(id),
+  name: 'category',
+  retry: _noRetry,
+);
+
+final categoryExpenseCountsProvider = StreamProvider.autoDispose
+    .family<Map<String, int>, String>(
+      (ref, budgetId) =>
+          ref.watch(categoryQueriesProvider).watchExpenseCounts(budgetId),
+      name: 'categoryExpenseCounts',
       retry: _noRetry,
     );
 

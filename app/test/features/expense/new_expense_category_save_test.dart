@@ -7,7 +7,7 @@ import 'package:milionchik/features/expense/category_grid.dart';
 import 'package:milionchik/features/expense/new_expense_screen.dart';
 import 'package:milionchik/features/month/day_sheet.dart';
 import 'package:milionchik/features/month/today_block.dart';
-import 'package:milionchik/features/shell/categories_stub_screen.dart';
+import 'package:milionchik/features/categories/categories_screen.dart';
 import 'package:milionchik/ui/components/category_tile.dart';
 import 'package:milionchik/ui/components/snackbar.dart';
 import 'package:shared/shared.dart';
@@ -333,7 +333,7 @@ void main() {
   });
 
   testWidgets('«Настроить» над сеткой и в шторке «Все» открывает /categories '
-      '(заглушка «Категории»), «назад» возвращает к введённой сумме', (
+      '(экран «Категории»), «назад» возвращает к введённой сумме', (
     tester,
   ) async {
     final (h, _) = await _start(tester);
@@ -342,11 +342,11 @@ void main() {
 
     await tester.tap(inNewExpense(find.text('Настроить')));
     await tester.pumpAndSettle();
-    expect(find.byType(CategoriesStubScreen), findsOneWidget);
+    expect(find.byType(CategoriesScreen), findsOneWidget);
     expect(find.text('Категории'), findsOneWidget);
     expect(_location(tester), AppRoutes.categories);
     await h.systemBack();
-    expect(find.byType(CategoriesStubScreen), findsNothing);
+    expect(find.byType(CategoriesScreen), findsNothing);
     expect(amountText(tester), '1${nbspace}250');
 
     await tapCategory(tester, 'Все');
@@ -358,7 +358,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(AllCategoriesSheet), findsNothing);
-    expect(find.byType(CategoriesStubScreen), findsOneWidget);
+    expect(find.byType(CategoriesScreen), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Назад'));
     await tester.pumpAndSettle();
     expect(amountText(tester), '1${nbspace}250');

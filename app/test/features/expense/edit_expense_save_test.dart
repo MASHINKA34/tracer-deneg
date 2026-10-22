@@ -5,7 +5,7 @@ import 'package:milionchik/features/expense/edit_expense_screen.dart';
 import 'package:milionchik/features/expense/expense_comment_sheet.dart';
 import 'package:milionchik/features/expense/expense_date_sheet.dart';
 import 'package:milionchik/features/month/day_sheet.dart';
-import 'package:milionchik/features/shell/categories_stub_screen.dart';
+import 'package:milionchik/features/categories/categories_screen.dart';
 import 'package:milionchik/ui/components/category_tile.dart';
 import 'package:milionchik/ui/components/snackbar.dart';
 import 'package:shared/shared.dart';
@@ -235,7 +235,7 @@ void main() {
     await h.tapRow('Категория');
     await tester.tap(find.text('Настроить'));
     await tester.pumpAndSettle();
-    expect(find.byType(CategoriesStubScreen), findsOneWidget);
+    expect(find.byType(CategoriesScreen), findsOneWidget);
     await h.shell.systemBack();
     expect(h.rowLabel('Категория'), 'Категория, Продукты');
     expect(h.saveEnabled, isFalse);

@@ -7,11 +7,12 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
 
+import '../features/categories/categories_screen.dart';
+import '../features/categories/category_editor_screen.dart';
 import '../features/expense/edit_expense_screen.dart';
 import '../features/expense/new_expense_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/shell/app_shell.dart';
-import '../features/shell/categories_stub_screen.dart';
 import '../features/shell/search_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
@@ -29,12 +30,16 @@ abstract final class AppRoutes {
   static const String expense = '/expense/:id';
   static const String search = '/search';
   static const String categories = '/categories';
+  static const String newCategory = '/categories/new';
+  static const String category = '/categories/:id';
   static const String catalog = '/catalog';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
   static const String expenseName = 'expense';
   static const String categoriesName = 'categories';
+  static const String newCategoryName = 'newCategory';
+  static const String categoryName = 'category';
 
   static const String deepLinkScheme = 'milionchik';
   static const String addDeepLinkHost = 'add';
@@ -47,6 +52,9 @@ abstract final class AppRoutes {
   ).toString();
 
   static String expenseOf(String id) => '/expense/${Uri.encodeComponent(id)}';
+
+  static String categoryOf(String id) =>
+      '/categories/${Uri.encodeComponent(id)}';
 }
 
 const Duration newExpenseTransition = Duration(milliseconds: 300);
@@ -172,8 +180,26 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         path: AppRoutes.categories,
         name: AppRoutes.categoriesName,
         parentNavigatorKey: rootKey,
-        builder: (context, state) =>
-            const AppFrame(child: CategoriesStubScreen()),
+        builder: (context, state) => const AppFrame(child: CategoriesScreen()),
+        routes: [
+          GoRoute(
+            path: 'new',
+            name: AppRoutes.newCategoryName,
+            parentNavigatorKey: rootKey,
+            builder: (context, state) =>
+                const AppFrame(child: CategoryEditorScreen()),
+          ),
+          GoRoute(
+            path: ':id',
+            name: AppRoutes.categoryName,
+            parentNavigatorKey: rootKey,
+            builder: (context, state) => AppFrame(
+              child: CategoryEditorScreen(
+                categoryId: state.pathParameters['id'],
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.search,
