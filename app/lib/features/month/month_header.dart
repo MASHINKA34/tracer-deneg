@@ -247,11 +247,13 @@ class _DebugTodayLabel extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: Text(
-            text,
-            maxLines: 1,
-            softWrap: false,
-            style: AppText.micro.copyWith(color: colors.textInverse),
+          child: MediaQuery.withNoTextScaling(
+            child: Text(
+              text,
+              maxLines: 1,
+              softWrap: false,
+              style: AppText.micro.copyWith(color: colors.textInverse),
+            ),
           ),
         ),
       ),
