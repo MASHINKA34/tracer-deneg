@@ -25,7 +25,7 @@ final class SearchSeed {
   final Map<String, String> expenseIds;
 }
 
-typedef _Spend = (
+typedef SearchSpend = (
   String key,
   String category,
   int rubles,
@@ -34,7 +34,7 @@ typedef _Spend = (
   DateTime createdAt,
 );
 
-final List<_Spend> searchMockupSpends = [
+final List<SearchSpend> searchMockupSpends = [
   (
     'кофе 3.10',
     'Кафе',
