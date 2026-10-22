@@ -73,6 +73,31 @@ class AuthHarness {
     );
   }
 
+  Future<ApiResponse> send(
+    String method,
+    String path, {
+    Object? body,
+    String? rawBody,
+    String? bearer,
+  }) async {
+    final response = await handler(
+      Request(
+        method,
+        Uri.parse('http://localhost/api/v1$path'),
+        body: rawBody ?? (body == null ? '' : jsonEncode(body)),
+        headers: {
+          'content-type': 'application/json',
+          'authorization': ?(bearer == null ? null : 'Bearer $bearer'),
+        },
+      ),
+    );
+    return ApiResponse(
+      response.statusCode,
+      response.headers,
+      await response.readAsString(),
+    );
+  }
+
   Future<ApiResponse> register({
     String login = 'anna',
     String displayName = 'Аня',
