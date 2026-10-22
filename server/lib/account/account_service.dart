@@ -241,6 +241,13 @@ class AccountService {
         );
       }
 
+      final invites = await tx.execute(
+        r'UPDATE invites SET revoked_at = now() '
+        r'WHERE created_by = $1::uuid AND revoked_at IS NULL',
+        parameters: [userId],
+        what: 'revoke invites created by user',
+        logParams: {'userId': userId},
+      );
       final memberships = await tx.execute(
         r'SELECT b.id, (b.owner_id = m.user_id OR m.role = $2) '
         r'FROM budget_members m JOIN budgets b ON b.id = m.budget_id '
@@ -271,13 +278,6 @@ class AccountService {
         }
       }
 
-      final invites = await tx.execute(
-        r'UPDATE invites SET revoked_at = now() '
-        r'WHERE created_by = $1::uuid AND revoked_at IS NULL',
-        parameters: [userId],
-        what: 'revoke invites created by user',
-        logParams: {'userId': userId},
-      );
       final kept = await tx.execute(
         r'SELECT count(*)::int FROM expenses e '
         r'JOIN budgets b ON b.id = e.budget_id '
