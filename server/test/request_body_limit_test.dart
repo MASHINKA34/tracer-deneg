@@ -84,14 +84,9 @@ void main() {
     });
 
     test('без Content-Length чтение обрывается на лимите → 413', () async {
-      for (final path in ['/auth/login', '/auth/refresh', '/me']) {
+      for (final path in ['/auth/login', '/auth/refresh']) {
         final body = _CountingBody(5 * _limit);
         final response = await api.post(path, rawBody: body.stream());
-        if (path == '/me') {
-          expect(response.status, 404, reason: 'POST /me нет — тело не читали');
-          expect(body.emitted, 0);
-          continue;
-        }
         expect(response.status, 413, reason: '$path: $response');
         expect(response.errorCode, 'payload_too_large');
         expect(body.emitted, lessThanOrEqualTo(_limit + _CountingBody.chunk));
@@ -113,6 +108,31 @@ void main() {
       );
       expect(response.status, 401, reason: '$response');
       expect(response.errorCode, 'session_expired');
+    });
+
+    test('без Content-Length обработчик не читал тело (401 без токена) — '
+        'остаток вычитывается только до лимита', () async {
+      final body = _CountingBody(5 * _limit);
+      final response = await api.send('PATCH', '/me', rawBody: body.stream());
+      expect(response.status, 401, reason: '$response');
+      expect(response.errorCode, 'unauthorized');
+
+      await waitUntil(() => body.emitted > _limit);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(body.emitted, _limit + _CountingBody.chunk);
+      expect(
+        logs.lines,
+        contains(
+          allOf(
+            contains('WARN'),
+            contains(
+              '[limits] request body too large PATCH /api/v1/me '
+              'ip=$defaultTestIp contentLength=none read=${_limit + _CountingBody.chunk} '
+              'limit=$_limit → body unread by handler (status=401)',
+            ),
+          ),
+        ),
+      );
     });
   });
 
