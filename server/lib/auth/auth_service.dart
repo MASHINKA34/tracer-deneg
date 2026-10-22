@@ -611,6 +611,81 @@ class AuthService {
     );
   }
 
+  Future<String> reissueRecoveryCode({
+    required String userId,
+    required String sessionId,
+    required String password,
+  }) async {
+    final sw = Stopwatch()..start();
+    final rows = await db.execute(
+      r'SELECT password_hash FROM users '
+      r'WHERE id = $1::uuid AND deleted_at IS NULL',
+      parameters: [userId],
+      what: 'find password hash for recovery code reissue',
+      logParams: {'userId': userId},
+    );
+    if (rows.isEmpty) {
+      _rejectReissue(sw, AuthFailureReason.userDeleted, userId, sessionId);
+    }
+    final storedPasswordHash = rows.first.first! as String;
+    final matches = await hasher.verify(
+      password,
+      storedPasswordHash,
+      purpose: 'password',
+    );
+    if (!matches) {
+      _rejectReissue(
+        sw,
+        AuthFailureReason.badCredentials,
+        userId,
+        sessionId,
+        cause: 'password_mismatch',
+      );
+    }
+
+    final code = generateRecoveryCode(_random);
+    final recoveryHash = await hasher.hash(
+      normalizeRecoveryCode(code)!,
+      purpose: 'recovery_code',
+    );
+    final updated = await db.execute(
+      r'UPDATE users SET recovery_hash = $2 '
+      r'WHERE id = $1::uuid AND password_hash = $3 AND deleted_at IS NULL',
+      parameters: [userId, recoveryHash, storedPasswordHash],
+      what: 'replace recovery code',
+      logParams: {'userId': userId},
+    );
+    if (updated.affectedRows != 1) {
+      _rejectReissue(
+        sw,
+        AuthFailureReason.badCredentials,
+        userId,
+        sessionId,
+        cause: 'password_changed_concurrently',
+      );
+    }
+    _log.info(
+      'recovery code reissued userId=$userId sessionId=$sessionId '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+    return code;
+  }
+
+  Never _rejectReissue(
+    Stopwatch sw,
+    AuthFailureReason reason,
+    String userId,
+    String sessionId, {
+    String? cause,
+  }) {
+    _log.warning(
+      'recovery code reissue rejected reason=${reason.code} '
+      '${formatContext({'userId': userId, 'sessionId': sessionId, 'cause': cause})} '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+    throw AuthFailure(reason);
+  }
+
   Never _rejectRecovery(
     Stopwatch sw,
     String maskedLogin,

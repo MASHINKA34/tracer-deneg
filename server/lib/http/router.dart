@@ -20,6 +20,12 @@ Handler buildHandler({required Database db, required AuthService auth}) {
     ..post('/api/v1/auth/refresh', refreshHandler(auth))
     ..post('/api/v1/auth/recover', recoverHandler(auth))
     ..post(
+      '/api/v1/auth/recovery-code',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(recoveryCodeHandler(auth)),
+    )
+    ..post(
       '/api/v1/auth/logout',
       const Pipeline()
           .addMiddleware(requireAuth)

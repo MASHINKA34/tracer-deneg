@@ -161,6 +161,27 @@ Handler recoverHandler(AuthService auth) => (Request request) async {
   }
 };
 
+Handler recoveryCodeHandler(AuthService auth) => (Request request) async {
+  final context = authContextOf(request);
+  final body = await _readBody(request, 'recovery code reissue');
+  if (body.error != null) return body.error!;
+  final password = _string(body.fields!, 'password');
+  if (password == null) {
+    return _badFields('recovery code reissue', ['password']);
+  }
+
+  try {
+    final code = await auth.reissueRecoveryCode(
+      userId: context.userId,
+      sessionId: context.sessionId,
+      password: password,
+    );
+    return _noStore(jsonResponse(200, {'recoveryCode': code}));
+  } on AuthFailure catch (e) {
+    return _failure(e, badCredentialsMessage: 'Неверный пароль');
+  }
+};
+
 Handler logoutHandler(AuthService auth) => (Request request) async {
   final context = authContextOf(request);
   await auth.logout(userId: context.userId, sessionId: context.sessionId);
