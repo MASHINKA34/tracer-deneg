@@ -28,6 +28,7 @@ class AppDialog extends StatelessWidget {
     this.message,
     required this.primary,
     this.secondary,
+    this.textAlign = TextAlign.center,
   });
 
   final AppIcons? icon;
@@ -35,6 +36,7 @@ class AppDialog extends StatelessWidget {
   final String? message;
   final AppDialogAction primary;
   final AppDialogAction? secondary;
+  final TextAlign textAlign;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +81,7 @@ class AppDialog extends StatelessWidget {
                 header: true,
                 child: Text(
                   title,
-                  textAlign: TextAlign.center,
+                  textAlign: textAlign,
                   style: AppText.titleM.copyWith(color: colors.textPrimary),
                 ),
               ),
@@ -87,7 +89,7 @@ class AppDialog extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   message!,
-                  textAlign: TextAlign.center,
+                  textAlign: textAlign,
                   style: AppText.bodyM.copyWith(color: colors.textSecondary),
                 ),
               ],
