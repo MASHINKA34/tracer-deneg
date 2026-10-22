@@ -87,10 +87,24 @@ class RequestLimits {
           );
           return _payloadTooLarge(maxBodyBytes);
         }
+        final body = _LimitedBody(request.read(), maxBodyBytes);
         try {
-          return await inner(
-            request.change(body: _limited(request.read(), maxBodyBytes)),
+          final response = await inner(request.change(body: body.stream));
+          body.discardUnread(
+            onExceeded: (received) => _log.warning(
+              'request body too large ${request.method} '
+              '${request.requestedUri.path} '
+              'ip=${clientIp(request, trustedProxies)} contentLength=none '
+              'read=$received limit=$maxBodyBytes → body unread by handler '
+              '(status=${response.statusCode}), discarding stopped, '
+              'connection closed',
+            ),
+            onError: (error) => _log.fine(
+              'unread request body discard failed ${request.method} '
+              '${request.requestedUri.path}: ${describeError(error)}',
+            ),
           );
+          return response;
         } on RequestBodyTooLarge catch (e) {
           _log.warning(
             'request body too large ${request.method} '
@@ -239,40 +253,67 @@ String _sizeText(int bytes) => bytes % (1024 * 1024) == 0
     ? '${bytes ~/ (1024 * 1024)} МБ'
     : '${(bytes + 1023) ~/ 1024} КБ';
 
-Stream<List<int>> _limited(Stream<List<int>> source, int limit) {
-  StreamSubscription<List<int>>? subscription;
-  var received = 0;
-  var exceeded = false;
-  final controller = StreamController<List<int>>(sync: true);
-  controller
-    ..onListen = () {
-      subscription = source.listen(
-        (chunk) {
-          received += chunk.length;
-          if (received <= limit) {
-            controller.add(chunk);
-            return;
-          }
-          exceeded = true;
-          subscription?.pause();
-          controller.addError(RequestBodyTooLarge(limit, received));
-          unawaited(controller.close());
-        },
-        onError: controller.addError,
-        onDone: controller.close,
-      );
-    }
-    ..onPause = () {
-      subscription?.pause();
-    }
-    ..onResume = () {
-      if (!exceeded) subscription?.resume();
-    }
-    ..onCancel = () {
-      if (exceeded) return null;
-      return subscription?.cancel();
-    };
-  return controller.stream;
+class _LimitedBody {
+  _LimitedBody(this._source, this.limit) {
+    _controller = StreamController<List<int>>(
+      sync: true,
+      onListen: _forward,
+      onPause: () => _subscription?.pause(),
+      onResume: () {
+        if (!exceeded) _subscription?.resume();
+      },
+      onCancel: () {
+        if (exceeded) return null;
+        return _subscription?.cancel();
+      },
+    );
+  }
+
+  final Stream<List<int>> _source;
+  final int limit;
+  late final StreamController<List<int>> _controller;
+  StreamSubscription<List<int>>? _subscription;
+  int received = 0;
+  bool exceeded = false;
+
+  Stream<List<int>> get stream => _controller.stream;
+
+  void _forward() {
+    _subscription = _source.listen(
+      (chunk) {
+        if (_count(chunk)) {
+          _controller.add(chunk);
+          return;
+        }
+        _controller.addError(RequestBodyTooLarge(limit, received));
+        unawaited(_controller.close());
+      },
+      onError: _controller.addError,
+      onDone: _controller.close,
+    );
+  }
+
+  void discardUnread({
+    required void Function(int received) onExceeded,
+    required void Function(Object error) onError,
+  }) {
+    if (_subscription != null) return;
+    _subscription = _source.listen(
+      (chunk) {
+        if (!_count(chunk)) onExceeded(received);
+      },
+      onError: onError,
+      cancelOnError: true,
+    );
+  }
+
+  bool _count(List<int> chunk) {
+    received += chunk.length;
+    if (received <= limit) return true;
+    exceeded = true;
+    _subscription?.pause();
+    return false;
+  }
 }
 
 Response _tooMany(int seconds, String message) => errorResponse(
