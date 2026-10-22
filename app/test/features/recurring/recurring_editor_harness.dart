@@ -66,6 +66,8 @@ final class RecurringEditorHarness {
 
   Future<void> openRule(String title) async {
     await shell.tapTab('Регулярные');
+    await tester.ensureVisible(find.text(title));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
     expect(find.byType(RecurringEditorScreen), findsOneWidget);
