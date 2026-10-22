@@ -1,9 +1,11 @@
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import '../account/account_service.dart';
 import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
 import '../db/database.dart';
+import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'health.dart';
 import 'json.dart';
@@ -13,6 +15,7 @@ import 'middleware.dart';
 /// маршруты `/api/v1/…`.
 Handler buildHandler({required Database db, required AuthService auth}) {
   final requireAuth = authMiddleware(auth);
+  final account = AccountService(db: db, hasher: auth.hasher);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))
@@ -30,6 +33,18 @@ Handler buildHandler({required Database db, required AuthService auth}) {
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(logoutHandler(auth)),
+    )
+    ..get(
+      '/api/v1/me',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(meHandler(account)),
+    )
+    ..patch(
+      '/api/v1/me',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(updateMeHandler(account)),
     );
 
   return const Pipeline()
