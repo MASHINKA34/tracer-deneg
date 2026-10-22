@@ -122,6 +122,8 @@ final class RecurringDraft {
 
 enum RecurringSave { saved, invalid, noChanges, busy, missing, failed }
 
+enum RecurringDelete { deleted, busy, missing, failed }
+
 final class RecurringEditorController extends Notifier<RecurringDraft> {
   RecurringEditorController(this.ruleId);
 
@@ -336,6 +338,54 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
       );
       if (ref.mounted) state = state.copyWith(busy: false);
       return RecurringSave.failed;
+    }
+  }
+
+  Future<RecurringDelete> delete(RecurringRule rule) async {
+    if (state.busy) {
+      _log.fine(
+        'recurring delete id=${rule.id} ignored: previous save or delete is '
+        'in progress',
+      );
+      return RecurringDelete.busy;
+    }
+    state = state.copyWith(busy: true);
+    final sw = Stopwatch()..start();
+    try {
+      await ref.read(recurringRepositoryProvider).delete(rule.id);
+      _log.info(
+        'recurring rule deleted id=${rule.id} budgetId=${rule.budgetId} '
+        'day=${rule.dayOfMonth} from=${rule.startMonth} '
+        'in ${sw.elapsedMilliseconds}ms, created expenses stay, no new ones',
+      );
+      return RecurringDelete.deleted;
+    } on RepositoryException catch (e, st) {
+      if (ref.mounted) state = state.copyWith(busy: false);
+      if (e.failure == RepositoryFailure.notFound) {
+        _log.warning(
+          'recurring delete failed id=${rule.id} after '
+          '${sw.elapsedMilliseconds}ms: rule is already deleted or missing',
+        );
+        return RecurringDelete.missing;
+      }
+      _log.severe(
+        'recurring delete failed id=${rule.id} budgetId=${rule.budgetId} '
+        'after ${sw.elapsedMilliseconds}ms, nothing deleted: ${e.code}',
+        e,
+        st,
+      );
+      return RecurringDelete.failed;
+    } catch (e, st) {
+      final redacted = redactDbError(_unwrap(e));
+      _log.severe(
+        'recurring delete failed id=${rule.id} budgetId=${rule.budgetId} '
+        'after ${sw.elapsedMilliseconds}ms, nothing deleted: '
+        '${describeError(redacted)}',
+        redacted,
+        st,
+      );
+      if (ref.mounted) state = state.copyWith(busy: false);
+      return RecurringDelete.failed;
     }
   }
 }

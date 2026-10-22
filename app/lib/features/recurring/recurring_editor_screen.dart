@@ -12,6 +12,7 @@ import '../../data/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/button.dart';
 import '../../ui/components/category_badge.dart';
+import '../../ui/components/dialog.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/components/snackbar.dart';
 import '../../ui/components/text_field.dart';
@@ -82,6 +83,7 @@ class _RecurringEditorScreenState extends ConsumerState<RecurringEditorScreen> {
   String _closedBy = 'back';
   bool _filled = false;
   String? _warnedCategory;
+  RecurringRule? _deleting;
 
   String? get _id => widget.ruleId;
 
@@ -141,6 +143,11 @@ class _RecurringEditorScreenState extends ConsumerState<RecurringEditorScreen> {
           'from=${rule.startMonth} kopecks=${rule.amount.kopecks} '
           'titleLength=${textLength(rule.title)} '
           'in ${_sinceOpen.elapsedMilliseconds}ms',
+        );
+      case AsyncData() when _deleting != null:
+        _log.fine(
+          'recurring editor $_target: rule deleted from this screen, keeping '
+          'the form until the screen is closed',
         );
       case AsyncData():
         if (before != null && !before.isDeleted) {
@@ -301,6 +308,53 @@ class _RecurringEditorScreenState extends ConsumerState<RecurringEditorScreen> {
     }
   }
 
+  Future<void> _delete(RecurringRule rule) async {
+    if (_deleting != null ||
+        ref.read(recurringEditorControllerProvider(_id)).busy) {
+      _log.fine('recurring delete tap $_target ignored: already in progress');
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    _log.fine('recurring delete tap $_target → confirm dialog');
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showAppDialog<bool>(
+      context,
+      builder: (context) => AppDialog(
+        title: l10n.recurringDeleteTitle,
+        message: l10n.recurringDeleteMessage(rule.title),
+        primary: AppDialogAction(
+          l10n.recurringDeleteConfirm,
+          () => Navigator.of(context).pop(true),
+          destructive: true,
+        ),
+        secondary: AppDialogAction(
+          l10n.recurringDeleteCancel,
+          () => Navigator.of(context).pop(false),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (confirmed != true) {
+      _log.fine(
+        'recurring delete $_target dialog '
+        '${confirmed == null ? 'dismissed' : '→ cancel'}: nothing deleted',
+      );
+      return;
+    }
+    setState(() => _deleting = rule);
+    final result = await _controller.delete(rule);
+    if (!mounted) return;
+    switch (result) {
+      case RecurringDelete.deleted:
+        _leave('delete');
+      case RecurringDelete.failed:
+        setState(() => _deleting = null);
+        showAppSnackbar(context, text: l10n.recurringDeleteFailed);
+      case RecurringDelete.busy || RecurringDelete.missing:
+        setState(() => _deleting = null);
+    }
+  }
+
   Category? _categoryOf(
     String? categoryId,
     String budgetId,
@@ -334,7 +388,10 @@ class _RecurringEditorScreenState extends ConsumerState<RecurringEditorScreen> {
     if (id == null) {
       body = _form(context, null, ref.watch(selectedBudgetIdProvider).value);
     } else {
+      final deleting = _deleting;
       switch (ref.watch(recurringRuleWithDeletedProvider(id))) {
+        case _ when deleting != null:
+          body = _form(context, deleting, deleting.budgetId);
         case AsyncError():
           body = _MessageView(
             title: l10n.recurringLoadFailedTitle,
@@ -511,8 +568,25 @@ class _RecurringEditorScreenState extends ConsumerState<RecurringEditorScreen> {
           AppButton(
             label: l10n.recurringEditorSave,
             expand: true,
-            onPressed: draft.busy ? null : () => _save(original, budgetId),
+            onPressed: draft.busy || _deleting != null
+                ? null
+                : () => _save(original, budgetId),
           ),
+          if (original != null) ...[
+            const SizedBox(height: recurringEditorGap),
+            AppButton(
+              label: l10n.recurringEditorDelete,
+              type: AppButtonType.text,
+              destructive: true,
+              expand: true,
+              onPressed: () => _delete(original),
+            ),
+            const SizedBox(height: recurringEditorGap),
+            Text(
+              l10n.recurringEditorKeepHint,
+              style: AppText.caption.copyWith(color: colors.textTertiary),
+            ),
+          ],
         ],
       ),
     );
