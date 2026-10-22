@@ -70,6 +70,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   StatsMode _mode = StatsMode.month;
   Stopwatch _yearSw = Stopwatch()..start();
   bool _yearLoading = true;
+  ProviderSubscription<AsyncValue<StatsYear>>? _yearSub;
   ({String? budgetId, int year, int months, int categories, int expenses})?
   _yearShown;
   String? _yearFailed;
@@ -209,10 +210,23 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         'year=${ref.read(statsYearControllerProvider)} month=$month',
       );
     }
+    _setMode(mode);
+  }
+
+  void _setMode(StatsMode mode) {
+    _yearSub?.close();
+    _yearSub = null;
     _yearShown = null;
     _yearFailed = null;
     _yearLoading = true;
     _yearSw = Stopwatch()..start();
+    if (mode == StatsMode.year) {
+      _yearSub = ref.listenManual(
+        statsYearProvider,
+        (previous, next) => _onYearData(next),
+        fireImmediately: true,
+      );
+    }
     setState(() => _mode = mode);
   }
 
@@ -322,7 +336,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     }
     _log.fine('stats year bar tap month=$month → month mode');
     ref.read(statsMonthControllerProvider.notifier).open(month, by: 'year-bar');
-    setState(() => _mode = StatsMode.month);
+    _setMode(StatsMode.month);
   }
 
   void _openYearCategory(StatsYear stats, StatsCategory category, int index) {
@@ -364,7 +378,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       final year = ref.watch(statsYearControllerProvider);
       final today = ref.watch(clockProvider).today();
       final yearValue = ref.watch(statsYearProvider);
-      _onYearData(yearValue);
       period = _YearPeriod(
         year: year,
         onPrevious: year > 1 ? () => _changeYear(year, -1) : null,

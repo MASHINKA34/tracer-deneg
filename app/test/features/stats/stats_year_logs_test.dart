@@ -23,6 +23,8 @@ import 'stats_year_fixture.dart';
 
 const String _secret = 'Подарок для Ани';
 
+const int _idle = 600;
+
 final class _BrokenYearQueries implements StatsQueries {
   _BrokenYearQueries(this._real);
 
@@ -60,7 +62,8 @@ List<String> _stats(Iterable<LogRecord> records, Level level) => [
 void main() {
   testWidgets('год: открытие, ‹ на пустой 2025, новая трата, › и тап по '
       'сентябрю — debug [stats] с годом, бюджетом, числом месяцев, категорий '
-      'и трат и мс; сумм и комментариев в логах нет', (tester) async {
+      'и трат и мс (отсчёт с нажатия ‹, а не с открытия года); сумм и '
+      'комментариев в логах нет', (tester) async {
     await loadTestFonts();
     final db = openTestDatabase();
     final budget = (await tester.runAsync(() => seedMockupYear(db)))!;
@@ -72,6 +75,9 @@ void main() {
       find.descendant(of: find.byType(StatsScreen), matching: find.text('Год')),
     );
     await tester.pumpAndSettle();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: _idle)),
+    );
     await tester.tap(find.bySemanticsLabel('Предыдущий год'));
     await tester.pumpAndSettle();
     await tester.runAsync(
@@ -130,6 +136,11 @@ void main() {
         'stats month 2026-10 → 2026-09 by=year-bar',
       ]),
     );
+    final built2025 = RegExp(r'^stats year built year=2025 .* in (\d+)ms$')
+        .firstMatch(
+          debug.firstWhere((m) => m.startsWith('stats year built year=2025')),
+        );
+    expect(int.parse(built2025!.group(1)!), lessThan(_idle));
     expect(_stats(h.records, Level.SEVERE), isEmpty);
     expect(_stats(h.records, Level.WARNING), isEmpty);
     expect(_stats(h.records, Level.INFO), isEmpty);
