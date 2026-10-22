@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
+import 'package:milionchik/features/recurring/recurring_screen.dart';
 import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/features/stats/stats_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
@@ -38,7 +39,7 @@ void main() {
 
     await h.tapTab('Регулярные');
     expect(h.activeTab, AppNavTab.recurring);
-    expect(stubTitle('Регулярные'), findsOneWidget);
+    expect(find.byType(RecurringScreen), findsOneWidget);
 
     await h.tapTab('Профиль');
     expect(h.activeTab, AppNavTab.profile);

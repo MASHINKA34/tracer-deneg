@@ -14,8 +14,10 @@ import '../features/expense/new_expense_screen.dart';
 import '../features/export/export_profile_entry.dart';
 import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
+import '../features/recurring/recurring_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/app_shell.dart';
+import '../features/shell/recurring_editor_stub_screen.dart';
 import '../features/shell/tab_stub_screen.dart';
 import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
@@ -28,6 +30,8 @@ abstract final class AppRoutes {
   static const String month = '/month';
   static const String stats = '/stats';
   static const String recurring = '/recurring';
+  static const String newRecurring = '/recurring/new';
+  static const String recurringRule = '/recurring/:id';
   static const String profile = '/profile';
   static const String newExpense = '/expense/new';
   static const String expense = '/expense/:id';
@@ -45,6 +49,8 @@ abstract final class AppRoutes {
   static const String newCategoryName = 'newCategory';
   static const String categoryName = 'category';
   static const String exportName = 'export';
+  static const String newRecurringName = 'newRecurring';
+  static const String recurringRuleName = 'recurringRule';
 
   static const String deepLinkScheme = 'milionchik';
   static const String addDeepLinkHost = 'add';
@@ -64,6 +70,9 @@ abstract final class AppRoutes {
 
   static String categoryOf(String id) =>
       '/categories/${Uri.encodeComponent(id)}';
+
+  static String recurringRuleOf(String id) =>
+      '/recurring/${Uri.encodeComponent(id)}';
 
   static String searchFor({
     required String categoryId,
@@ -210,8 +219,26 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
               GoRoute(
                 path: AppRoutes.recurring,
                 name: 'recurring',
-                builder: (context, state) =>
-                    TabStubScreen(title: (l10n) => l10n.recurringTitle),
+                builder: (context, state) => const RecurringScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    name: AppRoutes.newRecurringName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        const AppFrame(child: RecurringEditorStubScreen()),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    name: AppRoutes.recurringRuleName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => AppFrame(
+                      child: RecurringEditorStubScreen(
+                        ruleId: state.pathParameters['id'],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

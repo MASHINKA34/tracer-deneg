@@ -35,6 +35,7 @@ class ExpenseRow extends StatelessWidget {
     this.subtitle,
     this.author,
     this.onTap,
+    this.subtitleColor,
   });
 
   final String emoji;
@@ -50,6 +51,8 @@ class ExpenseRow extends StatelessWidget {
   final String amount;
   final ExpenseAuthor? author;
   final VoidCallback? onTap;
+
+  final Color? subtitleColor;
 
   /// Строк у названия и описания: как в Figma — одна с многоточием; при
   /// крупном шрифте — до трёх, чтобы короткие названия не обрезались.
@@ -67,7 +70,9 @@ class ExpenseRow extends StatelessWidget {
     final colors = context.colors;
     final lines = _maxLines(context);
     final titleStyle = AppText.labelM.copyWith(color: colors.textPrimary);
-    final subtitleStyle = AppText.caption.copyWith(color: colors.textTertiary);
+    final subtitleStyle = AppText.caption.copyWith(
+      color: subtitleColor ?? colors.textTertiary,
+    );
     final amountStyle = AppText.numericM.copyWith(color: colors.textPrimary);
 
     final texts = [

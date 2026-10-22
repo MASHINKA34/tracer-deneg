@@ -117,6 +117,98 @@
   "@statsTitle": { "description": "Заголовок вкладки «Статистика» (12:820)" },
   "recurringTitle": "Регулярные",
   "@recurringTitle": { "description": "Заголовок вкладки «Регулярные» (12:1047)" },
+  "recurringMonthly": "Каждый месяц",
+  "@recurringMonthly": { "description": "Регулярные (12:1047): подпись над суммой всех правил бюджета в карточке" },
+  "recurringSummary": "{count, plural, one{{count} платёж} few{{count} платежа} many{{count} платежей} other{{count} платежа}}. Сами появляются в календаре в день списания",
+  "@recurringSummary": {
+    "description": "Регулярные (12:1047): пояснение под суммой в карточке; count — число правил бюджета",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "recurringUpcoming": "Скоро",
+  "@recurringUpcoming": { "description": "Регулярные (12:1047): заголовок списка правил, ещё не списанных в этом месяце" },
+  "recurringCharged": "Уже списано в {month}",
+  "@recurringCharged": {
+    "description": "Регулярные (12:1047): заголовок списка правил, по которым трата этого месяца уже есть; month — месяц в предложном падеже (monthPrepositional)",
+    "placeholders": {
+      "month": { "type": "String", "example": "октябре" }
+    }
+  },
+  "recurringEvery": "каждое {day}-е",
+  "@recurringEvery": {
+    "description": "Регулярные (12:1047): день списания правила в строке «Скоро»",
+    "placeholders": {
+      "day": { "type": "int" }
+    }
+  },
+  "recurringInDays": "через {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@recurringInDays": {
+    "description": "Регулярные (12:1047): сколько дней до ближайшего списания в строке «Скоро»",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "recurringUpcomingSubtitle": "{every} · {inDays}",
+  "@recurringUpcomingSubtitle": {
+    "description": "Регулярные (12:1047): подзаголовок строки «Скоро» — «каждое 24-е · через 5 дней»",
+    "placeholders": {
+      "every": { "type": "String", "example": "каждое 24-е" },
+      "inDays": { "type": "String", "example": "через 5 дней" }
+    }
+  },
+  "recurringChargedOn": "✓ {date}",
+  "@recurringChargedOn": {
+    "description": "Регулярные (12:1047): подзаголовок строки «Уже списано» зелёным — дата траты этого месяца",
+    "placeholders": {
+      "date": { "type": "String", "example": "3 октября" }
+    }
+  },
+  "recurringAdd": "Добавить регулярную трату",
+  "@recurringAdd": { "description": "Регулярные · пусто (47:5951): кнопка; TalkBack: кнопка «+» в шапке вкладки «Регулярные»" },
+  "recurringEmptyTitle": "Пока нет регулярных трат",
+  "@recurringEmptyTitle": { "description": "Регулярные · пусто (47:5951): заголовок" },
+  "recurringEmptyText": "Добавь подписки, аренду, связь — они будут появляться в календаре сами в нужный день.",
+  "@recurringEmptyText": { "description": "Регулярные · пусто (47:5951): пояснение под заголовком" },
+  "recurringLoadFailed": "Не удалось загрузить регулярные траты. Открой вкладку позже.",
+  "@recurringLoadFailed": { "description": "Регулярные: ошибка чтения правил или трат из базы на телефоне, текст вместо списка" },
+  "recurringEditorTitle": "Регулярная трата",
+  "@recurringEditorTitle": { "description": "Заголовок редактора регулярной траты (44:5102); пока заглушка, экран делает промт редактора" },
+  "a11yRecurringMonthly": "Каждый месяц {amount}. {summary}",
+  "@a11yRecurringMonthly": {
+    "description": "TalkBack: карточка суммы на вкладке «Регулярные»; amount — сумма словами, summary — recurringSummary",
+    "placeholders": {
+      "amount": { "type": "String", "example": "4498 рублей" },
+      "summary": { "type": "String" }
+    }
+  },
+  "a11ySection": "{title}, {amount}",
+  "@a11ySection": {
+    "description": "TalkBack: заголовок списка с суммой («Скоро, 498 рублей»)",
+    "placeholders": {
+      "title": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
+  "a11yRecurringUpcoming": "{title}, {every}, {inDays}, {amount}",
+  "@a11yRecurringUpcoming": {
+    "description": "TalkBack: строка «Скоро» на вкладке «Регулярные»; amount — сумма словами",
+    "placeholders": {
+      "title": { "type": "String" },
+      "every": { "type": "String" },
+      "inDays": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
+  "a11yRecurringCharged": "{title}, списано {date}, {amount}",
+  "@a11yRecurringCharged": {
+    "description": "TalkBack: строка «Уже списано» на вкладке «Регулярные»; amount — сумма словами",
+    "placeholders": {
+      "title": { "type": "String" },
+      "date": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
   "profileTitle": "Профиль",
   "@profileTitle": { "description": "Заголовок вкладки «Профиль» (13:975)" },
   "newExpenseTitle": "Новая трата",
