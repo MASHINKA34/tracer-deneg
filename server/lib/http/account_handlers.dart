@@ -130,6 +130,28 @@ Handler updateMeHandler(AccountService account) => (Request request) async {
   }
 };
 
+Handler deleteAccountHandler(AccountService account) =>
+    (Request request) async {
+      const operation = 'account deletion';
+      final context = authContextOf(request);
+      final body = await _readBody(request, operation, context.userId);
+      if (body.error != null) return body.error!;
+      final password = body.fields!['password'];
+      if (password is! String || password.isEmpty) {
+        return _badFields(operation, context.userId, ['password']);
+      }
+      try {
+        await account.deleteAccount(
+          userId: context.userId,
+          sessionId: context.sessionId,
+          password: password,
+        );
+        return Response(204);
+      } on AuthFailure catch (e) {
+        return _failure(e);
+      }
+    };
+
 class _Body {
   const _Body.ok(this.fields) : error = null;
   const _Body.failed(this.error) : fields = null;

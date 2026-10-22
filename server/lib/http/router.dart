@@ -45,6 +45,12 @@ Handler buildHandler({required Database db, required AuthService auth}) {
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(updateMeHandler(account)),
+    )
+    ..delete(
+      '/api/v1/account',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(deleteAccountHandler(account)),
     );
 
   return const Pipeline()
