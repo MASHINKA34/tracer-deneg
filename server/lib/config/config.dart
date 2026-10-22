@@ -1,6 +1,8 @@
 import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 
+import '../limits/trusted_proxies.dart';
+
 /// Конфиг не прошёл проверку. [problems] — все найденные ошибки сразу,
 /// чтобы не чинить их по одной за запуск.
 class ConfigException implements Exception {
@@ -96,6 +98,7 @@ class ServerConfig {
     required this.logLevel,
     required this.jwtSecret,
     this.migrationsDir = defaultMigrationsDir,
+    this.trustedProxies = TrustedProxies.none,
   });
 
   static const defaultHost = '0.0.0.0';
@@ -109,6 +112,7 @@ class ServerConfig {
   final Level logLevel;
   final String jwtSecret;
   final String migrationsDir;
+  final TrustedProxies trustedProxies;
 
   /// Разбирает и проверяет конфиг. [environment] (переменные окружения)
   /// важнее [dotEnv] (значения из файла `.env`).
@@ -177,6 +181,13 @@ class ServerConfig {
       );
     }
 
+    var trustedProxies = TrustedProxies.none;
+    try {
+      trustedProxies = TrustedProxies.parse(value('TRUSTED_PROXIES'));
+    } on FormatException catch (e) {
+      problems.add('TRUSTED_PROXIES is invalid: ${e.message}');
+    }
+
     if (problems.isNotEmpty) throw ConfigException(problems);
     return ServerConfig(
       host: host,
@@ -185,6 +196,7 @@ class ServerConfig {
       logLevel: logLevel,
       jwtSecret: jwtSecret!,
       migrationsDir: value('MIGRATIONS_DIR') ?? defaultMigrationsDir,
+      trustedProxies: trustedProxies,
     );
   }
 
@@ -196,5 +208,6 @@ class ServerConfig {
     'db': database.masked,
     'jwtSecret': maskToken(jwtSecret),
     'migrations': migrationsDir,
+    'trustedProxies': trustedProxies.describe(),
   };
 }
