@@ -217,7 +217,9 @@ class AccountService {
       );
     }
 
+    final steps = <String>[];
     final deletion = await db.transaction('delete account', (tx) async {
+      steps.clear();
       final locked = await tx.execute(
         r'SELECT 1 FROM users WHERE id = $1::uuid AND deleted_at IS NULL '
         r'AND password_hash = $2 FOR UPDATE',
@@ -235,10 +237,7 @@ class AccountService {
         logParams: {'userId': userId},
       );
       for (final row in personal) {
-        _log.info(
-          'account deletion: personal budget deleted budgetId=${row[0]} '
-          'userId=$userId',
-        );
+        steps.add('personal budget deleted budgetId=${row[0]} userId=$userId');
       }
 
       final invites = await tx.execute(
@@ -267,6 +266,7 @@ class AccountService {
           budgetId: row[0]! as String,
           userId: userId,
           isOwner: row[1]! as bool,
+          steps: steps,
         );
         switch (exit) {
           case _SharedExit.deleted:
@@ -334,6 +334,9 @@ class AccountService {
       );
     }
 
+    for (final step in steps) {
+      _log.info('account deletion: $step');
+    }
     final budgetsDeleted =
         deletion.personalBudgetsDeleted + deletion.sharedBudgetsDeleted;
     _log.info(
@@ -356,6 +359,7 @@ class AccountService {
     required String budgetId,
     required String userId,
     required bool isOwner,
+    required List<String> steps,
   }) async {
     final context = {'budgetId': budgetId, 'userId': userId};
     final heirs = await tx.execute(
@@ -401,8 +405,8 @@ class AccountService {
         what: 'revoke invites of deleted shared budget',
         logParams: {'budgetId': budgetId},
       );
-      _log.info(
-        'account deletion: shared budget deleted, no members left '
+      steps.add(
+        'shared budget deleted, no members left '
         'budgetId=$budgetId userId=$userId '
         'categories=${counts['categories']} expenses=${counts['expenses']} '
         'recurring=${counts['recurring_rules']}',
@@ -418,8 +422,8 @@ class AccountService {
         what: 'leave shared budget',
         logParams: context,
       );
-      _log.info(
-        'account deletion: left shared budget budgetId=$budgetId '
+      steps.add(
+        'left shared budget budgetId=$budgetId '
         'userId=$userId role=${MemberRole.member.name}',
       );
       return _SharedExit.left;
@@ -448,8 +452,8 @@ class AccountService {
       what: 'transfer shared budget ownership',
       logParams: transferContext,
     );
-    _log.info(
-      'account deletion: shared budget ownership transferred '
+    steps.add(
+      'shared budget ownership transferred '
       'budgetId=$budgetId userId=$userId newOwnerId=$heirId',
     );
     return _SharedExit.transferred;

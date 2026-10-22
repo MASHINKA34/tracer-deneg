@@ -137,6 +137,7 @@ void main() {
     );
     expect(logs.text, contains('23514'));
     expect(logs.text, contains('transaction delete account rolled back'));
+    expect(logs.text, isNot(contains('account deletion: personal budget')));
     expect(
       await api.count(
         r'SELECT count(*)::int FROM budgets WHERE owner_id = $1::uuid',
