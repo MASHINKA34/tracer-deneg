@@ -22,7 +22,12 @@ const String personalBudgetEmoji = '👛';
 
 enum AuthFailureReason {
   loginTaken('login_taken'),
-  badCredentials('bad_credentials');
+  badCredentials('bad_credentials'),
+  tokenReused('token_reused'),
+  sessionRevoked('session_revoked'),
+  sessionExpired('session_expired'),
+  userDeleted('user_deleted'),
+  unknownToken('unknown_token');
 
   const AuthFailureReason(this.code);
 
@@ -50,6 +55,34 @@ class IssuedSession {
   final String sessionId;
   final String accessToken;
   final String refreshToken;
+}
+
+class RefreshedTokens {
+  const RefreshedTokens({
+    required this.userId,
+    required this.sessionId,
+    required this.accessToken,
+    required this.refreshToken,
+  });
+
+  final String userId;
+  final String sessionId;
+  final String accessToken;
+  final String refreshToken;
+}
+
+class _RefreshOutcome {
+  const _RefreshOutcome(
+    this.userId,
+    this.sessionId, {
+    this.failure,
+    this.alreadyRevoked = false,
+  });
+
+  final String? userId;
+  final String? sessionId;
+  final AuthFailureReason? failure;
+  final bool alreadyRevoked;
 }
 
 class Registration {
@@ -281,6 +314,124 @@ class AuthService {
       sessionId: sessionId,
       accessToken: accessTokens.issue(userId: userId, sessionId: sessionId),
       refreshToken: refreshToken,
+    );
+  }
+
+  Future<RefreshedTokens> refresh(String refreshToken) async {
+    final sw = Stopwatch()..start();
+    final presentedHash = hashRefreshToken(refreshToken);
+    final nextToken = newRefreshToken(_random);
+    final outcome = await db.transaction('refresh', (tx) async {
+      final current = await tx.execute(
+        r'SELECT s.id, s.user_id, s.revoked_at IS NOT NULL, '
+        r'(s.expires_at <= now()), (u.deleted_at IS NOT NULL) '
+        r'FROM sessions s JOIN users u ON u.id = s.user_id '
+        r'WHERE s.refresh_hash = $1 FOR UPDATE OF s',
+        parameters: [presentedHash],
+        what: 'find session by refresh token',
+      );
+      if (current.isNotEmpty) {
+        final row = current.first;
+        final sessionId = row[0]! as String;
+        final userId = row[1]! as String;
+        final failure = row[2] == true
+            ? AuthFailureReason.sessionRevoked
+            : row[3] == true
+            ? AuthFailureReason.sessionExpired
+            : row[4] == true
+            ? AuthFailureReason.userDeleted
+            : null;
+        if (failure != null) {
+          return _RefreshOutcome(userId, sessionId, failure: failure);
+        }
+        await tx.execute(
+          r'INSERT INTO used_refresh_tokens (refresh_hash, session_id) '
+          r'VALUES ($1, $2::uuid)',
+          parameters: [presentedHash, sessionId],
+          what: 'remember rotated refresh token',
+          logParams: {'sessionId': sessionId},
+        );
+        await tx.execute(
+          r'UPDATE sessions SET refresh_hash = $1, last_used_at = now(), '
+          r'expires_at = now() + make_interval(days => $2::int) '
+          r'WHERE id = $3::uuid',
+          parameters: [
+            hashRefreshToken(nextToken),
+            refreshTokenTtl.inDays,
+            sessionId,
+          ],
+          what: 'rotate refresh token',
+          logParams: {
+            'sessionId': sessionId,
+            'ttlDays': refreshTokenTtl.inDays,
+          },
+        );
+        return _RefreshOutcome(userId, sessionId);
+      }
+
+      final used = await tx.execute(
+        r'SELECT s.id, s.user_id, s.revoked_at IS NOT NULL '
+        r'FROM used_refresh_tokens t JOIN sessions s ON s.id = t.session_id '
+        r'WHERE t.refresh_hash = $1 FOR UPDATE OF s',
+        parameters: [presentedHash],
+        what: 'find session by rotated refresh token',
+      );
+      if (used.isEmpty) {
+        return const _RefreshOutcome(
+          null,
+          null,
+          failure: AuthFailureReason.unknownToken,
+        );
+      }
+      final row = used.first;
+      final sessionId = row[0]! as String;
+      final userId = row[1]! as String;
+      final alreadyRevoked = row[2] == true;
+      if (!alreadyRevoked) {
+        await tx.execute(
+          r'UPDATE sessions SET revoked_at = now() WHERE id = $1::uuid',
+          parameters: [sessionId],
+          what: 'revoke session after refresh token reuse',
+          logParams: {'sessionId': sessionId},
+        );
+      }
+      return _RefreshOutcome(
+        userId,
+        sessionId,
+        failure: AuthFailureReason.tokenReused,
+        alreadyRevoked: alreadyRevoked,
+      );
+    });
+
+    final failure = outcome.failure;
+    if (failure != null) {
+      final context = [
+        'reason=${failure.code}',
+        if (outcome.userId != null) 'userId=${outcome.userId}',
+        if (outcome.sessionId != null) 'sessionId=${outcome.sessionId}',
+        if (failure == AuthFailureReason.tokenReused)
+          outcome.alreadyRevoked
+              ? '→ session was already revoked'
+              : '→ session revoked',
+      ].join(' ');
+      _log.log(
+        failure == AuthFailureReason.tokenReused ? Level.WARNING : Level.INFO,
+        'refresh rejected $context in ${sw.elapsedMilliseconds}ms',
+      );
+      throw AuthFailure(failure);
+    }
+
+    final userId = outcome.userId!;
+    final sessionId = outcome.sessionId!;
+    _log.info(
+      'refresh ok userId=$userId sessionId=$sessionId '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+    return RefreshedTokens(
+      userId: userId,
+      sessionId: sessionId,
+      accessToken: accessTokens.issue(userId: userId, sessionId: sessionId),
+      refreshToken: nextToken,
     );
   }
 

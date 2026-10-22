@@ -91,6 +91,27 @@ Handler loginHandler(AuthService auth) => (Request request) async {
   }
 };
 
+Handler refreshHandler(AuthService auth) => (Request request) async {
+  final body = await _readBody(request, 'refresh');
+  if (body.error != null) return body.error!;
+  final refreshToken = _string(body.fields!, 'refreshToken');
+  if (refreshToken == null || refreshToken.isEmpty) {
+    return _badFields('refresh', ['refreshToken']);
+  }
+
+  try {
+    final tokens = await auth.refresh(refreshToken);
+    return _noStore(
+      jsonResponse(200, {
+        'accessToken': tokens.accessToken,
+        'refreshToken': tokens.refreshToken,
+      }),
+    );
+  } on AuthFailure catch (e) {
+    return _failure(e);
+  }
+};
+
 class _Body {
   const _Body.ok(this.fields) : error = null;
   const _Body.failed(this.error) : fields = null;
@@ -169,6 +190,15 @@ Response _failure(AuthFailure failure) => switch (failure.reason) {
     401,
     ApiErrorCode.badCredentials.code,
     'Неверный логин или пароль',
+  ),
+  AuthFailureReason.tokenReused ||
+  AuthFailureReason.sessionRevoked ||
+  AuthFailureReason.sessionExpired ||
+  AuthFailureReason.userDeleted ||
+  AuthFailureReason.unknownToken => errorResponse(
+    401,
+    ApiErrorCode.sessionExpired.code,
+    'Сессия закончилась, войди снова',
   ),
 };
 

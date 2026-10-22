@@ -20,6 +20,7 @@ const _tables = {
   'recurring_rules',
   'push_batches',
   'client_errors',
+  'used_refresh_tokens',
 };
 
 const _syncTables = {

@@ -43,11 +43,12 @@ void main() {
       final db = await openScratchDatabase();
 
       final first = await Migrator(db, directory: _migrations).run();
-      expect(first.applied, ['0001_init.sql']);
+      expect(first.applied, ['0001_init.sql', '0002_used_refresh_tokens.sql']);
       expect(first.alreadyApplied, 0);
-      expect(first.schemaVersion, 1);
+      expect(first.schemaVersion, 2);
       expect(await _appliedRows(db), [
         [1, '0001_init.sql'],
+        [2, '0002_used_refresh_tokens.sql'],
       ]);
       expect(
         logs.text,
@@ -71,17 +72,17 @@ void main() {
       logs.clear();
       final second = await Migrator(db, directory: _migrations).run();
       expect(second.applied, isEmpty);
-      expect(second.alreadyApplied, 1);
-      expect(second.schemaVersion, 1);
+      expect(second.alreadyApplied, 2);
+      expect(second.schemaVersion, 2);
       expect(
         logs.text,
         contains(
-          'INFO  [db] migrations: nothing to apply, 1 already applied, '
-          'schema version 1 (0001_init.sql)',
+          'INFO  [db] migrations: nothing to apply, 2 already applied, '
+          'schema version 2 (0002_used_refresh_tokens.sql)',
         ),
       );
       expect(logs.text, isNot(contains('applying')));
-      expect(await _appliedRows(db), hasLength(1));
+      expect(await _appliedRows(db), hasLength(2));
     });
 
     test('файлы применяются по номеру, а не по порядку в папке', () async {
@@ -204,12 +205,12 @@ void main() {
       expect(
         results.map((r) => r.applied).toList(),
         unorderedEquals([
-          ['0001_init.sql'],
+          ['0001_init.sql', '0002_used_refresh_tokens.sql'],
           <String>[],
         ]),
       );
-      expect(results.map((r) => r.schemaVersion), everyElement(1));
-      expect(await _appliedRows(first), hasLength(1));
+      expect(results.map((r) => r.schemaVersion), everyElement(2));
+      expect(await _appliedRows(first), hasLength(2));
       expect(logs.text, isNot(contains('ERROR')));
     });
 
@@ -232,7 +233,10 @@ void main() {
 
           await holder.execute('SELECT pg_advisory_unlock($migrationLockKey)');
           final result = await run;
-          expect(result.applied, ['0001_init.sql']);
+          expect(result.applied, [
+            '0001_init.sql',
+            '0002_used_refresh_tokens.sql',
+          ]);
         });
 
         expect(
@@ -327,6 +331,7 @@ void main() {
 
       expect(await _appliedRows(server.db), [
         [1, '0001_init.sql'],
+        [2, '0002_used_refresh_tokens.sql'],
       ]);
       int at(String text) =>
           logs.lines.indexWhere((line) => line.contains(text));
