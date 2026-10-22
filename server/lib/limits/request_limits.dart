@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -78,6 +79,7 @@ class RequestLimits {
         final declared = request.contentLength;
         if (declared != null) {
           if (declared <= maxBodyBytes) return inner(request);
+          request.read().listen(null).pause();
           _log.warning(
             'request body too large ${request.method} '
             '${request.requestedUri.path} ip=${clientIp(request, trustedProxies)} '
@@ -231,19 +233,46 @@ Response _payloadTooLarge(int limit) => errorResponse(
   413,
   ApiErrorCode.payloadTooLarge.code,
   'Слишком большой запрос: не больше ${_sizeText(limit)}',
-);
+).change(headers: {'connection': 'close'});
 
 String _sizeText(int bytes) => bytes % (1024 * 1024) == 0
     ? '${bytes ~/ (1024 * 1024)} МБ'
     : '${(bytes + 1023) ~/ 1024} КБ';
 
-Stream<List<int>> _limited(Stream<List<int>> source, int limit) async* {
+Stream<List<int>> _limited(Stream<List<int>> source, int limit) {
+  StreamSubscription<List<int>>? subscription;
   var received = 0;
-  await for (final chunk in source) {
-    received += chunk.length;
-    if (received > limit) throw RequestBodyTooLarge(limit, received);
-    yield chunk;
-  }
+  var exceeded = false;
+  final controller = StreamController<List<int>>(sync: true);
+  controller
+    ..onListen = () {
+      subscription = source.listen(
+        (chunk) {
+          received += chunk.length;
+          if (received <= limit) {
+            controller.add(chunk);
+            return;
+          }
+          exceeded = true;
+          subscription?.pause();
+          controller.addError(RequestBodyTooLarge(limit, received));
+          unawaited(controller.close());
+        },
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+    }
+    ..onPause = () {
+      subscription?.pause();
+    }
+    ..onResume = () {
+      if (!exceeded) subscription?.resume();
+    }
+    ..onCancel = () {
+      if (exceeded) return null;
+      return subscription?.cancel();
+    };
+  return controller.stream;
 }
 
 Response _tooMany(int seconds, String message) => errorResponse(
