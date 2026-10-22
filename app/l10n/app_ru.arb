@@ -280,6 +280,14 @@
   "@categoryBack": { "description": "Редактор категории, когда категория не найдена, не открылась или это «Другое»: кнопка, возвращает к списку" },
   "searchTitle": "Поиск",
   "@searchTitle": { "description": "Заголовок экрана «Поиск» (46:5267), открывается иконкой поиска в шапке главной" },
+  "searchFilterPeriod": "{from} – {to}",
+  "@searchFilterPeriod": {
+    "description": "Поиск (заглушка до промта 26): чип периода фильтра, если это не целый месяц",
+    "placeholders": {
+      "from": { "type": "String", "example": "01.10.2026" },
+      "to": { "type": "String", "example": "19.10.2026" }
+    }
+  },
 
   "statsModeMonth": "Месяц",
   "@statsModeMonth": { "description": "Статистика (12:820): вариант переключателя «Месяц / Год»" },

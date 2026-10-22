@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -187,6 +189,18 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
+  void _openCategory(StatsMonth stats, StatsCategory category, int index) {
+    final from = stats.month.firstDay;
+    final to = stats.month.lastDay;
+    _log.fine(
+      'stats category row #$index tap id=${category.id} month=${stats.month} '
+      '→ ${AppRoutes.search} filter category+period $from..$to',
+    );
+    context.push(
+      AppRoutes.searchFor(categoryId: category.id, from: from, to: to),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -200,7 +214,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       case AsyncData(value: final stats) when stats.isEmpty:
         content = _Empty(month: stats.month);
       case AsyncData(value: final stats):
-        content = _MonthStats(stats: stats);
+        content = _MonthStats(
+          stats: stats,
+          onCategoryTap: (category, index) =>
+              _openCategory(stats, category, index),
+        );
       case AsyncError():
         content = _LoadFailed(text: l10n.statsLoadFailed);
       default:
@@ -302,9 +320,10 @@ class _TopBar extends StatelessWidget {
 }
 
 class _MonthStats extends StatelessWidget {
-  const _MonthStats({required this.stats});
+  const _MonthStats({required this.stats, required this.onCategoryTap});
 
   final StatsMonth stats;
+  final void Function(StatsCategory category, int index) onCategoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -346,8 +365,11 @@ class _MonthStats extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final category in stats.categories)
-                  _CategoryRow(category: category),
+                for (final (i, category) in stats.categories.indexed)
+                  _CategoryRow(
+                    category: category,
+                    onTap: () => onCategoryTap(category, i),
+                  ),
               ],
             ),
           ),
@@ -358,15 +380,17 @@ class _MonthStats extends StatelessWidget {
 }
 
 class _CategoryRow extends StatelessWidget {
-  const _CategoryRow({required this.category});
+  const _CategoryRow({required this.category, required this.onTap});
 
   final StatsCategory category;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final expenses = l10n.statsExpenses(category.count);
     return Semantics(
+      button: true,
       label: l10n.a11yStatsRow(
         category.name,
         category.percent,
@@ -374,6 +398,7 @@ class _CategoryRow extends StatelessWidget {
         l10n.a11yRubles(category.total.roundedRubles),
       ),
       excludeSemantics: true,
+      onTap: onTap,
       child: StatRow(
         emoji: category.emoji,
         color: category.color,
@@ -381,6 +406,7 @@ class _CategoryRow extends StatelessWidget {
         share: l10n.statsShare(category.percent, expenses),
         amount: category.total.formatTotal(),
         fraction: category.fraction,
+        onTap: onTap,
       ),
     );
   }

@@ -47,6 +47,10 @@ abstract final class AppRoutes {
 
   static const String dateParameter = 'date';
 
+  static const String categoryParameter = 'category';
+  static const String fromParameter = 'from';
+  static const String toParameter = 'to';
+
   static String newExpenseOn(LocalDate date) => Uri(
     path: newExpense,
     queryParameters: {dateParameter: '$date'},
@@ -56,6 +60,75 @@ abstract final class AppRoutes {
 
   static String categoryOf(String id) =>
       '/categories/${Uri.encodeComponent(id)}';
+
+  static String searchFor({
+    required String categoryId,
+    required LocalDate from,
+    required LocalDate to,
+  }) => Uri(
+    path: search,
+    queryParameters: {
+      categoryParameter: categoryId,
+      fromParameter: '$from',
+      toParameter: '$to',
+    },
+  ).toString();
+}
+
+final class SearchRouteFilter {
+  const SearchRouteFilter({this.categoryId, this.from, this.to});
+
+  factory SearchRouteFilter.fromQuery(Map<String, String> query) {
+    final categoryId = query[AppRoutes.categoryParameter];
+    LocalDate? date(String name) {
+      final text = query[name];
+      if (text == null) return null;
+      final parsed = LocalDate.tryParse(text);
+      if (parsed == null) {
+        _log.warning(
+          'search route: $name=${text.length > 10 ? '${text.substring(0, 10)}…' : text} '
+          'is not a yyyy-MM-dd date, opening search without it',
+        );
+      }
+      return parsed;
+    }
+
+    var from = date(AppRoutes.fromParameter);
+    var to = date(AppRoutes.toParameter);
+    if (from != null && to != null && from > to) {
+      _log.warning(
+        'search route: period $from..$to ends before it starts, '
+        'opening search without period',
+      );
+      from = null;
+      to = null;
+    }
+    return SearchRouteFilter(
+      categoryId: categoryId == null || categoryId.isEmpty ? null : categoryId,
+      from: from,
+      to: to,
+    );
+  }
+
+  final String? categoryId;
+  final LocalDate? from;
+  final LocalDate? to;
+
+  bool get isEmpty => categoryId == null && from == null && to == null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SearchRouteFilter &&
+      other.categoryId == categoryId &&
+      other.from == from &&
+      other.to == to;
+
+  @override
+  int get hashCode => Object.hash(categoryId, from, to);
+
+  @override
+  String toString() =>
+      'category=${categoryId ?? '-'} period=${from ?? ''}..${to ?? ''}';
 }
 
 const Duration newExpenseTransition = Duration(milliseconds: 300);
@@ -205,7 +278,8 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         path: AppRoutes.search,
         name: AppRoutes.searchName,
         parentNavigatorKey: rootKey,
-        builder: (context, state) => const AppFrame(child: SearchStubScreen()),
+        builder: (context, state) =>
+            AppFrame(child: SearchStubScreen(query: state.uri.queryParameters)),
       ),
       if (kDebugMode)
         GoRoute(
