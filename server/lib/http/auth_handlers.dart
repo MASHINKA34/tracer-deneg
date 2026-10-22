@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 import 'package:shelf/shelf.dart';
 
+import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
 import 'json.dart';
 
@@ -110,6 +111,12 @@ Handler refreshHandler(AuthService auth) => (Request request) async {
   } on AuthFailure catch (e) {
     return _failure(e);
   }
+};
+
+Handler logoutHandler(AuthService auth) => (Request request) async {
+  final context = authContextOf(request);
+  await auth.logout(userId: context.userId, sessionId: context.sessionId);
+  return Response(204);
 };
 
 class _Body {

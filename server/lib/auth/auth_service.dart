@@ -85,6 +85,17 @@ class _RefreshOutcome {
   final bool alreadyRevoked;
 }
 
+class SessionCheck {
+  const SessionCheck.ok(String this.userId, String this.sessionId)
+    : rejection = null;
+
+  const SessionCheck.rejected(this.rejection, {this.userId, this.sessionId});
+
+  final String? userId;
+  final String? sessionId;
+  final String? rejection;
+}
+
 class Registration {
   const Registration({required this.session, required this.recoveryCode});
 
@@ -432,6 +443,60 @@ class AuthService {
       sessionId: sessionId,
       accessToken: accessTokens.issue(userId: userId, sessionId: sessionId),
       refreshToken: nextToken,
+    );
+  }
+
+  Future<SessionCheck> authenticate(String accessToken) async {
+    final check = accessTokens.verify(accessToken);
+    final claims = check.claims;
+    if (claims == null) return SessionCheck.rejected(check.rejection!.reason);
+    final rows = await db.execute(
+      r'SELECT s.revoked_at IS NOT NULL, (s.expires_at <= now()), '
+      r'(u.deleted_at IS NOT NULL) FROM sessions s '
+      r'JOIN users u ON u.id = s.user_id '
+      r'WHERE s.id = $1::uuid AND s.user_id = $2::uuid',
+      parameters: [claims.sessionId, claims.userId],
+      what: 'check session of access token',
+      logParams: {'sessionId': claims.sessionId, 'userId': claims.userId},
+    );
+    final String? rejection;
+    if (rows.isEmpty) {
+      rejection = 'session_not_found';
+    } else {
+      final row = rows.first;
+      rejection = row[0] == true
+          ? AuthFailureReason.sessionRevoked.code
+          : row[1] == true
+          ? AuthFailureReason.sessionExpired.code
+          : row[2] == true
+          ? AuthFailureReason.userDeleted.code
+          : null;
+    }
+    if (rejection != null) {
+      return SessionCheck.rejected(
+        rejection,
+        userId: claims.userId,
+        sessionId: claims.sessionId,
+      );
+    }
+    return SessionCheck.ok(claims.userId, claims.sessionId);
+  }
+
+  Future<void> logout({
+    required String userId,
+    required String sessionId,
+  }) async {
+    final sw = Stopwatch()..start();
+    final result = await db.execute(
+      r'UPDATE sessions SET revoked_at = now() '
+      r'WHERE id = $1::uuid AND user_id = $2::uuid AND revoked_at IS NULL',
+      parameters: [sessionId, userId],
+      what: 'revoke session on logout',
+      logParams: {'sessionId': sessionId, 'userId': userId},
+    );
+    _log.info(
+      'logout ok userId=$userId sessionId=$sessionId '
+      'revoked=${result.affectedRows == 1} in ${sw.elapsedMilliseconds}ms',
     );
   }
 
