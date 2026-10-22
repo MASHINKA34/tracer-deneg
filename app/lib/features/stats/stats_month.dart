@@ -46,34 +46,17 @@ final class StatsCategory {
       'fraction=${fraction.toStringAsFixed(3)})';
 }
 
-final class StatsMonth {
-  const StatsMonth({
-    required this.month,
-    required this.budgetId,
+final class StatsCategories {
+  const StatsCategories({
     required this.categories,
     required this.total,
     required this.expenseCount,
-    required this.average,
-    required this.comparison,
-    this.unknownCategoryIds = const [],
+    required this.unknownCategoryIds,
   });
 
-  const StatsMonth.empty(this.month, {required this.budgetId})
-    : categories = const [],
-      total = Money.zero,
-      expenseCount = 0,
-      average = null,
-      comparison = null,
-      unknownCategoryIds = const [];
-
-  factory StatsMonth.of({
-    required YearMonth month,
-    required LocalDate today,
-    required String budgetId,
+  factory StatsCategories.of({
     required List<CategoryTotal> totals,
     required List<Category> categories,
-    required Map<int, Money> days,
-    required Map<int, Money> previousDays,
   }) {
     final byId = {for (final c in categories) c.id: c};
     Category? system;
@@ -106,11 +89,7 @@ final class StatsMonth {
     final amounts = [for (final id in sorted) merged[id]!.total.kopecks];
     final percents = percentShares(amounts);
     final max = amounts.isEmpty ? 0 : amounts.first;
-    final total = Money.sum([for (final id in sorted) merged[id]!.total]);
-    final period = comparisonPeriod(month, today);
-    return StatsMonth(
-      month: month,
-      budgetId: budgetId,
+    return StatsCategories(
       categories: List.unmodifiable([
         for (final (i, id) in sorted.indexed)
           _category(
@@ -123,17 +102,8 @@ final class StatsMonth {
             fraction: max <= 0 ? 0 : amounts[i] / max,
           ),
       ]),
-      total: total,
+      total: Money.sum([for (final id in sorted) merged[id]!.total]),
       expenseCount: merged.values.fold(0, (sum, m) => sum + m.count),
-      average: averagePerDay(monthTotal: total, month: month, today: today),
-      comparison: compareMonths(
-        current: sumOfDays(days, period.currentFrom, period.currentTo),
-        previous: sumOfDays(
-          previousDays,
-          period.previousFrom,
-          period.previousTo,
-        ),
-      ),
       unknownCategoryIds: List.unmodifiable(unknown),
     );
   }
@@ -156,6 +126,63 @@ final class StatsMonth {
     percent: percent,
     fraction: fraction,
   );
+
+  final List<StatsCategory> categories;
+  final Money total;
+  final int expenseCount;
+  final List<String> unknownCategoryIds;
+}
+
+final class StatsMonth {
+  const StatsMonth({
+    required this.month,
+    required this.budgetId,
+    required this.categories,
+    required this.total,
+    required this.expenseCount,
+    required this.average,
+    required this.comparison,
+    this.unknownCategoryIds = const [],
+  });
+
+  const StatsMonth.empty(this.month, {required this.budgetId})
+    : categories = const [],
+      total = Money.zero,
+      expenseCount = 0,
+      average = null,
+      comparison = null,
+      unknownCategoryIds = const [];
+
+  factory StatsMonth.of({
+    required YearMonth month,
+    required LocalDate today,
+    required String budgetId,
+    required List<CategoryTotal> totals,
+    required List<Category> categories,
+    required Map<int, Money> days,
+    required Map<int, Money> previousDays,
+  }) {
+    final summary = StatsCategories.of(totals: totals, categories: categories);
+    final total = summary.total;
+    final period = comparisonPeriod(month, today);
+    return StatsMonth(
+      month: month,
+      budgetId: budgetId,
+      categories: summary.categories,
+      total: total,
+      expenseCount: summary.expenseCount,
+      average: averagePerDay(monthTotal: total, month: month, today: today),
+      comparison: compareMonths(
+        current: sumOfDays(days, period.currentFrom, period.currentTo),
+        previous: sumOfDays(
+          previousDays,
+          period.previousFrom,
+          period.previousTo,
+        ),
+      ),
+      unknownCategoryIds: summary.unknownCategoryIds,
+    );
+  }
 
   final YearMonth month;
   final String? budgetId;

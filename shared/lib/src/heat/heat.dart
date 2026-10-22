@@ -46,6 +46,16 @@ Money? averagePerDay({
   return Money((monthTotal.kopecks * 2 + days) ~/ (days * 2));
 }
 
+Money? averagePerMonth({
+  required Money yearTotal,
+  required int year,
+  required LocalDate today,
+}) {
+  final months = elapsedMonths(year, today);
+  if (months == 0 || yearTotal.kopecks <= 0) return null;
+  return Money((yearTotal.kopecks * 2 + months) ~/ (months * 2));
+}
+
 /// Шторка дня: сумма дня минус среднее в день (больше нуля — «больше
 /// среднего на …», меньше — «меньше среднего на …»).
 Money differenceFromAverage({required Money daySum, required Money average}) =>

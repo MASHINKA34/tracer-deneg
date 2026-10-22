@@ -49,3 +49,9 @@ int elapsedDays(YearMonth month, LocalDate today) {
   if (month == current) return today.day;
   return 0;
 }
+
+int elapsedMonths(int year, LocalDate today) {
+  if (year < today.year) return 12;
+  if (year == today.year) return today.month;
+  return 0;
+}

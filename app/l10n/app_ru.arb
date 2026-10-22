@@ -383,6 +383,72 @@
   "@statsEmptyText": { "description": "Статистика: пустой месяц, пояснение под заголовком" },
   "statsLoadFailed": "Не удалось посчитать статистику. Выбери другой месяц или открой вкладку позже.",
   "@statsLoadFailed": { "description": "Статистика: ошибка чтения трат из базы на телефоне" },
+  "a11yStatsChooseYear": "Статистика за {year} год",
+  "@a11yStatsChooseYear": {
+    "description": "TalkBack: чип периода в шапке статистики в режиме «Год» (46:5398)",
+    "placeholders": {
+      "year": { "type": "String", "example": "2026" }
+    }
+  },
+  "statsYearTotal": "Всего за {year}",
+  "@statsYearTotal": {
+    "description": "Статистика · год (46:5398): подпись над итогом года",
+    "placeholders": {
+      "year": { "type": "String", "example": "2026" }
+    }
+  },
+  "statsYearAverageLabel": "В среднем",
+  "@statsYearAverageLabel": { "description": "Статистика · год (46:5398): подпись над средним за месяц" },
+  "statsYearAverage": "{amount} / мес",
+  "@statsYearAverage": {
+    "description": "Статистика · год (46:5398): среднее за месяц — итог прошедших месяцев года (включая текущий) / их число",
+    "placeholders": {
+      "amount": { "type": "String", "example": "21 135 ₽" }
+    }
+  },
+  "statsYearPriciest": "Самый дорогой месяц — {month} ({amount}).",
+  "@statsYearPriciest": {
+    "description": "Статистика · год (46:5398): подпись под столбиками; месяц строчными («июль»)",
+    "placeholders": {
+      "month": { "type": "String", "example": "июль" },
+      "amount": { "type": "String", "example": "24 300 ₽" }
+    }
+  },
+  "statsYearOngoing": "{month} ещё идёт.",
+  "@statsYearOngoing": {
+    "description": "Статистика · год (46:5398): вторая фраза подписи под столбиками, если показан текущий год",
+    "placeholders": {
+      "month": { "type": "String", "example": "Октябрь" }
+    }
+  },
+  "statsYearByCategory": "По категориям за год",
+  "@statsYearByCategory": { "description": "Статистика · год (46:5398): заголовок списка категорий" },
+  "a11yStatsYearBar": "{month}, {amount}",
+  "@a11yStatsYearBar": {
+    "description": "TalkBack: столбик месяца в статистике за год, нажатие открывает статистику этого месяца",
+    "placeholders": {
+      "month": { "type": "String", "example": "Сентябрь 2026" },
+      "amount": { "type": "String", "example": "20 300 рублей" }
+    }
+  },
+  "a11yStatsYearBarFuture": "{month}, ещё не наступил",
+  "@a11yStatsYearBarFuture": {
+    "description": "TalkBack: столбик будущего месяца в статистике за год (нажать нельзя)",
+    "placeholders": {
+      "month": { "type": "String", "example": "Ноябрь 2026" }
+    }
+  },
+  "statsYearEmptyTitle": "В {year} году трат нет",
+  "@statsYearEmptyTitle": {
+    "description": "Статистика · год: пустой год (в духе 47:5951), заголовок",
+    "placeholders": {
+      "year": { "type": "String", "example": "2026" }
+    }
+  },
+  "statsYearEmptyText": "Когда появятся траты, здесь будут столбики по месяцам и категории за год.",
+  "@statsYearEmptyText": { "description": "Статистика · год: пустой год, пояснение под заголовком" },
+  "statsYearLoadFailed": "Не удалось посчитать статистику за год. Выбери другой год или открой вкладку позже.",
+  "@statsYearLoadFailed": { "description": "Статистика · год: ошибка чтения трат из базы на телефоне" },
 
   "syncDone": "Синхронизировано",
   "@syncDone": { "description": "Статус синхронизации: всё на сервере" },

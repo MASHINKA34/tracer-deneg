@@ -229,21 +229,21 @@ void main() {
     expect(donutOf(tester).segments, isNotEmpty);
   });
 
-  testWidgets('«Год» в переключателе пока ничего не открывает — остаётся '
-      '«Месяц», debug [stats]', (tester) async {
+  testWidgets('«Год» в переключателе открывает год показанного месяца '
+      'вместо кольца, debug [stats]', (tester) async {
     final h = await _start(tester, (db) => seedMockupOctober(db));
 
     await tester.tap(_inStats(find.text('Год')));
     await tester.pumpAndSettle();
 
-    expect(find.byType(DonutChart), findsOneWidget);
+    expect(find.byType(DonutChart), findsNothing);
     expect(
       h.records
           .where((r) => r.loggerName == 'stats' && r.level == Level.FINE)
           .map((r) => r.message),
       contains(
-        'stats mode year tapped: year mode is not available yet, '
-        'staying on month',
+        'stats mode month → year by=segmented month=2026-10, '
+        'opening its year 2026',
       ),
     );
   });
