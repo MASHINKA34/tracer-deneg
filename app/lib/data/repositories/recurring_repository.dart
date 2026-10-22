@@ -13,6 +13,8 @@ abstract interface class RecurringRepository {
 
   Stream<RecurringRule?> watchById(String id);
 
+  Future<List<RecurringRule>> liveRulesOfLiveBudgets();
+
   Future<RecurringRule> create({
     required String budgetId,
     required String categoryId,
@@ -80,6 +82,25 @@ final class DriftRecurringRepository implements RecurringRepository {
         .watchSingleOrNull()
         .map((r) => r == null ? null : recurringFromRow(r)),
   );
+
+  @override
+  Future<List<RecurringRule>> liveRulesOfLiveBudgets() async {
+    final rules = _db.recurringRules;
+    final budgets = _db.budgets;
+    final query =
+        _db.select(rules).join([
+            innerJoin(budgets, budgets.id.equalsExp(rules.budgetId)),
+          ])
+          ..where(rules.deletedAt.isNull() & budgets.deletedAt.isNull())
+          ..orderBy([
+            OrderingTerm.asc(rules.budgetId),
+            OrderingTerm.asc(rules.dayOfMonth),
+            OrderingTerm.asc(rules.createdAt),
+            OrderingTerm.asc(rules.id),
+          ]);
+    final rows = await query.get();
+    return [for (final row in rows) recurringFromRow(row.readTable(rules))];
+  }
 
   Future<RecurringRule> _live(String id) async {
     final row = await (_db.select(

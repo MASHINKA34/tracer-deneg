@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
@@ -39,6 +41,15 @@ abstract interface class ExpensesRepository {
 
   Future<bool> undoDelete(String id);
 
+  Future<({Set<String> live, Set<String> deleted})> existingByIds(
+    Iterable<String> ids,
+  );
+
+  Future<Expense> createRecurring(
+    RecurringRule rule,
+    PlannedRecurringExpense planned,
+  );
+
   Future<void> applyFromServer(Iterable<Expense> expenses);
 }
 
@@ -56,6 +67,8 @@ final class DriftExpensesRepository implements ExpensesRepository {
        );
 
   static const String _entity = 'expense';
+
+  static const int _idsPerQuery = 500;
 
   final AppDatabase _db;
   final RepositoryWriter _writer;
@@ -255,6 +268,66 @@ final class DriftExpensesRepository implements ExpensesRepository {
     );
     _log.info('expense undo delete id=$id undone=$undone reason=$reason');
     return undone;
+  }
+
+  @override
+  Future<({Set<String> live, Set<String> deleted})> existingByIds(
+    Iterable<String> ids,
+  ) async {
+    final all = ids.toSet().toList();
+    final live = <String>{};
+    final deleted = <String>{};
+    final table = _db.expenses;
+    for (var start = 0; start < all.length; start += _idsPerQuery) {
+      final chunk = all.sublist(
+        start,
+        math.min(start + _idsPerQuery, all.length),
+      );
+      final query = _db.selectOnly(table)
+        ..addColumns([table.id, table.deletedAt])
+        ..where(table.id.isIn(chunk));
+      for (final row in await query.get()) {
+        final id = row.read(table.id)!;
+        (row.read(table.deletedAt) == null ? live : deleted).add(id);
+      }
+    }
+    return (live: live, deleted: deleted);
+  }
+
+  @override
+  Future<Expense> createRecurring(
+    RecurringRule rule,
+    PlannedRecurringExpense planned,
+  ) {
+    late int outboxId;
+    return _writer.edit(
+      _entity,
+      'create-recurring',
+      id: planned.id,
+      describe: (e) =>
+          'rule=${rule.id} month=${planned.month} spentOn=${e.spentOn} '
+          '${_describe(e, outboxId, SyncOp.upsert)}',
+      body: (c) async {
+        final expense = Expense(
+          id: planned.id,
+          budgetId: rule.budgetId,
+          categoryId: rule.categoryId,
+          amount: rule.amount,
+          spentOn: planned.spentOn,
+          comment: normalizeText(rule.title),
+          authorId: c.userId,
+          recurringId: rule.id,
+          recurringMonth: planned.month,
+          createdAt: c.now,
+          updatedAt: c.now,
+          updatedBy: c.userId,
+        );
+        _validate(expense);
+        await _db.into(_db.expenses).insert(expenseToRow(expense));
+        outboxId = await _outbox.enqueueUpsert(expense);
+        return expense;
+      },
+    );
   }
 
   @override
