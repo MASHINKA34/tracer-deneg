@@ -6,6 +6,7 @@ import 'package:shared/shared.dart';
 import '../../core/clock.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
+import '../../data/recurring_service.dart';
 import '../../data/repositories/repository_errors.dart';
 
 final _log = Logger('recurring');
@@ -285,6 +286,24 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
           '${start == null ? '' : ' (was ${original.startMonth}: no charge '
                     'was due yet, start recounted as for a new rule)'} '
           'in ${sw.elapsedMilliseconds}ms, created expenses unchanged',
+        );
+      }
+      final saved = sw.elapsedMilliseconds;
+      final run = await ref
+          .read(recurringServiceProvider)
+          .run(RecurringRunReason.ruleSaved);
+      if (run.ok) {
+        _log.fine(
+          'recurring save $_target: generator after save created='
+          '${run.created} skipped=${run.skipped} in '
+          '${sw.elapsedMilliseconds - saved}ms',
+        );
+      } else {
+        _log.warning(
+          'recurring save $_target: rule is saved but the generator after '
+          'save failed (failedRules=${run.failedRules} '
+          'error=${run.error == null ? '-' : describeError(run.error!)}), '
+          'due expenses will be created on the next run',
         );
       }
       if (ref.mounted) state = const RecurringDraft();
