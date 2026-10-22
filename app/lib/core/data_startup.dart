@@ -15,6 +15,7 @@ import '../data/repositories/prefs_repository.dart';
 import '../features/startup/database_error_app.dart';
 import 'clock.dart';
 import 'logging/provider_logger.dart';
+import 'recurring_triggers.dart';
 
 final _log = Logger('app');
 
@@ -118,7 +119,7 @@ Widget appRoot(DataStartup data) => switch (data) {
         todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
     ],
     observers: const [ProviderLogger()],
-    child: const MilionchikApp(),
+    child: const RecurringTriggersScope(child: MilionchikApp()),
   ),
   DataUnavailable() => const DatabaseErrorApp(),
 };
