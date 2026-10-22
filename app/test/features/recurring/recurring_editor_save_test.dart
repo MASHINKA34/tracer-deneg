@@ -27,7 +27,7 @@ void main() {
 
   testWidgets('новое правило на сегодня (19-е): «Сохранить» → назад к '
       'списку, правило с 2026-10 и трата 19 октября сразу в календаре; info '
-      '[recurring] с id, днём и мс, генератор «rule saved» создал 1; '
+      '[recurring] с id, днём и мс, генератор «after sync» создал 1; '
       'названия и суммы на info нет', (tester) async {
     final h = await RecurringEditorHarness.start(tester);
     await h.openNew();
@@ -69,8 +69,10 @@ void main() {
           'day=19 from=2026-10 firstCharge=2026-10-19 today=2026-10-19 '
           r'in \d+ms$',
         ),
+        'recurring save id=${rule.id}: rule saved → generator runs after save '
+            'as run (after sync), no sync involved',
         matches(
-          r'^run \(rule saved\) today=2026-10-19 rules=6 created=1 '
+          r'^run \(after sync\) today=2026-10-19 rules=6 created=1 '
           r'skipped=3 existing=3 deleted=0 in \d+ms$',
         ),
       ]),
@@ -113,7 +115,9 @@ void main() {
           'day=18 from=2026-11 firstCharge=2026-11-18 today=2026-10-19 '
           r'in \d+ms$',
         ),
-        matches(r'^run \(rule saved\) today=2026-10-19 rules=6 created=0 '),
+        'recurring save id=${rule.id}: rule saved → generator runs after save '
+            'as run (after sync), no sync involved',
+        matches(r'^run \(after sync\) today=2026-10-19 rules=6 created=0 '),
       ]),
     );
   });
@@ -236,6 +240,10 @@ void main() {
         'recurring save id=${gym.id}: nothing changed → back without writing',
       ),
     );
-    expect(h.messages(), isNot(contains(startsWith('run (rule saved)'))));
+    expect(
+      h.messages(),
+      isNot(contains(contains('rule saved → generator runs after save'))),
+    );
+    expect(h.messages(), isNot(contains(startsWith('run (after sync)'))));
   });
 }

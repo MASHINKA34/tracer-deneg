@@ -241,6 +241,7 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
     final sw = Stopwatch()..start();
     final repo = ref.read(recurringRepositoryProvider);
     try {
+      final String savedId;
       if (original == null) {
         final targetBudget = budgetId;
         if (targetBudget == null) {
@@ -260,6 +261,7 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
           dayOfMonth: day,
           startMonth: start,
         );
+        savedId = created.id;
         _log.info(
           'recurring rule created id=${created.id} '
           'budgetId=${created.budgetId} day=${created.dayOfMonth} '
@@ -281,6 +283,7 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
           dayOfMonth: day,
           startMonth: start,
         );
+        savedId = updated.id;
         _log.info(
           'recurring rule updated id=${updated.id} '
           'budgetId=${updated.budgetId} fields=$names '
@@ -291,9 +294,12 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
         );
       }
       final saved = sw.elapsedMilliseconds;
-      final run = await ref
-          .read(recurringServiceProvider)
-          .run(RecurringRunReason.ruleSaved);
+      const reason = RecurringRunReason.afterSync;
+      _log.info(
+        'recurring save id=$savedId: rule saved → generator runs after save '
+        'as run (${reason.label}), no sync involved',
+      );
+      final run = await ref.read(recurringServiceProvider).run(reason);
       if (run.ok) {
         _log.fine(
           'recurring save $_target: generator after save created='
