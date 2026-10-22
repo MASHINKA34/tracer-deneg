@@ -12,7 +12,9 @@ final _log = Logger('db');
 /// Пул соединений с PostgreSQL. Каждый запрос пишется в лог на уровне debug:
 /// что выполняли, сколько строк вернулось, сколько заняло.
 class Database {
-  Database._(this.config, this._pool);
+  Database._(this.config, Pool<void> pool, this._connectTimeout)
+    : _pool = pool,
+      _poolSession = DbSession._(pool);
 
   /// Создаёт пул без проверки соединения: подключение произойдёт
   /// при первом запросе. Для старта сервера — [connect].
@@ -21,27 +23,15 @@ class Database {
     Duration connectTimeout = const Duration(seconds: 5),
   }) {
     final pool = Pool<void>.withEndpoints(
-      [
-        Endpoint(
-          host: config.host,
-          port: config.port,
-          database: config.database,
-          username: config.username,
-          password: config.password,
-        ),
-      ],
+      [_endpoint(config)],
       settings: PoolSettings(
-        applicationName: 'milionchik-server',
+        applicationName: _applicationName,
         maxConnectionCount: 10,
         connectTimeout: connectTimeout,
-        sslMode: switch (config.sslMode) {
-          'require' => SslMode.require,
-          'verify-full' => SslMode.verifyFull,
-          _ => SslMode.disable,
-        },
+        sslMode: _sslMode(config),
       ),
     );
-    return Database._(config, pool);
+    return Database._(config, pool, connectTimeout);
   }
 
   /// Подключается с повторами: [attempts] попыток, паузы [delays]
@@ -98,6 +88,8 @@ class Database {
 
   final DatabaseConfig config;
   final Pool<void> _pool;
+  final DbSession _poolSession;
+  final Duration _connectTimeout;
 
   /// Выполняет запрос. [what] — короткое описание для лога (по умолчанию
   /// начало SQL). [logParams] — параметры для лога, уже без секретов;
@@ -108,29 +100,65 @@ class Database {
     String? what,
     Map<String, Object?>? logParams,
     Duration? timeout,
-  }) async {
-    final label = what ?? _shortSql(sql);
-    final paramsText = logParams == null ? '' : ' ${formatContext(logParams)}';
+  }) => _poolSession.execute(
+    sql,
+    parameters: parameters,
+    what: what,
+    logParams: logParams,
+    timeout: timeout,
+  );
+
+  Future<T> transaction<T>(
+    String what,
+    Future<T> Function(DbSession tx) body,
+  ) => _runTransaction(_pool, what, body);
+
+  Future<T> withConnection<T>(
+    String what,
+    Future<T> Function(DbConnection connection) body,
+  ) async {
+    final target = '${config.host}:${config.port}';
     final sw = Stopwatch()..start();
-    _log.fine('query $label$paramsText');
+    _log.fine('opening dedicated connection for $what to $target');
+    final Connection connection;
     try {
-      final result = await _pool.execute(
-        sql,
-        parameters: parameters,
-        timeout: timeout,
+      connection = await Connection.open(
+        _endpoint(config),
+        settings: ConnectionSettings(
+          applicationName: _applicationName,
+          connectTimeout: _connectTimeout,
+          sslMode: _sslMode(config),
+        ),
       );
-      _log.fine(
-        'query $label done rows=${result.length} '
-        'affected=${result.affectedRows} in ${sw.elapsedMilliseconds}ms',
-      );
-      return result;
     } catch (e) {
-      // Тип, сообщение и код — здесь; полный стек пишет вызывающий,
-      // который решает, что делать с ошибкой (повтор, 503, 500).
       _log.warning(
-        'query $label failed in ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
+        'dedicated connection for $what to $target failed '
+        'in ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
       );
       rethrow;
+    }
+    _log.fine(
+      'dedicated connection for $what opened in ${sw.elapsedMilliseconds}ms',
+    );
+    try {
+      return await body(DbConnection._(connection));
+    } finally {
+      final closeSw = Stopwatch()..start();
+      try {
+        await connection.close().timeout(const Duration(seconds: 5));
+        _log.fine(
+          'dedicated connection for $what closed '
+          'in ${closeSw.elapsedMilliseconds}ms',
+        );
+      } catch (e, st) {
+        _log.warning(
+          'dedicated connection for $what close failed '
+          'in ${closeSw.elapsedMilliseconds}ms, forcing: ${describeError(e)}',
+          e,
+          st,
+        );
+        await connection.close(force: true);
+      }
     }
   }
 
@@ -169,6 +197,93 @@ class Database {
     }
   }
 }
+
+class DbSession {
+  DbSession._(this._session);
+
+  final Session _session;
+
+  Future<Result> execute(
+    String sql, {
+    Object? parameters,
+    String? what,
+    Map<String, Object?>? logParams,
+    Duration? timeout,
+    QueryMode? queryMode,
+  }) async {
+    final label = what ?? _shortSql(sql);
+    final paramsText = logParams == null ? '' : ' ${formatContext(logParams)}';
+    final sw = Stopwatch()..start();
+    _log.fine('query $label$paramsText');
+    try {
+      final result = await _session.execute(
+        sql,
+        parameters: parameters,
+        timeout: timeout,
+        queryMode: queryMode,
+      );
+      _log.fine(
+        'query $label done rows=${result.length} '
+        'affected=${result.affectedRows} in ${sw.elapsedMilliseconds}ms',
+      );
+      return result;
+    } catch (e) {
+      // Тип, сообщение и код — здесь; полный стек пишет вызывающий,
+      // который решает, что делать с ошибкой (повтор, 503, 500).
+      _log.warning(
+        'query $label failed in ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
+      );
+      rethrow;
+    }
+  }
+}
+
+class DbConnection extends DbSession {
+  DbConnection._(Connection super._session) : _connection = _session, super._();
+
+  final Connection _connection;
+
+  Future<T> transaction<T>(
+    String what,
+    Future<T> Function(DbSession tx) body,
+  ) => _runTransaction(_connection, what, body);
+}
+
+Future<T> _runTransaction<T>(
+  SessionExecutor executor,
+  String what,
+  Future<T> Function(DbSession tx) body,
+) async {
+  final sw = Stopwatch()..start();
+  _log.fine('transaction $what begin');
+  try {
+    final result = await executor.runTx((tx) => body(DbSession._(tx)));
+    _log.fine('transaction $what committed in ${sw.elapsedMilliseconds}ms');
+    return result;
+  } catch (e) {
+    _log.warning(
+      'transaction $what rolled back in ${sw.elapsedMilliseconds}ms: '
+      '${describeError(e)}',
+    );
+    rethrow;
+  }
+}
+
+const _applicationName = 'milionchik-server';
+
+Endpoint _endpoint(DatabaseConfig config) => Endpoint(
+  host: config.host,
+  port: config.port,
+  database: config.database,
+  username: config.username,
+  password: config.password,
+);
+
+SslMode _sslMode(DatabaseConfig config) => switch (config.sslMode) {
+  'require' => SslMode.require,
+  'verify-full' => SslMode.verifyFull,
+  _ => SslMode.disable,
+};
 
 String _shortSql(String sql) {
   final oneLine = sql.replaceAll(RegExp(r'\s+'), ' ').trim();

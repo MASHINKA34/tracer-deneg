@@ -95,17 +95,20 @@ class ServerConfig {
     required this.database,
     required this.logLevel,
     required this.jwtSecret,
+    this.migrationsDir = defaultMigrationsDir,
   });
 
   static const defaultHost = '0.0.0.0';
   static const defaultPort = 8080;
   static const minJwtSecretLength = 32;
+  static const defaultMigrationsDir = 'migrations';
 
   final String host;
   final int port;
   final DatabaseConfig database;
   final Level logLevel;
   final String jwtSecret;
+  final String migrationsDir;
 
   /// Разбирает и проверяет конфиг. [environment] (переменные окружения)
   /// важнее [dotEnv] (значения из файла `.env`).
@@ -181,6 +184,7 @@ class ServerConfig {
       database: database!,
       logLevel: logLevel,
       jwtSecret: jwtSecret!,
+      migrationsDir: value('MIGRATIONS_DIR') ?? defaultMigrationsDir,
     );
   }
 
@@ -191,5 +195,6 @@ class ServerConfig {
     'log': logLevelName(logLevel),
     'db': database.masked,
     'jwtSecret': maskToken(jwtSecret),
+    'migrations': migrationsDir,
   };
 }
