@@ -103,6 +103,18 @@ class Registration {
   final String recoveryCode;
 }
 
+class Recovery {
+  const Recovery({
+    required this.session,
+    required this.recoveryCode,
+    required this.revokedSessions,
+  });
+
+  final IssuedSession session;
+  final String recoveryCode;
+  final int revokedSessions;
+}
+
 class AuthService {
   AuthService({
     required this.db,
@@ -498,6 +510,119 @@ class AuthService {
       'logout ok userId=$userId sessionId=$sessionId '
       'revoked=${result.affectedRows == 1} in ${sw.elapsedMilliseconds}ms',
     );
+  }
+
+  Future<Recovery> recover({
+    required String login,
+    required String recoveryCode,
+    required String newPassword,
+    required String deviceName,
+  }) async {
+    final sw = Stopwatch()..start();
+    final normalized = normalizeLogin(login);
+    final masked = maskLogin(normalized);
+    final code = normalizeRecoveryCode(recoveryCode);
+    final rows = await db.execute(
+      r'SELECT id, login, display_name, recovery_hash, birthday_month, '
+      r'birthday_day, holidays_enabled, holidays_disabled, created_at '
+      r'FROM users WHERE lower(login) = $1 AND deleted_at IS NULL',
+      parameters: [normalized],
+      what: 'find user by login for recovery',
+      logParams: {'login': masked},
+    );
+    if (rows.isEmpty) {
+      await hasher.verifyDummy(code ?? recoveryCode, purpose: 'recovery_code');
+      _rejectRecovery(sw, masked, 'user_not_found');
+    }
+
+    final row = rows.first;
+    final userId = row[0]! as String;
+    final storedRecoveryHash = row[3]! as String;
+    if (code == null) {
+      await hasher.verifyDummy(recoveryCode, purpose: 'recovery_code');
+      _rejectRecovery(sw, masked, 'code_malformed', userId: userId);
+    }
+    final matches = await hasher.verify(
+      code,
+      storedRecoveryHash,
+      purpose: 'recovery_code',
+    );
+    if (!matches) _rejectRecovery(sw, masked, 'code_mismatch', userId: userId);
+
+    final nextCode = generateRecoveryCode(_random);
+    final passwordHash = await hasher.hash(newPassword, purpose: 'password');
+    final recoveryHash = await hasher.hash(
+      normalizeRecoveryCode(nextCode)!,
+      purpose: 'recovery_code',
+    );
+    final sessionId = newId();
+    final refreshToken = newRefreshToken(_random);
+    final revoked = await db.transaction('recover', (tx) async {
+      final updated = await tx.execute(
+        r'UPDATE users SET password_hash = $2, recovery_hash = $3 '
+        r'WHERE id = $1::uuid AND recovery_hash = $4 AND deleted_at IS NULL',
+        parameters: [userId, passwordHash, recoveryHash, storedRecoveryHash],
+        what: 'replace password and recovery code',
+        logParams: {'userId': userId},
+      );
+      if (updated.affectedRows != 1) return null;
+      final revokedRows = await tx.execute(
+        r'UPDATE sessions SET revoked_at = now() '
+        r'WHERE user_id = $1::uuid AND revoked_at IS NULL',
+        parameters: [userId],
+        what: 'revoke all sessions on recovery',
+        logParams: {'userId': userId},
+      );
+      await _insertSession(
+        tx.execute,
+        sessionId: sessionId,
+        userId: userId,
+        deviceName: deviceName,
+        refreshToken: refreshToken,
+      );
+      return revokedRows.affectedRows;
+    });
+    if (revoked == null) {
+      _rejectRecovery(sw, masked, 'code_already_used', userId: userId);
+    }
+
+    final user = User(
+      id: userId,
+      login: row[1]! as String,
+      displayName: row[2]! as String,
+      birthday: MonthDay.fromParts(row[4] as int?, row[5] as int?),
+      holidaysEnabled: row[6]! as bool,
+      holidaysDisabled: (row[7]! as List<Object?>).cast<String>().toSet(),
+      createdAt: row[8]! as DateTime,
+    );
+    _log.info(
+      'recover ok userId=$userId sessionId=$sessionId '
+      'revokedSessions=$revoked in ${sw.elapsedMilliseconds}ms',
+    );
+    return Recovery(
+      session: IssuedSession(
+        user: user,
+        sessionId: sessionId,
+        accessToken: accessTokens.issue(userId: userId, sessionId: sessionId),
+        refreshToken: refreshToken,
+      ),
+      recoveryCode: nextCode,
+      revokedSessions: revoked,
+    );
+  }
+
+  Never _rejectRecovery(
+    Stopwatch sw,
+    String maskedLogin,
+    String cause, {
+    String? userId,
+  }) {
+    _log.warning(
+      'recover rejected reason=${AuthFailureReason.badCredentials.code} '
+      '${formatContext({'login': maskedLogin, 'userId': userId, 'cause': cause})} '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+    throw AuthFailure(AuthFailureReason.badCredentials);
   }
 
   Future<void> _insertSession(

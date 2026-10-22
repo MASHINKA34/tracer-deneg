@@ -113,6 +113,54 @@ Handler refreshHandler(AuthService auth) => (Request request) async {
   }
 };
 
+Handler recoverHandler(AuthService auth) => (Request request) async {
+  final body = await _readBody(request, 'recover');
+  if (body.error != null) return body.error!;
+  final fields = body.fields!;
+  final login = _string(fields, 'login');
+  final recoveryCode = _string(fields, 'recoveryCode');
+  final newPassword = _string(fields, 'newPassword');
+  final deviceName = _deviceName(fields);
+  final missing = [
+    if (login == null) 'login',
+    if (recoveryCode == null) 'recoveryCode',
+    if (newPassword == null) 'newPassword',
+    if (deviceName == null) 'deviceName',
+  ];
+  if (missing.isNotEmpty) return _badFields('recover', missing);
+
+  final invalid = validatePassword(newPassword!);
+  if (invalid != null) {
+    _log.info(
+      'recover rejected reason=${invalid.code} login=${maskLogin(normalizeLogin(login!))}',
+    );
+    return errorResponse(400, invalid.code, _validationMessage(invalid));
+  }
+
+  try {
+    final recovery = await auth.recover(
+      login: login!,
+      recoveryCode: recoveryCode!,
+      newPassword: newPassword,
+      deviceName: deviceName!,
+    );
+    final session = recovery.session;
+    return _noStore(
+      jsonResponse(200, {
+        'user': session.user.toJson(),
+        'accessToken': session.accessToken,
+        'refreshToken': session.refreshToken,
+        'recoveryCode': recovery.recoveryCode,
+      }),
+    );
+  } on AuthFailure catch (e) {
+    return _failure(
+      e,
+      badCredentialsMessage: 'Неверный логин или код восстановления',
+    );
+  }
+};
+
 Handler logoutHandler(AuthService auth) => (Request request) async {
   final context = authContextOf(request);
   await auth.logout(userId: context.userId, sessionId: context.sessionId);
@@ -187,7 +235,10 @@ Response _badFields(String operation, List<String> fields) {
   );
 }
 
-Response _failure(AuthFailure failure) => switch (failure.reason) {
+Response _failure(
+  AuthFailure failure, {
+  String badCredentialsMessage = 'Неверный логин или пароль',
+}) => switch (failure.reason) {
   AuthFailureReason.loginTaken => errorResponse(
     409,
     ApiErrorCode.loginTaken.code,
@@ -196,7 +247,7 @@ Response _failure(AuthFailure failure) => switch (failure.reason) {
   AuthFailureReason.badCredentials => errorResponse(
     401,
     ApiErrorCode.badCredentials.code,
-    'Неверный логин или пароль',
+    badCredentialsMessage,
   ),
   AuthFailureReason.tokenReused ||
   AuthFailureReason.sessionRevoked ||

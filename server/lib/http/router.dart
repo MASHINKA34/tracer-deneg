@@ -18,6 +18,7 @@ Handler buildHandler({required Database db, required AuthService auth}) {
     ..post('/api/v1/auth/register', registerHandler(auth))
     ..post('/api/v1/auth/login', loginHandler(auth))
     ..post('/api/v1/auth/refresh', refreshHandler(auth))
+    ..post('/api/v1/auth/recover', recoverHandler(auth))
     ..post(
       '/api/v1/auth/logout',
       const Pipeline()
