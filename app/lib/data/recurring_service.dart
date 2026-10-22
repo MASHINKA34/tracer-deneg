@@ -5,10 +5,13 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../core/clock.dart';
+import 'current_user.dart';
 import 'db/app_database.dart';
 import 'db/redact_db_error.dart';
 import 'providers.dart';
 import 'repositories/expenses_repository.dart';
+import 'repositories/outbox_queue.dart';
+import 'repositories/prefs_repository.dart';
 import 'repositories/recurring_repository.dart';
 
 final _log = Logger('recurring');
@@ -92,10 +95,39 @@ final class RecurringService {
     this._clock = const Clock(),
   });
 
+  factory RecurringService.forDatabase(
+    AppDatabase db, {
+    Clock clock = const Clock(),
+  }) {
+    final outbox = DriftOutboxQueue(db, now: clock.now);
+    final user = LocalPrefsCurrentUser(DriftPrefsRepository(db));
+    return RecurringService(
+      db,
+      expenses: DriftExpensesRepository(
+        db,
+        currentUser: user,
+        outbox: outbox,
+        now: clock.now,
+      ),
+      recurring: DriftRecurringRepository(
+        db,
+        currentUser: user,
+        outbox: outbox,
+        now: clock.now,
+      ),
+      clock: clock,
+    );
+  }
+
   final AppDatabase _db;
   final ExpensesRepository _expenses;
   final RecurringRepository _recurring;
   final Clock _clock;
+
+  Future<RecurringRunResult> afterSync() => run(RecurringRunReason.afterSync);
+
+  Future<RecurringRunResult> forBackground() =>
+      run(RecurringRunReason.background);
 
   Future<RecurringRunResult> run(RecurringRunReason reason) async {
     final queue = _queues[_db] ??= _RunQueue();
