@@ -171,8 +171,9 @@ Future<ShellHarness> openSearch(
   String location = AppRoutes.search,
   Future<void> Function(AppDatabase db)? seed,
   Size size = const Size(360, 1600),
+  AppDatabase? database,
 }) async {
-  final db = openTestDatabase();
+  final db = database ?? openTestDatabase();
   await tester.runAsync(() => (seed ?? seedSearchMockup)(db));
   final h = await ShellHarness.start(tester, db: db, size: size);
   final router = GoRouter.of(tester.element(find.byType(MonthScreen)));
