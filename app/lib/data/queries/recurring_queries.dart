@@ -13,10 +13,8 @@ abstract interface class RecurringQueries {
 }
 
 final class DriftRecurringQueries implements RecurringQueries {
-  DriftRecurringQueries(
-    this._db, {
-    Duration slowThreshold = slowQueryThreshold,
-  }) : _runner = QueryRunner(_db, slowThreshold: slowThreshold);
+  DriftRecurringQueries(this._db, {Duration slowThreshold = slowQueryThreshold})
+    : _runner = QueryRunner(_db, slowThreshold: slowThreshold);
 
   final AppDatabase _db;
   final QueryRunner _runner;
@@ -31,9 +29,7 @@ final class DriftRecurringQueries implements RecurringQueries {
     YearMonth month,
   ) {
     final query =
-        _db.select(_e).join([
-            innerJoin(_r, _r.id.equalsExp(_e.recurringId)),
-          ])
+        _db.select(_e).join([innerJoin(_r, _r.id.equalsExp(_e.recurringId))])
           ..where(
             _r.budgetId.equals(budgetId) &
                 _e.deletedAt.isNull() &

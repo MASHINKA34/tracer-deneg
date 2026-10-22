@@ -39,8 +39,10 @@ const List<String> _monthKeys = [
   'december',
 ];
 
-String recurringChargeDate(LocalDate date) =>
-    DateFormat('d MMMM', 'ru').format(DateTime(date.year, date.month, date.day));
+String recurringChargeDate(LocalDate date) => DateFormat(
+  'd MMMM',
+  'ru',
+).format(DateTime(date.year, date.month, date.day));
 
 class RecurringScreen extends ConsumerStatefulWidget {
   const RecurringScreen({super.key});
@@ -182,11 +184,7 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
         content = _Empty(onAdd: () => _add('empty'), bottom: bottom);
       case AsyncData(value: final overview):
         canAdd = true;
-        content = _Overview(
-          overview: overview,
-          bottom: bottom,
-          onOpen: _open,
-        );
+        content = _Overview(overview: overview, bottom: bottom, onOpen: _open);
       case AsyncError():
         content = _LoadFailed(text: l10n.recurringLoadFailed);
       default:
@@ -294,9 +292,7 @@ class _Overview extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colors = context.colors;
-    final month = l10n.monthPrepositional(
-      _monthKeys[overview.month.month - 1],
-    );
+    final month = l10n.monthPrepositional(_monthKeys[overview.month.month - 1]);
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(12, 4, 12, 20 + bottom),
       child: Column(
