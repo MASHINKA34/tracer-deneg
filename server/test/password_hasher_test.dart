@@ -111,6 +111,22 @@ void main() {
     );
   });
 
+  test('прогрев при старте: фиктивный хеш готов заранее, первый вход с чужим логином не дольше обычного', () async {
+    final hasher = PasswordHasher();
+    final took = await hasher.warmUp();
+    expect(took, greaterThan(Duration.zero));
+    expect(logs.text, contains('argon2id hash purpose=dummy m=19456,t=2,p=1'));
+    logs.clear();
+
+    await hasher.verifyDummy('wrong-1', purpose: 'password');
+
+    expect(logs.text, isNot(contains('purpose=dummy')));
+    expect(
+      logs.text,
+      contains('argon2id verify purpose=password m=19456,t=2,p=1 match=false'),
+    );
+  });
+
   test(
     'на debug — время каждого хеширования и проверки, без пароля и хеша',
     () async {

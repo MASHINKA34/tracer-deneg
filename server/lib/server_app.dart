@@ -83,9 +83,23 @@ Future<RunningServer> startServer(
     hasher: hasher,
     accessTokens: AccessTokens(config.jwtSecret),
   );
+  _log.info('auth: warming up argon2id ${hasher.params.phc}');
+  final Duration warmUp;
+  try {
+    warmUp = await hasher.warmUp();
+  } catch (e, st) {
+    _log.severe(
+      'auth: argon2id warm-up failed ${hasher.params.phc}: ${describeError(e)}',
+      e,
+      st,
+    );
+    await db.close(reason: 'auth warm-up failed');
+    rethrow;
+  }
   _log.info(
-    'auth ready: argon2id ${hasher.params.phc} '
-    'access=${accessTokenTtl.inMinutes}m refresh=${refreshTokenTtl.inDays}d',
+    'auth ready: argon2id ${hasher.params.phc} hash in '
+    '${warmUp.inMilliseconds}ms access=${accessTokenTtl.inMinutes}m '
+    'refresh=${refreshTokenTtl.inDays}d',
   );
 
   final sw = Stopwatch()..start();

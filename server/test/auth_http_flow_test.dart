@@ -113,11 +113,20 @@ void main() {
         body: {'refreshToken': registered['refreshToken']},
       );
       expect(otherStatus, 200);
+      int at(String text) =>
+          logs.lines.indexWhere((line) => line.contains(text));
+      expect(
+        at('auth: warming up argon2id'),
+        greaterThan(at('migrations: applied')),
+      );
+      expect(at('HTTP server listening'), greaterThan(at('auth ready')));
 
       expect(
         logs.text,
         contains(
-          'INFO  [server] auth ready: argon2id m=19456,t=2,p=1 access=15m refresh=90d',
+          RegExp(
+            r'INFO  \[server\] auth ready: argon2id m=19456,t=2,p=1 hash in \d+ms access=15m refresh=90d',
+          ),
         ),
       );
       expect(

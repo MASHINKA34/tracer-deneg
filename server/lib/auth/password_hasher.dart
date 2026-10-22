@@ -95,12 +95,19 @@ class PasswordHasher {
   }
 
   Future<void> verifyDummy(String secret, {required String purpose}) async {
-    final dummy = await (_dummy ??= hash(
-      _encode(List<int>.generate(24, (_) => _random.nextInt(256))),
-      purpose: 'dummy',
-    ));
-    await verify(secret, dummy, purpose: purpose);
+    await verify(secret, await _dummyHash(), purpose: purpose);
   }
+
+  Future<Duration> warmUp() async {
+    final sw = Stopwatch()..start();
+    await _dummyHash();
+    return sw.elapsed;
+  }
+
+  Future<String> _dummyHash() => _dummy ??= hash(
+    _encode(List<int>.generate(24, (_) => _random.nextInt(256))),
+    purpose: 'dummy',
+  );
 }
 
 Future<List<int>> _derive(
