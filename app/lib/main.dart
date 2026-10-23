@@ -16,6 +16,8 @@ import 'core/logging/device_info.dart';
 import 'core/logging/error_handlers.dart';
 import 'core/logging/error_reports.dart';
 import 'core/orientation_policy.dart';
+import 'data/api/api_config.dart';
+import 'features/startup/api_config_error_app.dart';
 import 'ui/theme/font_check.dart';
 
 final _log = Logger('app');
@@ -70,6 +72,25 @@ Future<void> main() async {
       e,
       st,
     );
+  }
+
+  sw = Stopwatch()..start();
+  try {
+    final api = ApiConfig.resolve();
+    _log.info(
+      'api config ready baseUrl=${api.baseUrlText} '
+      'source=${api.fromDefine ? 'API_URL' : 'debug-default'} '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+  } on ApiConfigException catch (e, st) {
+    _log.severe(
+      'api config invalid (${e.problem.name}), showing config error screen '
+      'instead of the app: ${e.message}',
+      e,
+      st,
+    );
+    runApp(ApiConfigErrorApp(details: e.message));
+    return;
   }
 
   // 4. Системные панели и ориентация.
