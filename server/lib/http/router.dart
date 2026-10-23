@@ -93,11 +93,29 @@ Handler buildHandler({
           .addMiddleware(requireAuth)
           .addHandler(createBudgetHandler(budgets)),
     )
+    ..delete(
+      '/api/v1/budgets/<id>',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(deleteBudgetHandler(budgets)),
+    )
     ..post(
       '/api/v1/budgets/<id>/invites',
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(createInviteHandler(budgets)),
+    )
+    ..post(
+      '/api/v1/budgets/<id>/leave',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(leaveBudgetHandler(budgets)),
+    )
+    ..delete(
+      '/api/v1/budgets/<id>/members/<userId>',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(removeMemberHandler(budgets)),
     )
     ..post(
       '/api/v1/invites/join',

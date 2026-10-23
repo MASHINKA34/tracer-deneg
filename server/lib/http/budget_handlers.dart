@@ -104,6 +104,43 @@ Handler joinBudgetHandler(BudgetService budgets) => (Request request) async {
   }
 };
 
+Handler leaveBudgetHandler(BudgetService budgets) => (Request request) async {
+  try {
+    await budgets.leave(
+      userId: authContextOf(request).userId,
+      budgetId: request.params['id'] ?? '',
+    );
+    return Response(204);
+  } on BudgetFailure catch (e) {
+    return _failure(e);
+  }
+};
+
+Handler removeMemberHandler(BudgetService budgets) => (Request request) async {
+  try {
+    await budgets.removeMember(
+      userId: authContextOf(request).userId,
+      budgetId: request.params['id'] ?? '',
+      memberId: request.params['userId'] ?? '',
+    );
+    return Response(204);
+  } on BudgetFailure catch (e) {
+    return _failure(e);
+  }
+};
+
+Handler deleteBudgetHandler(BudgetService budgets) => (Request request) async {
+  try {
+    await budgets.deleteBudget(
+      userId: authContextOf(request).userId,
+      budgetId: request.params['id'] ?? '',
+    );
+    return Response(204);
+  } on BudgetFailure catch (e) {
+    return _failure(e);
+  }
+};
+
 class _Body {
   const _Body.ok(this.fields) : error = null;
   const _Body.failed(this.error) : fields = null;

@@ -61,6 +61,8 @@ final class JoinedBudget {
   final JoinResult result;
 }
 
+enum LeaveResult { left, transferred, deleted }
+
 String hashInviteCode(String normalizedCode) {
   final digest = const DartSha256().hashSync(utf8.encode(normalizedCode)).bytes;
   final buffer = StringBuffer();
@@ -94,6 +96,13 @@ final class _Access {
   final BudgetKind? kind;
   final MemberRole? role;
 }
+
+typedef _Tombstones = ({
+  int categories,
+  int expenses,
+  int recurring,
+  int invites,
+});
 
 class BudgetService {
   BudgetService({required this.db, this._now = DateTime.now, Random? random})
@@ -510,6 +519,255 @@ class BudgetService {
     return (budget: _budgetFromRow(budget.single), counts: counts);
   }
 
+  Future<LeaveResult> leave({
+    required String userId,
+    required String budgetId,
+  }) async {
+    const action = 'leave';
+    final sw = Stopwatch()..start();
+    final context = {'budgetId': budgetId, 'userId': userId};
+    _checkBudgetId(action, budgetId, context, sw);
+    final now = normalizeInstant(_now());
+    final outcome = await _run<_Left>(action, context, sw, (tx) async {
+      final access = await _lockBudget(tx, budgetId, userId, action);
+      final denied = _denied<_Left>(access, ownerOnly: false);
+      if (denied != null) return denied;
+      final heirs = await tx.execute(
+        r'SELECT user_id FROM budget_members '
+        r'WHERE budget_id = $1::uuid AND user_id <> $2::uuid '
+        r'AND left_at IS NULL ORDER BY joined_at, user_id LIMIT 1',
+        parameters: [budgetId, userId],
+        what: 'find earliest remaining member',
+        logParams: context,
+      );
+
+      if (heirs.isEmpty) {
+        final tombstones = await _tombstone(tx, budgetId, userId, now);
+        await _markLeft(tx, budgetId, userId, now, 'leave as last member');
+        return _Outcome.ok((
+          result: LeaveResult.deleted,
+          heirId: null,
+          tombstones: tombstones,
+          invitesRevoked: tombstones.invites,
+        ));
+      }
+
+      if (access.role == MemberRole.member) {
+        await _markLeft(tx, budgetId, userId, now, 'leave shared budget');
+        return _Outcome.ok((
+          result: LeaveResult.left,
+          heirId: null,
+          tombstones: null,
+          invitesRevoked: 0,
+        ));
+      }
+
+      final heirId = heirs.single[0]! as String;
+      final transferContext = {...context, 'heirId': heirId};
+      await tx.execute(
+        r'UPDATE budget_members SET role = $3 '
+        r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
+        parameters: [budgetId, heirId, MemberRole.owner.name],
+        what: 'make earliest member owner',
+        logParams: transferContext,
+      );
+      await tx.execute(
+        r'UPDATE budget_members SET role = $3, left_at = $4::timestamptz '
+        r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
+        parameters: [budgetId, userId, MemberRole.member.name, now],
+        what: 'leave shared budget as former owner',
+        logParams: transferContext,
+      );
+      await tx.execute(
+        r'UPDATE budgets SET owner_id = $2::uuid, '
+        r'updated_at = greatest(updated_at, $4::timestamptz), '
+        r'updated_by = $3::uuid WHERE id = $1::uuid',
+        parameters: [budgetId, heirId, userId, now],
+        what: 'transfer shared budget ownership',
+        logParams: transferContext,
+      );
+      final invites = await _revokeInvites(tx, budgetId, now);
+      return _Outcome.ok((
+        result: LeaveResult.transferred,
+        heirId: heirId,
+        tombstones: null,
+        invitesRevoked: invites,
+      ));
+    });
+    final left = _unwrap(action, outcome, context, sw);
+    final details = switch (left.result) {
+      LeaveResult.left => 'role=${MemberRole.member.name}',
+      LeaveResult.transferred =>
+        'role=${MemberRole.owner.name} newOwnerId=${left.heirId} '
+            'invitesRevoked=${left.invitesRevoked}',
+      LeaveResult.deleted =>
+        'no members left, budget deleted '
+            '${_describeTombstones(left.tombstones!)}',
+    };
+    _log.info(
+      'budget $action ok result=${left.result.name} budgetId=$budgetId '
+      'userId=$userId $details in ${sw.elapsedMilliseconds}ms',
+    );
+    return left.result;
+  }
+
+  Future<void> removeMember({
+    required String userId,
+    required String budgetId,
+    required String memberId,
+  }) async {
+    const action = 'remove member';
+    final sw = Stopwatch()..start();
+    final context = {
+      'budgetId': budgetId,
+      'userId': userId,
+      'memberId': isUuid(memberId)
+          ? memberId
+          : truncateBody(memberId, maxBytes: 64),
+    };
+    _checkBudgetId(action, budgetId, context, sw);
+    final now = normalizeInstant(_now());
+    final outcome = await _run<int>(action, context, sw, (tx) async {
+      final access = await _lockBudget(tx, budgetId, userId, action);
+      final denied = _denied<int>(access, ownerOnly: true);
+      if (denied != null) return denied;
+      if (memberId == userId) {
+        return const _Outcome<int>.rejected(
+          BudgetFailureReason.removeSelf,
+          'owner tried to remove themselves, leave goes through '
+          'POST /budgets/{id}/leave',
+        );
+      }
+      if (!isUuid(memberId)) {
+        return const _Outcome<int>.rejected(
+          BudgetFailureReason.memberNotFound,
+          'member id is not a uuid',
+        );
+      }
+      final removed = await tx.execute(
+        r'UPDATE budget_members SET left_at = $3::timestamptz '
+        r'WHERE budget_id = $1::uuid AND user_id = $2::uuid '
+        'AND left_at IS NULL RETURNING seq',
+        parameters: [budgetId, memberId, now],
+        what: 'remove member from shared budget',
+        logParams: context,
+      );
+      if (removed.isEmpty) {
+        return const _Outcome<int>.rejected(
+          BudgetFailureReason.memberNotFound,
+          'not an active member of this budget',
+        );
+      }
+      return _Outcome.ok(removed.single[0]! as int);
+    });
+    final seq = _unwrap(action, outcome, context, sw);
+    _log.info(
+      'budget $action ok budgetId=$budgetId userId=$userId '
+      'memberId=$memberId seq=$seq in ${sw.elapsedMilliseconds}ms',
+    );
+  }
+
+  Future<void> deleteBudget({
+    required String userId,
+    required String budgetId,
+  }) async {
+    const action = 'delete';
+    final sw = Stopwatch()..start();
+    final context = {'budgetId': budgetId, 'userId': userId};
+    _checkBudgetId(action, budgetId, context, sw);
+    final now = normalizeInstant(_now());
+    final outcome = await _run<_Deleted>(action, context, sw, (tx) async {
+      final access = await _lockBudget(tx, budgetId, userId, action);
+      final denied = _denied<_Deleted>(access, ownerOnly: true);
+      if (denied != null) return denied;
+      final members = await tx.execute(
+        r'SELECT count(*)::int FROM budget_members '
+        r'WHERE budget_id = $1::uuid AND left_at IS NULL',
+        parameters: [budgetId],
+        what: 'count active members of deleted budget',
+        logParams: context,
+      );
+      final tombstones = await _tombstone(tx, budgetId, userId, now);
+      return _Outcome.ok((
+        members: members.single[0]! as int,
+        tombstones: tombstones,
+      ));
+    });
+    final deleted = _unwrap(action, outcome, context, sw);
+    _log.info(
+      'budget $action ok budgetId=$budgetId userId=$userId '
+      'members=${deleted.members} '
+      '${_describeTombstones(deleted.tombstones)} '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+  }
+
+  Future<_Tombstones> _tombstone(
+    DbSession tx,
+    String budgetId,
+    String userId,
+    DateTime now,
+  ) async {
+    final context = {'budgetId': budgetId, 'userId': userId};
+    await tx.execute(
+      r'UPDATE budgets SET deleted_at = $3::timestamptz, '
+      r'updated_at = greatest(updated_at, $3::timestamptz), '
+      r'updated_by = $2::uuid WHERE id = $1::uuid',
+      parameters: [budgetId, userId, now],
+      what: 'tombstone shared budget',
+      logParams: context,
+    );
+    final counts = <String, int>{};
+    for (final table in const ['categories', 'expenses', 'recurring_rules']) {
+      final result = await tx.execute(
+        'UPDATE $table SET deleted_at = \$3::timestamptz, '
+        r'updated_at = greatest(updated_at, $3::timestamptz), '
+        r'updated_by = $2::uuid WHERE budget_id = $1::uuid '
+        'AND deleted_at IS NULL',
+        parameters: [budgetId, userId, now],
+        what: 'tombstone $table of shared budget',
+        logParams: context,
+      );
+      counts[table] = result.affectedRows;
+    }
+    final invites = await _revokeInvites(tx, budgetId, now);
+    return (
+      categories: counts['categories']!,
+      expenses: counts['expenses']!,
+      recurring: counts['recurring_rules']!,
+      invites: invites,
+    );
+  }
+
+  Future<int> _revokeInvites(
+    DbSession tx,
+    String budgetId,
+    DateTime now,
+  ) async {
+    final result = await tx.execute(
+      r'UPDATE invites SET revoked_at = $2::timestamptz '
+      r'WHERE budget_id = $1::uuid AND revoked_at IS NULL',
+      parameters: [budgetId, now],
+      what: 'revoke invites of budget',
+      logParams: {'budgetId': budgetId},
+    );
+    return result.affectedRows;
+  }
+
+  Future<void> _markLeft(
+    DbSession tx,
+    String budgetId,
+    String userId,
+    DateTime now,
+    String what,
+  ) => tx.execute(
+    r'UPDATE budget_members SET left_at = $3::timestamptz '
+    r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
+    parameters: [budgetId, userId, now],
+    what: what,
+    logParams: {'budgetId': budgetId, 'userId': userId},
+  );
+
   Future<_Access> _lockBudget(
     DbSession tx,
     String budgetId,
@@ -652,6 +910,15 @@ class BudgetService {
 
 typedef _Invite = ({String code, int attempts, int revoked});
 
+typedef _Left = ({
+  LeaveResult result,
+  String? heirId,
+  _Tombstones? tombstones,
+  int invitesRevoked,
+});
+
+typedef _Deleted = ({int members, _Tombstones tombstones});
+
 typedef _Joined = ({
   Budget budget,
   JoinResult result,
@@ -690,6 +957,10 @@ String _reasonCode(BudgetFailureReason reason) => switch (reason) {
   BudgetFailureReason.removeSelf => ApiErrorCode.badRequest.code,
   BudgetFailureReason.idTaken => ApiErrorCode.conflict.code,
 };
+
+String _describeTombstones(_Tombstones t) =>
+    'tombstones=categories:${t.categories},expenses:${t.expenses},'
+    'recurring:${t.recurring} invitesRevoked=${t.invites}';
 
 Budget _budgetFromRow(pg.ResultRow row) => Budget(
   id: row[0]! as String,
