@@ -7,6 +7,8 @@ import '../auth/auth_service.dart';
 import '../db/database.dart';
 import '../limits/request_limits.dart';
 import '../sync/pull_service.dart';
+import '../sync/push_service.dart';
+import '../sync/sync_notifier.dart';
 import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'health.dart';
@@ -20,11 +22,13 @@ Handler buildHandler({
   required Database db,
   required AuthService auth,
   RequestLimits? limits,
+  SyncNotifier notifier = const NoopSyncNotifier(),
 }) {
   final requestLimits = limits ?? RequestLimits();
   final requireAuth = authMiddleware(auth);
   final account = AccountService(db: db, hasher: auth.hasher);
   final pull = PullService(db: db);
+  final push = PushService(db: db, notifier: notifier);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))
@@ -74,6 +78,10 @@ Handler buildHandler({
     ..get(
       '/api/v1/sync/pull',
       const Pipeline().addMiddleware(requireAuth).addHandler(pullHandler(pull)),
+    )
+    ..post(
+      '/api/v1/sync/push',
+      const Pipeline().addMiddleware(requireAuth).addHandler(pushHandler(push)),
     );
 
   return const Pipeline()

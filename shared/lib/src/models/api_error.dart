@@ -33,6 +33,8 @@ enum ApiErrorCode {
   /// Действие только для создателя бюджета.
   forbidden('forbidden'),
 
+  conflict('conflict'),
+
   /// Тело запроса больше 1 МБ.
   payloadTooLarge('payload_too_large'),
 
