@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/data/api/api_client.dart';
 import 'package:milionchik/data/api/api_config.dart';
+import 'package:milionchik/data/api/token_store.dart';
 
 import 'fake_api_adapter.dart';
 
@@ -16,6 +17,7 @@ void main() {
     var n = 0;
     return ApiClient(
       config: config,
+      tokens: MemoryTokenStore(),
       adapter: adapter,
       newRequestId: ids == null ? null : () => ids[n++],
     );
@@ -68,7 +70,11 @@ void main() {
 
   test('без подмены rid - 16 hex, разный у запросов', () async {
     final adapter = FakeApiAdapter((call) => const FakeReply(204));
-    final api = ApiClient(config: config, adapter: adapter);
+    final api = ApiClient(
+      config: config,
+      tokens: MemoryTokenStore(),
+      adapter: adapter,
+    );
 
     await api.post('/auth/logout', auth: false);
     await api.post('/auth/logout', auth: false);

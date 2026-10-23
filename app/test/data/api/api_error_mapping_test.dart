@@ -8,6 +8,7 @@ import 'package:milionchik/data/api/api_config.dart';
 import 'package:milionchik/data/api/api_error_text.dart';
 import 'package:milionchik/data/api/api_exception.dart';
 import 'package:milionchik/l10n/app_localizations.dart';
+import 'package:milionchik/data/api/token_store.dart';
 import 'package:shared/shared.dart';
 
 import 'fake_api_adapter.dart';
@@ -26,6 +27,7 @@ void main() {
   }) async {
     final api = ApiClient(
       config: config,
+      tokens: MemoryTokenStore(),
       adapter: FakeApiAdapter(handler),
       newRequestId: () => 'ridmapping0000001',
     );

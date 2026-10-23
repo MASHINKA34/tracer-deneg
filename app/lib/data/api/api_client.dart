@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -6,12 +7,12 @@ import 'package:shared/logging.dart';
 
 import 'api_config.dart';
 import 'api_exception.dart';
+import 'auth_interceptor.dart';
 import 'api_log_interceptor.dart';
 import 'request_id_interceptor.dart';
+import 'token_store.dart';
 
 final _log = Logger('api');
-
-const String apiAuthKey = 'milionchik.auth';
 
 final class ApiResponse {
   const ApiResponse({
@@ -42,6 +43,7 @@ final class ApiHealth {
 class ApiClient {
   ApiClient({
     required this.config,
+    required TokenStore tokens,
     HttpClientAdapter? adapter,
     String Function()? newRequestId,
   }) : _newRequestId = newRequestId ?? generateRequestId,
@@ -58,6 +60,12 @@ class ApiClient {
     _dio.interceptors.addAll([
       RequestIdInterceptor(generate: _newRequestId),
       const ApiLogInterceptor(),
+      AuthInterceptor(
+        tokens: tokens,
+        dio: _dio,
+        newRequestId: _newRequestId,
+        onSessionExpired: _reportSessionExpired,
+      ),
     ]);
     _log.info(
       'api client ready baseUrl=${config.baseUrlText} '
@@ -70,6 +78,19 @@ class ApiClient {
   final ApiConfig config;
   final Dio _dio;
   final String Function() _newRequestId;
+  final StreamController<SessionExpired> _sessionExpired =
+      StreamController<SessionExpired>.broadcast();
+
+  Stream<SessionExpired> get sessionExpired => _sessionExpired.stream;
+
+  void _reportSessionExpired(SessionExpired event) {
+    _log.info(
+      'session expired event reason=${event.reason.name} '
+      'on ${event.method} ${event.path} rid=${event.requestId} '
+      'listeners=${_sessionExpired.hasListener}',
+    );
+    _sessionExpired.add(event);
+  }
 
   Future<ApiResponse> get(
     String path, {
@@ -168,5 +189,6 @@ class ApiClient {
   void close() {
     _log.fine('api client closed baseUrl=${config.baseUrlText}');
     _dio.close(force: true);
+    unawaited(_sessionExpired.close());
   }
 }

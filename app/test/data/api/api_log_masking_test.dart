@@ -6,6 +6,7 @@ import 'package:milionchik/data/api/api_client.dart';
 import 'package:milionchik/data/api/api_config.dart';
 import 'package:milionchik/data/api/api_exception.dart';
 import 'package:milionchik/data/api/api_log_body.dart';
+import 'package:milionchik/data/api/token_store.dart';
 import 'package:shared/logging.dart';
 
 import 'fake_api_adapter.dart';
@@ -41,7 +42,11 @@ void main() {
         'refreshToken': _refresh,
       }),
     );
-    final api = ApiClient(config: config, adapter: adapter);
+    final api = ApiClient(
+      config: config,
+      tokens: MemoryTokenStore(),
+      adapter: adapter,
+    );
 
     await api.post(
       '/auth/login',
@@ -110,7 +115,11 @@ void main() {
           uri: call.options.uri,
         ),
       );
-      final api = ApiClient(config: config, adapter: adapter);
+      final api = ApiClient(
+        config: config,
+        tokens: MemoryTokenStore(),
+        adapter: adapter,
+      );
 
       Object? failure;
       try {
@@ -140,7 +149,11 @@ void main() {
     final adapter = FakeApiAdapter(
       (call) => FakeReply.json(200, {'status': 'ok', 'comment': _comment}),
     );
-    final api = ApiClient(config: config, adapter: adapter);
+    final api = ApiClient(
+      config: config,
+      tokens: MemoryTokenStore(),
+      adapter: adapter,
+    );
 
     await api.post('/budgets', body: {'name': _name}, auth: false);
 

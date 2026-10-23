@@ -7,17 +7,21 @@ import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 
 final class FakeCall {
-  FakeCall(this.options, this.body);
+  FakeCall(this.options, this.body)
+    : method = options.method,
+      path = options.uri.path,
+      headers = {
+        for (final entry in options.headers.entries)
+          entry.key.toLowerCase(): entry.value?.toString(),
+      };
 
   final RequestOptions options;
   final String? body;
+  final String method;
+  final String path;
+  final Map<String, String?> headers;
 
-  String get method => options.method;
-  String get path => options.uri.path;
-  String? header(String name) {
-    final value = options.headers[name];
-    return value?.toString();
-  }
+  String? header(String name) => headers[name.toLowerCase()];
 
   Map<String, Object?> get json => jsonDecode(body!) as Map<String, Object?>;
 }
