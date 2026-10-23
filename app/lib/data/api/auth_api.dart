@@ -16,6 +16,8 @@ const String registerPath = '/auth/register';
 
 const String recoverPath = '/auth/recover';
 
+const String recoveryCodePath = '/auth/recovery-code';
+
 final class AuthResult {
   const AuthResult({
     required this.session,
@@ -31,6 +33,21 @@ final class AuthResult {
   String toString() =>
       'AuthResult(${session.user}, rid=$requestId, '
       'recoveryCode=${recoveryCode == null ? 'none' : maskRecoveryCode(recoveryCode)})';
+}
+
+final class ReissuedRecoveryCode {
+  const ReissuedRecoveryCode({
+    required this.recoveryCode,
+    required this.requestId,
+  });
+
+  final String recoveryCode;
+  final String requestId;
+
+  @override
+  String toString() =>
+      'ReissuedRecoveryCode(${maskRecoveryCode(recoveryCode)}, '
+      'rid=$requestId)';
 }
 
 class AuthApi {
@@ -87,6 +104,35 @@ class AuthApi {
       },
     );
     return _parse(response, recoverPath, recoveryCode: true);
+  }
+
+  Future<ReissuedRecoveryCode> reissueRecoveryCode({
+    required String password,
+  }) async {
+    final response = await _client.post(
+      recoveryCodePath,
+      body: {'password': password},
+    );
+    try {
+      final reader = JsonReader.of(response.data, 'RecoveryCodeResponse');
+      return ReissuedRecoveryCode(
+        recoveryCode: _recoveryCode(reader),
+        requestId: response.requestId,
+      );
+    } on FormatException catch (e) {
+      _log.warning(
+        'POST $recoveryCodePath ${response.statusCode} answered without '
+        '{recoveryCode} → bad response: ${e.message} '
+        'rid=${response.requestId}',
+      );
+      throw ApiBadResponse(
+        method: 'POST',
+        path: '${_client.config.baseUrl.path}$recoveryCodePath',
+        requestId: response.requestId,
+        statusCode: response.statusCode,
+        reason: 'recovery code: ${e.message}',
+      );
+    }
   }
 
   AuthResult _parse(

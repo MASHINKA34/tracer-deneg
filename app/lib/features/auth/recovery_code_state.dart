@@ -4,7 +4,7 @@ import 'package:shared/shared.dart';
 
 final _log = Logger('auth');
 
-enum RecoveryCodeReason { register, recover }
+enum RecoveryCodeReason { register, recover, reissue }
 
 final class PendingRecoveryCode {
   const PendingRecoveryCode({required this.code, required this.reason});

@@ -18,6 +18,7 @@ import '../features/expense/new_expense_screen.dart';
 import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/profile/recovery_code_reissue_screen.dart';
 import '../features/profile/theme_screen.dart';
 import '../features/recurring/recurring_editor_screen.dart';
 import '../features/recurring/recurring_screen.dart';
@@ -283,6 +284,13 @@ GoRouter buildRouter({
                     parentNavigatorKey: rootKey,
                     builder: (context, state) =>
                         const AppFrame(child: ThemeScreen()),
+                  ),
+                  GoRoute(
+                    path: 'recovery-code',
+                    name: AppRoutes.recoveryReissueName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        const AppFrame(child: RecoveryCodeReissueScreen()),
                   ),
                 ],
               ),

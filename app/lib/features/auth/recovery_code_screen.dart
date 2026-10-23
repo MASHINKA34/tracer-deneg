@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared/shared.dart';
 
+import '../../core/router.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/button.dart';
 import '../../ui/components/checkbox.dart';
@@ -57,8 +59,15 @@ class RecoveryCodeRoute extends ConsumerWidget {
       key: ObjectKey(pending),
       code: pending.code,
       reason: pending.reason,
-      onContinue: () =>
-          ref.read(pendingRecoveryCodeProvider.notifier).confirm(),
+      onContinue: () {
+        final router = GoRouter.of(context);
+        ref.read(pendingRecoveryCodeProvider.notifier).confirm();
+        if (pending.reason != RecoveryCodeReason.reissue) return;
+        _log.fine(
+          'reissued recovery code confirmed → back to ${AppRoutes.profile}',
+        );
+        router.go(AppRoutes.profile);
+      },
     );
   }
 }
