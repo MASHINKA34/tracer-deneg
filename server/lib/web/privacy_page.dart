@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 import 'package:shelf/shelf.dart';
@@ -9,10 +11,11 @@ final _log = Logger('web');
 
 Handler privacyPageHandler(PrivacySettings settings) {
   final html = renderPrivacyPage(settings);
+  final bytes = utf8.encode(html).length;
   return (Request request) {
     _log.fine(
       'page shown $privacyPath status=200 '
-      '${formatContext(settings.toLogContext())} bytes=${html.length}',
+      '${formatContext(settings.toLogContext())} bytes=$bytes',
     );
     return htmlResponse(200, html);
   };

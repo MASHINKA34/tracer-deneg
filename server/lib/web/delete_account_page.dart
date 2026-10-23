@@ -19,8 +19,9 @@ const Map<String, String> _noStore = {'cache-control': 'no-store'};
 
 Handler deleteAccountFormHandler() {
   final html = renderDeleteAccountForm();
+  final bytes = utf8.encode(html).length;
   return (Request request) {
-    _log.fine('page shown $deleteAccountPath status=200 bytes=${html.length}');
+    _log.fine('page shown $deleteAccountPath status=200 bytes=$bytes');
     return htmlResponse(200, html, headers: _noStore);
   };
 }
