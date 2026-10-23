@@ -89,30 +89,32 @@ void main() {
       expect(stored['recurring_month'], '2026-10');
     });
 
-    test('удалённая трата регулярной не пересоздаётся вторым телефоном',
-        () async {
-      final fromAnna = generated(anna, minutesAgo(30));
-      await pushAs(api, anna, [SyncChange.upsert(fromAnna)]);
-      await pushAs(api, anna, [
-        SyncChange.delete(
-          entity: SyncEntity.expense,
-          id: fromAnna.id,
-          updatedAt: minutesAgo(25),
-        ),
-      ]);
-      final fromBoris = generated(boris, minutesAgo(1));
-      final response = await pushAs(api, boris, [
-        SyncChange.upsert(fromBoris),
-      ]);
-      expect(response.rejected, [
-        SyncRejection(id: fromBoris.id, code: ApiErrorCode.conflict.code),
-      ]);
-      expect(await chargesOfRule(), 1);
-      expect(
-        (await storedRow(api, 'expenses', fromAnna.id))!.deletedAt,
-        isNotNull,
-      );
-    });
+    test(
+      'удалённая трата регулярной не пересоздаётся вторым телефоном',
+      () async {
+        final fromAnna = generated(anna, minutesAgo(30));
+        await pushAs(api, anna, [SyncChange.upsert(fromAnna)]);
+        await pushAs(api, anna, [
+          SyncChange.delete(
+            entity: SyncEntity.expense,
+            id: fromAnna.id,
+            updatedAt: minutesAgo(25),
+          ),
+        ]);
+        final fromBoris = generated(boris, minutesAgo(1));
+        final response = await pushAs(api, boris, [
+          SyncChange.upsert(fromBoris),
+        ]);
+        expect(response.rejected, [
+          SyncRejection(id: fromBoris.id, code: ApiErrorCode.conflict.code),
+        ]);
+        expect(await chargesOfRule(), 1);
+        expect(
+          (await storedRow(api, 'expenses', fromAnna.id))!.deletedAt,
+          isNotNull,
+        );
+      },
+    );
 
     test('вставка той же траты параллельной транзакцией: push ждёт её, '
         'правит запись и не падает', () async {

@@ -168,38 +168,40 @@ void main() {
       );
     });
 
-    test('два одновременных запроса с одним batchId — применяется один раз',
-        () async {
-      final batchId = newId();
-      final body = SyncPushRequest(
-        batchId: batchId,
-        changes: [
-          for (var i = 0; i < 20; i++)
-            SyncChange.upsert(expense(kopecks: 1000 + i)),
-        ],
-      ).toJson();
-      final responses = await Future.wait([
-        pushRaw(api, anna, body),
-        pushRaw(api, anna, body),
-        pushRaw(api, anna, body),
-      ]);
-      for (final response in responses) {
-        expect(response.status, 200, reason: response.text);
-        expect(response.text, responses.first.text);
-      }
-      final parsed = SyncPushResponse.fromJson(responses.first.json);
-      expect(parsed.applied, hasLength(20));
-      expect(
-        await api.count(
-          r'SELECT max(seq)::int FROM expenses WHERE budget_id = $1::uuid',
-          [personal],
-        ),
-        parsed.cursor,
-      );
-      expect(
-        logs.lines.where((l) => l.contains('push replay of known batch')),
-        hasLength(2),
-      );
-    });
+    test(
+      'два одновременных запроса с одним batchId — применяется один раз',
+      () async {
+        final batchId = newId();
+        final body = SyncPushRequest(
+          batchId: batchId,
+          changes: [
+            for (var i = 0; i < 20; i++)
+              SyncChange.upsert(expense(kopecks: 1000 + i)),
+          ],
+        ).toJson();
+        final responses = await Future.wait([
+          pushRaw(api, anna, body),
+          pushRaw(api, anna, body),
+          pushRaw(api, anna, body),
+        ]);
+        for (final response in responses) {
+          expect(response.status, 200, reason: response.text);
+          expect(response.text, responses.first.text);
+        }
+        final parsed = SyncPushResponse.fromJson(responses.first.json);
+        expect(parsed.applied, hasLength(20));
+        expect(
+          await api.count(
+            r'SELECT max(seq)::int FROM expenses WHERE budget_id = $1::uuid',
+            [personal],
+          ),
+          parsed.cursor,
+        );
+        expect(
+          logs.lines.where((l) => l.contains('push replay of known batch')),
+          hasLength(2),
+        );
+      },
+    );
   });
 }

@@ -88,52 +88,53 @@ void main() {
       expect(response.cursor, 0);
       final after = (await storedRow(api, 'expenses', expenseId))!;
       expect(after.values, before.values);
-      expect(
-        logs.text,
-        contains(rightsLine('expense', 'delete', expenseId)),
-      );
+      expect(logs.text, contains(rightsLine('expense', 'delete', expenseId)));
       expect(logs.text, contains('problem="not a member of record budget"'));
     });
 
-    test('удаление несуществующей записи — тот же not_found, что и чужой',
-        () async {
-      final id = newId();
-      final response = await pushAs(api, anna, [
-        SyncChange.delete(
-          entity: SyncEntity.category,
-          id: id,
-          updatedAt: DateTime.now().toUtc(),
-        ),
-      ]);
-      expect(response.rejected, [
-        SyncRejection(id: id, code: ApiErrorCode.notFound.code),
-      ]);
-      expect(logs.text, contains(rightsLine('category', 'delete', id)));
-      expect(logs.text, contains('problem="record not found"'));
-    });
+    test(
+      'удаление несуществующей записи — тот же not_found, что и чужой',
+      () async {
+        final id = newId();
+        final response = await pushAs(api, anna, [
+          SyncChange.delete(
+            entity: SyncEntity.category,
+            id: id,
+            updatedAt: DateTime.now().toUtc(),
+          ),
+        ]);
+        expect(response.rejected, [
+          SyncRejection(id: id, code: ApiErrorCode.notFound.code),
+        ]);
+        expect(logs.text, contains(rightsLine('category', 'delete', id)));
+        expect(logs.text, contains('problem="record not found"'));
+      },
+    );
 
-    test('перенос своей траты в чужой бюджет — not_found, трата на месте',
-        () async {
-      final expense = expenseRecord(
-        budgetId: annaPersonal,
-        categoryId: annaCategory,
-        authorId: anna.id,
-        updatedAt: minutesAgo(20),
-      );
-      await pushAs(api, anna, [SyncChange.upsert(expense)]);
-      final moved = expense.copyWith(
-        budgetId: borisPersonal,
-        categoryId: borisCategory,
-        updatedAt: minutesAgo(5),
-      );
-      final response = await pushAs(api, anna, [SyncChange.upsert(moved)]);
-      expect(response.rejected, [
-        SyncRejection(id: expense.id, code: ApiErrorCode.notFound.code),
-      ]);
-      final stored = (await storedRow(api, 'expenses', expense.id))!;
-      expect(stored.budgetId, annaPersonal);
-      expect(response.cursor, stored.seq);
-    });
+    test(
+      'перенос своей траты в чужой бюджет — not_found, трата на месте',
+      () async {
+        final expense = expenseRecord(
+          budgetId: annaPersonal,
+          categoryId: annaCategory,
+          authorId: anna.id,
+          updatedAt: minutesAgo(20),
+        );
+        await pushAs(api, anna, [SyncChange.upsert(expense)]);
+        final moved = expense.copyWith(
+          budgetId: borisPersonal,
+          categoryId: borisCategory,
+          updatedAt: minutesAgo(5),
+        );
+        final response = await pushAs(api, anna, [SyncChange.upsert(moved)]);
+        expect(response.rejected, [
+          SyncRejection(id: expense.id, code: ApiErrorCode.notFound.code),
+        ]);
+        final stored = (await storedRow(api, 'expenses', expense.id))!;
+        expect(stored.budgetId, annaPersonal);
+        expect(response.cursor, stored.seq);
+      },
+    );
 
     test('исключённый участник общего бюджета не пишет в него', () async {
       final family = await fixture.budget(ownerId: anna.id);

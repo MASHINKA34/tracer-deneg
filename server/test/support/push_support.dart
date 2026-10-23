@@ -107,10 +107,10 @@ RecurringRule recurringRecord({
 
 Map<String, Object?> changeJson(SyncChange change) => change.toJson();
 
-Map<String, Object?> pushBody(
-  List<Object?> changes, {
-  String? batchId,
-}) => {'batchId': batchId ?? newId(), 'changes': changes};
+Map<String, Object?> pushBody(List<Object?> changes, {String? batchId}) => {
+  'batchId': batchId ?? newId(),
+  'changes': changes,
+};
 
 Future<String> firstCategoryOf(AuthHarness api, String budgetId) async {
   final rows = await api.db.execute(
@@ -152,10 +152,8 @@ Future<StoredRow?> storedRow(AuthHarness api, String table, String id) async {
   return StoredRow(rows.single.toColumnMap());
 }
 
-Future<int> rowCount(AuthHarness api, String table, String id) => api.count(
-  'SELECT count(*)::int FROM $table WHERE id = \$1::uuid',
-  [id],
-);
+Future<int> rowCount(AuthHarness api, String table, String id) =>
+    api.count('SELECT count(*)::int FROM $table WHERE id = \$1::uuid', [id]);
 
 class RecordingNotifier implements SyncNotifier {
   final List<BudgetsChanged> events = [];

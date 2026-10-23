@@ -178,11 +178,7 @@ void main() {
       logs.clear();
       final revived = await pushAs(api, anna, [
         SyncChange.upsert(
-          expense(
-            id: id,
-            updatedAt: DateTime.now().toUtc(),
-            kopecks: 99900,
-          ),
+          expense(id: id, updatedAt: DateTime.now().toUtc(), kopecks: 99900),
         ),
       ]);
       expect(revived.applied, isEmpty);
@@ -200,33 +196,35 @@ void main() {
       );
     });
 
-    test('повторное удаление принимается без новой записи и нового seq',
-        () async {
-      final id = newId();
-      await pushAs(api, anna, [
-        SyncChange.upsert(expense(id: id, updatedAt: minutesAgo(30))),
-      ]);
-      final first = await pushAs(api, anna, [
-        SyncChange.delete(
-          entity: SyncEntity.expense,
-          id: id,
-          updatedAt: minutesAgo(20),
-        ),
-      ]);
-      final tombstone = (await storedRow(api, 'expenses', id))!;
-      final again = await pushAs(api, anna, [
-        SyncChange.delete(
-          entity: SyncEntity.expense,
-          id: id,
-          updatedAt: minutesAgo(1),
-        ),
-      ]);
-      expect(again.applied, [id]);
-      expect(again.cursor, first.cursor);
-      final stored = (await storedRow(api, 'expenses', id))!;
-      expect(stored.seq, tombstone.seq);
-      expect(stored.deletedAt, tombstone.deletedAt);
-    });
+    test(
+      'повторное удаление принимается без новой записи и нового seq',
+      () async {
+        final id = newId();
+        await pushAs(api, anna, [
+          SyncChange.upsert(expense(id: id, updatedAt: minutesAgo(30))),
+        ]);
+        final first = await pushAs(api, anna, [
+          SyncChange.delete(
+            entity: SyncEntity.expense,
+            id: id,
+            updatedAt: minutesAgo(20),
+          ),
+        ]);
+        final tombstone = (await storedRow(api, 'expenses', id))!;
+        final again = await pushAs(api, anna, [
+          SyncChange.delete(
+            entity: SyncEntity.expense,
+            id: id,
+            updatedAt: minutesAgo(1),
+          ),
+        ]);
+        expect(again.applied, [id]);
+        expect(again.cursor, first.cursor);
+        final stored = (await storedRow(api, 'expenses', id))!;
+        expect(stored.seq, tombstone.seq);
+        expect(stored.deletedAt, tombstone.deletedAt);
+      },
+    );
 
     test('правка и удаление одной траты в одной пачке — удалена', () async {
       final id = newId();

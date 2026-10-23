@@ -103,11 +103,7 @@ void main() {
     });
 
     test('без токена — 401', () async {
-      final response = await api.send(
-        'POST',
-        '/sync/push',
-        body: pushBody([]),
-      );
+      final response = await api.send('POST', '/sync/push', body: pushBody([]));
       expect(response.status, 401);
     });
 
