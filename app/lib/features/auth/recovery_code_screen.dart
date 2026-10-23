@@ -308,12 +308,7 @@ class _CodeCard extends StatelessWidget {
             excludeSemantics: true,
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                code,
-                maxLines: 1,
-                softWrap: false,
-                style: codeStyle,
-              ),
+              child: Text(code, maxLines: 1, softWrap: false, style: codeStyle),
             ),
           ),
           const SizedBox(height: 10),
