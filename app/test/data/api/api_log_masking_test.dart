@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/data/api/api_client.dart';
 import 'package:milionchik/data/api/api_config.dart';
+import 'package:milionchik/data/api/api_exception.dart';
 import 'package:milionchik/data/api/api_log_body.dart';
+import 'package:shared/logging.dart';
 
 import 'fake_api_adapter.dart';
 
@@ -111,11 +112,19 @@ void main() {
       );
       final api = ApiClient(config: config, adapter: adapter);
 
-      await expectLater(
-        api.get('/sync/pull', query: {'cursor': 'query-secret-marker'}),
-        throwsA(isA<DioException>()),
-      );
+      Object? failure;
+      try {
+        await api.get(
+          '/sync/pull',
+          query: {'cursor': 'query-secret-marker'},
+          auth: false,
+        );
+      } on ApiNetworkFailure catch (e) {
+        failure = e;
+      }
 
+      expect(failure, isA<ApiNetworkFailure>());
+      _expectNoSecrets(describeError(failure), ['query-secret-marker']);
       final text = logs.text;
       final warn = logs.linesOf('api', Level.WARNING).join('\n');
       expect(warn, contains('GET /api/v1/sync/pull failed in '));

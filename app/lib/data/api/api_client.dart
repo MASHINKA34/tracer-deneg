@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 
 import 'api_config.dart';
+import 'api_exception.dart';
 import 'api_log_interceptor.dart';
 import 'request_id_interceptor.dart';
 
@@ -93,18 +94,28 @@ class ApiClient {
     bool auth = true,
   }) async {
     final rid = _newRequestId();
-    final response = await _dio.request<String>(
-      path,
-      data: body,
-      queryParameters: query,
-      options: Options(
-        method: method,
-        extra: {apiRequestIdKey: rid, apiAuthKey: auth},
-      ),
-    );
+    final Response<String> response;
+    try {
+      response = await _dio.request<String>(
+        path,
+        data: body,
+        queryParameters: query,
+        options: Options(
+          method: method,
+          extra: {apiRequestIdKey: rid, apiAuthKey: auth},
+        ),
+      );
+    } on DioException catch (e) {
+      final mapped = apiExceptionFromDio(e);
+      _log.fine(
+        '$method $path ${e.type.name} → ${mapped.runtimeType}: '
+        '${mapped.details} rid=$rid',
+      );
+      Error.throwWithStackTrace(mapped, e.stackTrace);
+    }
     return ApiResponse(
       statusCode: response.statusCode ?? 0,
-      data: _decode(response),
+      data: _decode(response, rid),
       requestId: rid,
     );
   }
@@ -112,23 +123,46 @@ class ApiClient {
   Future<ApiHealth> health() async {
     final response = await get('/health', auth: false);
     final json = response.data;
-    if (json is! Map<String, Object?>) {
-      throw FormatException(
-        'health: expected JSON object, got ${json.runtimeType}',
+    if (json is! Map<String, Object?> || json['status'] is! String) {
+      _log.warning(
+        'GET /health answered without status object → bad response '
+        'rid=${response.requestId}',
+      );
+      throw ApiBadResponse(
+        method: 'GET',
+        path: '${config.baseUrl.path}/health',
+        requestId: response.requestId,
+        statusCode: response.statusCode,
+        reason: 'health: expected {status, version, db}',
       );
     }
     return ApiHealth(
-      status: '${json['status']}',
+      status: json['status']! as String,
       version: '${json['version']}',
       db: '${json['db']}',
       requestId: response.requestId,
     );
   }
 
-  Object? _decode(Response<String> response) {
+  Object? _decode(Response<String> response, String rid) {
     final text = response.data;
     if (text == null || text.isEmpty) return null;
-    return jsonDecode(text);
+    try {
+      return jsonDecode(text);
+    } on FormatException catch (e) {
+      final options = response.requestOptions;
+      _log.warning(
+        '${options.method} ${options.uri.path} ${response.statusCode} body is '
+        'not JSON → bad response: ${e.message} rid=$rid',
+      );
+      throw ApiBadResponse(
+        method: options.method,
+        path: options.uri.path,
+        requestId: rid,
+        statusCode: response.statusCode,
+        reason: 'body is not JSON',
+      );
+    }
   }
 
   void close() {
