@@ -36,6 +36,7 @@ class AuthHarness {
   static Future<AuthHarness> start({
     AccessTokens? accessTokens,
     SyncNotifier notifier = const NoopSyncNotifier(),
+    DateTime Function()? now,
   }) async {
     final db = await openScratchDatabase();
     await Migrator(db, directory: Directory('migrations')).run();
@@ -47,7 +48,12 @@ class AuthHarness {
     return AuthHarness._(
       db,
       auth,
-      buildHandler(db: db, auth: auth, notifier: notifier),
+      buildHandler(
+        db: db,
+        auth: auth,
+        notifier: notifier,
+        now: now ?? DateTime.now,
+      ),
     );
   }
 
