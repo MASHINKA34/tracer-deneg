@@ -76,6 +76,7 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showAppSnackbar(
   String? actionLabel,
   VoidCallback? onAction,
   Duration duration = const Duration(seconds: 5),
+  EdgeInsetsGeometry margin = const EdgeInsets.fromLTRB(12, 0, 12, 12),
 }) {
   final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
   return messenger.showSnackBar(
@@ -85,7 +86,7 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showAppSnackbar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       padding: EdgeInsets.zero,
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      margin: margin,
       content: AppSnackbar(
         text: text,
         actionLabel: actionLabel,

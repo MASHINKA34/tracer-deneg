@@ -12,6 +12,7 @@ import 'package:milionchik/features/auth/recovery_code_screen.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/ui/components/button.dart';
+import 'package:milionchik/ui/components/fab.dart';
 import 'package:milionchik/ui/components/snackbar.dart';
 import 'package:milionchik/ui/icons/app_icon.dart';
 import 'package:shared/shared.dart';
@@ -224,6 +225,11 @@ void main() {
     expect(find.byType(AppSnackbar), findsOneWidget);
     expect(find.text('Не удалось загрузить'), findsOneWidget);
     expect(find.text('Повторить'), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(AppSnackbar)).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(AppFab)).top),
+      reason: 'snackbar stays above the + button of the menu',
+    );
     expect(find.bySemanticsLabel('Ошибка синхронизации'), findsOneWidget);
     expect(_headerIcon(AppIcons.alertCircle), findsOneWidget);
     expect(find.text(DriftBudgetsRepository.personalName), findsOneWidget);

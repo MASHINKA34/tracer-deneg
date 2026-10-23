@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../ui/components/month_card.dart';
 import '../../ui/components/snackbar.dart';
 import '../../ui/theme/app_theme.dart';
+import '../expense/expense_snackbar_layer.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
@@ -78,6 +79,12 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       context,
       text: l10n.pullFailed,
       actionLabel: l10n.pullRetry,
+      margin: const EdgeInsets.fromLTRB(
+        expenseSnackbarSide,
+        0,
+        expenseSnackbarSide,
+        expenseSnackbarAboveAnchor,
+      ),
       onAction: () {
         _log.info('pull retry tap on snackbar → pull reason=retry');
         _pull.run(PullReason.retry);
