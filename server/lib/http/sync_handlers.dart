@@ -10,13 +10,19 @@ final _log = Logger('sync');
 
 Handler pullHandler(PullService pull) => (Request request) async {
   final userId = authContextOf(request).userId;
+  final parameters = request.url.queryParameters;
   final SyncPullQuery query;
   try {
-    query = SyncPullQuery.fromQueryParameters(request.url.queryParameters);
+    query = SyncPullQuery.fromQueryParameters(parameters);
   } on FormatException catch (e) {
+    String? raw(String key) {
+      final value = parameters[key];
+      return value == null ? null : truncateBody(value, maxBytes: 64);
+    }
+
     _log.warning(
       'pull rejected reason=${ApiErrorCode.badRequest.code} userId=$userId '
-      'problem="${e.message}"',
+      '${formatContext({'problem': e.message, 'cursor': raw('cursor'), 'limit': raw('limit')})}',
     );
     return errorResponse(
       400,
