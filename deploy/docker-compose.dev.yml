@@ -24,5 +24,21 @@ services:
       timeout: 3s
       retries: 30
 
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://milionchik:milionchik@db:5432/milionchik?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-not-for-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PRIVACY_CONTACT: ${PRIVACY_CONTACT:-}
+      PRIVACY_OPERATOR: ${PRIVACY_OPERATOR:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+
 volumes:
   pgdata:
