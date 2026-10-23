@@ -9,6 +9,7 @@ import 'package:shared/shared.dart' show LocalDate;
 
 import '../features/auth/forgot_password_stub_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/register_screen.dart';
 import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
 import '../features/expense/edit_expense_screen.dart';
@@ -345,6 +346,12 @@ GoRouter buildRouter({
         name: AppRoutes.loginName,
         parentNavigatorKey: rootKey,
         builder: (context, state) => const AppFrame(child: LoginScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        name: AppRoutes.registerName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const AppFrame(child: RegisterScreen()),
       ),
       GoRoute(
         path: AppRoutes.forgotPassword,
