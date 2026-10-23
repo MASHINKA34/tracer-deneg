@@ -12,6 +12,7 @@ import '../../data/session/session_providers.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/pull_service.dart';
 import 'recovery_code_state.dart';
+import 'session_end_service.dart';
 
 final _log = Logger('auth');
 
@@ -149,6 +150,23 @@ class AuthService {
 
     final userId = result.session.user.userId;
     final code = result.recoveryCode;
+    try {
+      await _ref
+          .read(sessionEndServiceProvider)
+          .clearIfAnotherAccount(action: action.name, userId: userId);
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.severe(
+        '${action.name} accepted by server userId=$userId login=$masked '
+        'rid=${result.requestId}, but previous account data not cleared '
+        'after ${sw.elapsedMilliseconds}ms → not signed in, staying on the '
+        '${action.name} screen, previous account data and queue kept: '
+        '${describeError(error)}',
+        error,
+        st,
+      );
+      return AuthNotSaved(error);
+    }
     await _rememberSignIn(action, userId);
     if (code != null) {
       _ref

@@ -16,6 +16,7 @@ import '../../ui/components/text_field.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
+import 'account_switch_dialog.dart';
 import 'auth_fields.dart';
 import 'auth_service.dart';
 import 'auth_widgets.dart';
@@ -99,6 +100,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     setState(() => _busy = true);
+    final proceed = await confirmSignIn(
+      context,
+      ref,
+      action: AuthAction.login,
+      login: _login.text,
+    );
+    if (!mounted) return;
+    if (!proceed) {
+      setState(() => _busy = false);
+      return;
+    }
     final outcome = await ref
         .read(authServiceProvider)
         .login(login: _login.text, password: _password.text);
