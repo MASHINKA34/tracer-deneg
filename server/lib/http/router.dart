@@ -11,6 +11,7 @@ import '../limits/request_limits.dart';
 import '../sync/pull_service.dart';
 import '../sync/push_service.dart';
 import '../sync/sync_notifier.dart';
+import '../web/delete_account_page.dart';
 import '../web/privacy_page.dart';
 import '../web/web_page.dart';
 import '../ws/ws_handler.dart';
@@ -144,6 +145,20 @@ Handler buildHandler({
       const Pipeline()
           .addMiddleware(webErrorPages())
           .addHandler(privacyPageHandler(privacy)),
+    )
+    ..get(
+      deleteAccountPath,
+      const Pipeline()
+          .addMiddleware(webErrorPages())
+          .addHandler(deleteAccountFormHandler()),
+    )
+    ..post(
+      deleteAccountPath,
+      const Pipeline()
+          .addMiddleware(webErrorPages())
+          .addHandler(
+            deleteAccountSubmitHandler(account: account, limits: requestLimits),
+          ),
     );
   if (ws != null) {
     router.get(

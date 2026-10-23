@@ -191,6 +191,7 @@ class AccountService {
     required String password,
   }) async {
     final sw = Stopwatch()..start();
+    final origin = {'sessionId': sessionId};
     final rows = await db.execute(
       r'SELECT password_hash FROM users '
       r'WHERE id = $1::uuid AND deleted_at IS NULL',
@@ -199,7 +200,7 @@ class AccountService {
       logParams: {'userId': userId},
     );
     if (rows.isEmpty) {
-      _rejectDeletion(sw, AuthFailureReason.userDeleted, userId, sessionId);
+      _rejectDeletion(sw, AuthFailureReason.userDeleted, userId, origin);
     }
     final storedPasswordHash = rows.first.first! as String;
     final matches = await hasher.verify(
@@ -212,11 +213,73 @@ class AccountService {
         sw,
         AuthFailureReason.badCredentials,
         userId,
-        sessionId,
+        origin,
         cause: 'password_mismatch',
       );
     }
+    return _deleteVerified(
+      sw,
+      userId: userId,
+      storedPasswordHash: storedPasswordHash,
+      origin: origin,
+    );
+  }
 
+  Future<AccountDeletion> deleteAccountByLogin({
+    required String login,
+    required String password,
+  }) async {
+    final sw = Stopwatch()..start();
+    final normalized = normalizeLogin(login);
+    final masked = maskLogin(normalized);
+    final origin = {'via': 'web', 'login': masked};
+    final rows = await db.execute(
+      r'SELECT id, password_hash FROM users '
+      r'WHERE lower(login) = $1 AND deleted_at IS NULL',
+      parameters: [normalized],
+      what: 'find user by login for account deletion',
+      logParams: {'login': masked},
+    );
+    if (rows.isEmpty) {
+      await hasher.verifyDummy(password, purpose: 'password');
+      _rejectDeletion(
+        sw,
+        AuthFailureReason.badCredentials,
+        null,
+        origin,
+        cause: 'user_not_found',
+      );
+    }
+    final userId = rows.first[0]! as String;
+    final storedPasswordHash = rows.first[1]! as String;
+    final matches = await hasher.verify(
+      password,
+      storedPasswordHash,
+      purpose: 'password',
+    );
+    if (!matches) {
+      _rejectDeletion(
+        sw,
+        AuthFailureReason.badCredentials,
+        userId,
+        origin,
+        cause: 'password_mismatch',
+      );
+    }
+    return _deleteVerified(
+      sw,
+      userId: userId,
+      storedPasswordHash: storedPasswordHash,
+      origin: origin,
+    );
+  }
+
+  Future<AccountDeletion> _deleteVerified(
+    Stopwatch sw, {
+    required String userId,
+    required String storedPasswordHash,
+    required Map<String, Object?> origin,
+  }) async {
     final steps = <String>[];
     final deletion = await db.transaction('delete account', (tx) async {
       steps.clear();
@@ -327,7 +390,7 @@ class AccountService {
             ? AuthFailureReason.userDeleted
             : AuthFailureReason.badCredentials,
         userId,
-        sessionId,
+        origin,
         cause: alreadyDeleted
             ? 'deleted_concurrently'
             : 'password_changed_concurrently',
@@ -340,7 +403,7 @@ class AccountService {
     final budgetsDeleted =
         deletion.personalBudgetsDeleted + deletion.sharedBudgetsDeleted;
     _log.info(
-      'account deleted userId=$userId sessionId=$sessionId '
+      'account deleted userId=$userId ${formatContext(origin)} '
       'budgetsDeleted=$budgetsDeleted '
       '(personal=${deletion.personalBudgetsDeleted} '
       'shared=${deletion.sharedBudgetsDeleted}) '
@@ -462,13 +525,13 @@ class AccountService {
   Never _rejectDeletion(
     Stopwatch sw,
     AuthFailureReason reason,
-    String userId,
-    String sessionId, {
+    String? userId,
+    Map<String, Object?> origin, {
     String? cause,
   }) {
     _log.warning(
       'account deletion rejected reason=${reason.code} '
-      '${formatContext({'userId': userId, 'sessionId': sessionId, 'cause': cause})} '
+      '${formatContext({'userId': userId, ...origin, 'cause': cause})} '
       'in ${sw.elapsedMilliseconds}ms',
     );
     throw AuthFailure(reason);

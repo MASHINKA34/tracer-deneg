@@ -132,7 +132,7 @@ class RequestLimits {
           );
           return _tooMany(
             seconds,
-            'Слишком много запросов. Попробуй через ${_waitText(seconds)}',
+            'Слишком много запросов. Попробуй через ${retryWaitText(seconds)}',
           );
         }
         limiter.record(ip);
@@ -170,7 +170,7 @@ class RequestLimits {
           return _tooMany(
             seconds,
             'Слишком много неудачных попыток. '
-            'Попробуй через ${_waitText(seconds)}',
+            'Попробуй через ${retryWaitText(seconds)}',
           );
         }
 
@@ -322,7 +322,7 @@ Response _tooMany(int seconds, String message) => errorResponse(
   message,
 ).change(headers: {'retry-after': '$seconds'});
 
-String _waitText(int seconds) =>
+String retryWaitText(int seconds) =>
     seconds < 60 ? '$seconds с' : '${(seconds + 59) ~/ 60} мин';
 
 Future<List<int>> _collect(Stream<List<int>> stream) async {

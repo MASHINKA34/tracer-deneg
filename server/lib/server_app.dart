@@ -131,7 +131,7 @@ Future<RunningServer> startServer(
     operator: config.privacyOperator,
   );
   _log.info(
-    'web pages ready paths=$privacyPath '
+    'web pages ready paths=$privacyPath,$deleteAccountPath '
     '${formatContext(privacy.toLogContext())}',
   );
   for (final (name, value) in [
