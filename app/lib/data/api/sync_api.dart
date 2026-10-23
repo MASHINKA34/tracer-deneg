@@ -10,6 +10,8 @@ final _log = Logger('sync');
 
 const String pullPath = '/sync/pull';
 
+const String pushPath = '/sync/push';
+
 final class PullPage {
   const PullPage({required this.response, required this.requestId});
 
@@ -18,6 +20,16 @@ final class PullPage {
 
   @override
   String toString() => 'PullPage($response rid=$requestId)';
+}
+
+final class PushReply {
+  const PushReply({required this.response, required this.requestId});
+
+  final SyncPushResponse response;
+  final String requestId;
+
+  @override
+  String toString() => 'PushReply($response rid=$requestId)';
 }
 
 class SyncApi {
@@ -47,6 +59,29 @@ class SyncApi {
         requestId: response.requestId,
         statusCode: response.statusCode,
         reason: 'pull: ${e.message}',
+      );
+    }
+  }
+
+  Future<PushReply> push(SyncPushRequest request) async {
+    final response = await _client.post(pushPath, body: request.toJson());
+    try {
+      return PushReply(
+        response: SyncPushResponse.fromJson(response.data),
+        requestId: response.requestId,
+      );
+    } on FormatException catch (e) {
+      _log.warning(
+        'POST $pushPath ${response.statusCode} batchId=${request.batchId} '
+        'changes=${request.changes.length} answered without a push result '
+        '→ bad response: ${e.message} rid=${response.requestId}',
+      );
+      throw ApiBadResponse(
+        method: 'POST',
+        path: '${_client.config.baseUrl.path}$pushPath',
+        requestId: response.requestId,
+        statusCode: response.statusCode,
+        reason: 'push: ${e.message}',
       );
     }
   }
