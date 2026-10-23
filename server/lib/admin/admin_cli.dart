@@ -8,6 +8,8 @@ import '../client_errors/client_error_store.dart';
 import '../config/config.dart';
 import '../config/dotenv.dart';
 import '../db/database.dart';
+import '../jobs/daily_job_list.dart';
+import '../jobs/daily_jobs.dart';
 import 'errors_table.dart';
 
 final _log = Logger('admin');
@@ -27,11 +29,15 @@ Commands:
       Client error reports received during the last <age>, newest first.
       <age>: number with unit m (minutes), h (hours) or d (days): 30m, 12h, 1d.
       <N>: 1..$errorsMaxLimit, default $errorsDefaultLimit.
+  jobs
+      Run every daily job of the server once now (old client error reports,
+      expired and revoked invites, sessions ended more than 90 days ago).
+      Exit code 1 if any job failed; the other jobs still run.
   help
       This text.
 
 Reads DATABASE_URL (and LOG_LEVEL) from the environment or server/.env,
-like the server. Logs go to stderr, the table to stdout.''';
+like the server. Logs go to stderr, the table and job results to stdout.''';
 
 class AdminUsageException implements Exception {
   AdminUsageException(this.message);
@@ -130,7 +136,7 @@ Future<int> runAdmin(
     return args.isEmpty ? adminExitUsage : adminExitOk;
   }
   final command = args.first;
-  if (command != 'errors') {
+  if (command != 'errors' && command != 'jobs') {
     _log.severe(
       'unknown command "${terminalSafe(command, maxChars: 32)}" '
       '→ see usage below',
@@ -139,11 +145,15 @@ Future<int> runAdmin(
     return adminExitUsage;
   }
 
-  final ErrorsQuery query;
+  ErrorsQuery? query;
   try {
-    query = parseErrorsArgs(args.sublist(1));
+    if (command == 'errors') {
+      query = parseErrorsArgs(args.sublist(1));
+    } else {
+      _checkJobsArgs(args.sublist(1));
+    }
   } on AdminUsageException catch (e) {
-    _log.severe('errors: ${e.message} → see usage below');
+    _log.severe('$command: ${e.message} → see usage below');
     out(adminUsage);
     return adminExitUsage;
   }
@@ -177,6 +187,15 @@ Future<int> runAdmin(
     return adminExitFailure;
   }
 
+  if (query == null) {
+    return _runJobs(
+      config,
+      now: now,
+      out: out,
+      connectAttempts: connectAttempts,
+    );
+  }
+
   final sw = Stopwatch()..start();
   final since = now().toUtc().subtract(query.since);
   _log.info(
@@ -184,18 +203,8 @@ Future<int> runAdmin(
     'limit=${query.limit} db=${config.masked}',
   );
 
-  final Database db;
-  try {
-    db = await Database.connect(config, attempts: connectAttempts);
-  } catch (e) {
-    _log.severe(
-      'cannot connect to Postgres ${config.host}:${config.port} '
-      'db=${config.database}: ${describeError(e)} → is the database '
-      'running? (docker compose -f deploy/docker-compose.dev.yml up -d '
-      '--wait) Is DATABASE_URL right?',
-    );
-    return adminExitFailure;
-  }
+  final db = await _connect(config, connectAttempts);
+  if (db == null) return adminExitFailure;
   try {
     final page = await ClientErrorStore(db)
         .listSince(since, limit: query.limit);
@@ -237,6 +246,65 @@ Future<int> runAdmin(
     return adminExitFailure;
   } finally {
     await db.close(reason: 'admin errors done');
+  }
+}
+
+void _checkJobsArgs(List<String> args) {
+  if (args.isEmpty) return;
+  throw AdminUsageException(
+    'jobs takes no options, got "${terminalSafe(args.first, maxChars: 32)}"',
+  );
+}
+
+Future<Database?> _connect(DatabaseConfig config, int attempts) async {
+  try {
+    return await Database.connect(config, attempts: attempts);
+  } catch (e) {
+    _log.severe(
+      'cannot connect to Postgres ${config.host}:${config.port} '
+      'db=${config.database}: ${describeError(e)} → is the database '
+      'running? (docker compose -f deploy/docker-compose.dev.yml up -d '
+      '--wait) Is DATABASE_URL right?',
+    );
+    return null;
+  }
+}
+
+Future<int> _runJobs(
+  DatabaseConfig config, {
+  required DateTime Function() now,
+  required void Function(String line) out,
+  required int connectAttempts,
+}) async {
+  final sw = Stopwatch()..start();
+  _log.info('admin jobs: running daily jobs once now db=${config.masked}');
+  final db = await _connect(config, connectAttempts);
+  if (db == null) return adminExitFailure;
+  try {
+    final results = <String, String>{};
+    final jobs = DailyJobs([
+      for (final job in dailyJobList(db, now: now))
+        DailyJob(job.name, () async => results[job.name] = await job.run()),
+    ], now: now);
+    final run = await jobs.runNow('admin');
+    for (final job in jobs.jobs) {
+      final result = results[job.name];
+      out(
+        '${job.name}: '
+        '${result == null ? 'FAILED, see the error in the log' : 'ok $result'}',
+      );
+    }
+    final failed = run.failed;
+    _log.log(
+      failed.isEmpty ? Level.INFO : Level.SEVERE,
+      'admin jobs done ok=${run.ok.length} failed=${failed.length}'
+      '${failed.isEmpty ? '' : ' (${failed.join(',')})'} '
+      'in ${sw.elapsedMilliseconds}ms → exit '
+      '${failed.isEmpty ? adminExitOk : adminExitFailure}',
+    );
+    return failed.isEmpty ? adminExitOk : adminExitFailure;
+  } finally {
+    await db.close(reason: 'admin jobs done');
   }
 }
 
