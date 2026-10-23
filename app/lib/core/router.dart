@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
 
-import '../features/auth/forgot_password_stub_screen.dart';
+import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/recovery_code_screen.dart';
 import '../features/auth/register_screen.dart';
@@ -361,7 +361,7 @@ GoRouter buildRouter({
         name: AppRoutes.forgotPasswordName,
         parentNavigatorKey: rootKey,
         builder: (context, state) =>
-            const AppFrame(child: ForgotPasswordStubScreen()),
+            const AppFrame(child: ForgotPasswordScreen()),
       ),
       GoRoute(
         path: AppRoutes.recoveryCode,

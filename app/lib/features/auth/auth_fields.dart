@@ -132,3 +132,75 @@ AuthField? fieldOfValidation(ValidationError error) => switch (error) {
 
 String describeFieldErrors(AuthFieldErrors errors, List<AuthField> fields) =>
     fields.map((f) => '${f.name}=${errors[f]?.code ?? 'none'}').join(' ');
+
+final class AuthRecoveryCodeInvalid extends AuthFieldError {
+  const AuthRecoveryCodeInvalid({required this.empty});
+
+  final bool empty;
+
+  @override
+  String get code => empty ? 'recovery_code_empty' : 'recovery_code_malformed';
+
+  @override
+  String text(AppLocalizations l10n) =>
+      empty ? l10n.authRecoveryCodeEmpty : l10n.authRecoveryCodeInvalid;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AuthRecoveryCodeInvalid && other.empty == empty;
+
+  @override
+  int get hashCode => Object.hash(code, empty);
+}
+
+final class AuthRecoveryRejected extends AuthFieldError {
+  const AuthRecoveryRejected();
+
+  @override
+  String get code => ApiErrorCode.badCredentials.code;
+
+  @override
+  String text(AppLocalizations l10n) => l10n.authRecoverBadCredentials;
+
+  @override
+  bool operator ==(Object other) => other is AuthRecoveryRejected;
+
+  @override
+  int get hashCode => code.hashCode;
+}
+
+enum RecoverField { login, code, password, repeat }
+
+typedef RecoverFieldErrors = Map<RecoverField, AuthFieldError>;
+
+RecoverFieldErrors validateRecoverForm({
+  required String login,
+  required String code,
+  required String password,
+  required String repeat,
+}) {
+  final passwordError = validatePassword(password);
+  return {
+    if (validateLogin(login) case final error?)
+      RecoverField.login: AuthInvalid(error),
+    if (code.trim().isEmpty)
+      RecoverField.code: const AuthRecoveryCodeInvalid(empty: true)
+    else if (normalizeRecoveryCode(code) == null)
+      RecoverField.code: const AuthRecoveryCodeInvalid(empty: false),
+    if (passwordError != null)
+      RecoverField.password: AuthInvalid(passwordError),
+    if (passwordError == null && repeat != password)
+      RecoverField.repeat: const AuthPasswordMismatch(),
+  };
+}
+
+RecoverField? recoverFieldOfValidation(ValidationError error) =>
+    switch (fieldOfValidation(error)) {
+      AuthField.login => RecoverField.login,
+      AuthField.password => RecoverField.password,
+      _ => null,
+    };
+
+String describeRecoverErrors(RecoverFieldErrors errors) => RecoverField.values
+    .map((f) => '${f.name}=${errors[f]?.code ?? 'none'}')
+    .join(' ');

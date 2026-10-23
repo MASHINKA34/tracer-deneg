@@ -7,7 +7,7 @@ import 'package:milionchik/data/providers.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/data/session/session_state.dart';
 import 'package:milionchik/data/session/session_store.dart';
-import 'package:milionchik/features/auth/forgot_password_stub_screen.dart';
+import 'package:milionchik/features/auth/forgot_password_screen.dart';
 import 'package:milionchik/features/auth/login_screen.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/ui/components/button.dart';
@@ -228,12 +228,12 @@ void main() {
     );
   });
 
-  testWidgets('«Забыл пароль?» открывает заглушку восстановления поверх '
-      'входа, «назад» возвращает на вход', (tester) async {
+  testWidgets('«Забыл пароль?» открывает восстановление поверх входа, '
+      '«назад» возвращает на вход', (tester) async {
     final h = await AuthHarness.start(tester, server: _noServer);
 
     await h.tapText('Забыл пароль?');
-    expect(find.byType(ForgotPasswordStubScreen), findsOneWidget);
+    expect(find.byType(ForgotPasswordScreen), findsOneWidget);
     expect(find.text('Восстановить доступ'), findsOneWidget);
 
     await h.tapLabel('Назад');
@@ -242,7 +242,7 @@ void main() {
       h.linesOf('auth', Level.FINE),
       containsAllInOrder([
         endsWith('auth stack: login → /auth/forgot'),
-        endsWith('auth stack: forgot password stub → back to login'),
+        endsWith('auth stack: forgot password → back to login'),
       ]),
     );
   });
