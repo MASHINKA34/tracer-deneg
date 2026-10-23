@@ -55,6 +55,7 @@ final class ProfileHarness {
     double textScale = 1,
     Brightness platformBrightness = Brightness.light,
     List<Override> overrides = const [],
+    bool sessionEvents = false,
   }) async {
     final logs = LogCapture();
     addTearDown(logs.dispose);
@@ -86,14 +87,16 @@ final class ProfileHarness {
           clockProvider.overrideWithValue(Clock(now: () => testNow)),
           secureValuesProvider.overrideWithValue(values),
           deviceNameProvider.overrideWithValue('Pixel 7'),
-          apiClientProvider.overrideWith(
-            (ref) => ApiClient(
+          apiClientProvider.overrideWith((ref) {
+            final client = ApiClient(
               config: config,
               tokens: ref.watch(tokenStoreProvider),
               adapter: adapter,
               newRequestId: () => 'ridprofile000001',
-            ),
-          ),
+            );
+            if (sessionEvents) listenSessionExpired(ref, client);
+            return client;
+          }),
           if (user != null)
             sessionProvider.overrideWithBuild((ref, _) => SessionActive(user)),
           ...overrides,
