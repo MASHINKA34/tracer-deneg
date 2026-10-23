@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../session/session_providers.dart';
 import 'api_client.dart';
 import 'api_config.dart';
 import 'token_store.dart';
@@ -10,7 +11,7 @@ final apiConfigProvider = Provider<ApiConfig>(
 );
 
 final tokenStoreProvider = Provider<TokenStore>(
-  (ref) => MemoryTokenStore(),
+  (ref) => ref.watch(sessionStoreProvider),
   name: 'tokenStore',
 );
 
@@ -19,6 +20,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     config: ref.watch(apiConfigProvider),
     tokens: ref.watch(tokenStoreProvider),
   );
+  final ended = client.sessionExpired.listen(
+    (event) => ref.read(sessionProvider.notifier).ended(event.reason),
+  );
+  ref.onDispose(ended.cancel);
   ref.onDispose(client.close);
   return client;
 }, name: 'apiClient');

@@ -10,6 +10,18 @@ abstract interface class CurrentUser {
   Future<String> userId();
 }
 
+final class SessionCurrentUser implements CurrentUser {
+  const SessionCurrentUser(this.id);
+
+  final String id;
+
+  @override
+  Future<String> userId() async => id;
+
+  @override
+  String toString() => 'SessionCurrentUser(userId=$id)';
+}
+
 final class LocalPrefsCurrentUser implements CurrentUser {
   LocalPrefsCurrentUser(this._prefs, {String Function()? newId})
     : _newId = newId ?? _defaultNewId;

@@ -12,6 +12,11 @@ import '../data/db/redact_db_error.dart';
 import '../data/dev_seed.dart';
 import '../data/providers.dart';
 import '../data/repositories/prefs_repository.dart';
+import '../data/session/secure_values.dart';
+import '../data/session/session.dart';
+import '../data/session/session_providers.dart';
+import '../data/session/session_state.dart';
+import '../data/session/session_store.dart';
 import '../features/startup/database_error_app.dart';
 import 'clock.dart';
 import 'logging/provider_logger.dart';
@@ -19,20 +24,25 @@ import 'recurring_triggers.dart';
 
 final _log = Logger('app');
 
+final _sessionLog = Logger('session');
+
 typedef OpenDatabase = Future<AppDatabase> Function();
 
 typedef RunDevSeed = Future<DevSeedResult> Function(AppDatabase db);
+
+typedef ReadSession = Future<Session?> Function();
 
 sealed class DataStartup {
   const DataStartup();
 }
 
 final class DataReady extends DataStartup {
-  const DataReady(this.db, this.seed, {this.todayOverride});
+  const DataReady(this.db, this.seed, {this.todayOverride, this.session});
 
   final AppDatabase db;
   final DevSeedResult seed;
   final LocalDate? todayOverride;
+  final Session? session;
 }
 
 final class DataUnavailable extends DataStartup {
@@ -46,9 +56,13 @@ Future<DevSeedResult> runDevSeed(AppDatabase db) => DevSeed(
   currentUser: LocalPrefsCurrentUser(DriftPrefsRepository(db)),
 ).runIfRequested();
 
+Future<Session?> readStoredSession() =>
+    SessionStore(const FlutterSecureValues()).read();
+
 Future<DataStartup> startData({
   OpenDatabase open = openAppDatabase,
   RunDevSeed seed = runDevSeed,
+  ReadSession readSession = readStoredSession,
 }) async {
   var sw = Stopwatch()..start();
   final AppDatabase db;
@@ -66,6 +80,8 @@ Future<DataStartup> startData({
     return DataUnavailable(error);
   }
   _log.info('database opened in ${sw.elapsedMilliseconds}ms');
+
+  final session = await _restoreSession(readSession);
 
   sw = Stopwatch()..start();
   DevSeedResult result;
@@ -87,7 +103,22 @@ Future<DataStartup> startData({
   if (kDebugMode) {
     todayOverride = await loadTodayOverride(DriftPrefsRepository(db));
   }
-  return DataReady(db, result, todayOverride: todayOverride);
+  return DataReady(db, result, todayOverride: todayOverride, session: session);
+}
+
+Future<Session?> _restoreSession(ReadSession read) async {
+  final sw = Stopwatch()..start();
+  try {
+    return await read();
+  } catch (e, st) {
+    _sessionLog.warning(
+      'session restore failed after ${sw.elapsedMilliseconds}ms '
+      '→ starting without session: ${describeError(e)}',
+      e,
+      st,
+    );
+    return null;
+  }
 }
 
 void _logSeed(DevSeedResult result, int ms) {
@@ -112,9 +143,13 @@ void _logSeed(DevSeedResult result, int ms) {
 }
 
 Widget appRoot(DataStartup data) => switch (data) {
-  DataReady(:final db, :final todayOverride) => ProviderScope(
+  DataReady(:final db, :final todayOverride, :final session) => ProviderScope(
     overrides: [
       appDatabaseProvider.overrideWithValue(db),
+      if (session != null)
+        sessionProvider.overrideWithBuild(
+          (ref, _) => SessionActive(session.user),
+        ),
       if (kDebugMode && todayOverride != null)
         todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
     ],

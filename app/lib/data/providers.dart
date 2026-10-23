@@ -18,8 +18,11 @@ import 'repositories/members_repository.dart';
 import 'repositories/outbox_queue.dart';
 import 'repositories/prefs_repository.dart';
 import 'repositories/recurring_repository.dart';
+import 'session/session_providers.dart';
 
 final _log = Logger('budgets');
+
+final _sessionLog = Logger('session');
 
 typedef BudgetMonth = ({String budgetId, YearMonth month});
 
@@ -44,10 +47,15 @@ final prefsRepositoryProvider = Provider<PrefsRepository>(
   name: 'prefsRepository',
 );
 
-final currentUserProvider = Provider<CurrentUser>(
-  (ref) => LocalPrefsCurrentUser(ref.watch(prefsRepositoryProvider)),
-  name: 'currentUser',
-);
+final currentUserProvider = Provider<CurrentUser>((ref) {
+  final sessionUserId = ref.watch(sessionProvider.select((s) => s.userId));
+  if (sessionUserId != null) {
+    _sessionLog.info('current user from session userId=$sessionUserId');
+    return SessionCurrentUser(sessionUserId);
+  }
+  _sessionLog.fine('current user: no session → local user id');
+  return LocalPrefsCurrentUser(ref.watch(prefsRepositoryProvider));
+}, name: 'currentUser');
 
 final outboxQueueProvider = Provider<OutboxQueue>(
   (ref) => DriftOutboxQueue(
