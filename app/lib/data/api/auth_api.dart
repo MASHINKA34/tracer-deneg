@@ -18,6 +18,8 @@ const String recoverPath = '/auth/recover';
 
 const String recoveryCodePath = '/auth/recovery-code';
 
+const String logoutPath = '/auth/logout';
+
 final class AuthResult {
   const AuthResult({
     required this.session,
@@ -133,6 +135,11 @@ class AuthApi {
         reason: 'recovery code: ${e.message}',
       );
     }
+  }
+
+  Future<String> logout() async {
+    final response = await _client.post(logoutPath);
+    return response.requestId;
   }
 
   AuthResult _parse(

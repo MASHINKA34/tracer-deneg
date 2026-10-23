@@ -12,6 +12,12 @@ abstract final class PrefKeys {
   static const String todayOverride = 'debugTodayOverride';
   static const String signedInBefore = 'signedInBefore';
   static const String themeMode = 'themeMode';
+
+  static const Set<String> phoneSettings = {
+    themeMode,
+    signedInBefore,
+    todayOverride,
+  };
 }
 
 abstract interface class PrefsRepository {

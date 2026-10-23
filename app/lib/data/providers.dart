@@ -12,6 +12,7 @@ import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
 import 'queries/sync_state_queries.dart';
 import 'queries/today_queries.dart';
+import 'repositories/account_data_cleaner.dart';
 import 'repositories/budgets_repository.dart';
 import 'repositories/categories_repository.dart';
 import 'repositories/expenses_repository.dart';
@@ -46,6 +47,11 @@ final appDatabaseProvider = Provider<AppDatabase>(
 final prefsRepositoryProvider = Provider<PrefsRepository>(
   (ref) => DriftPrefsRepository(ref.watch(appDatabaseProvider)),
   name: 'prefsRepository',
+);
+
+final accountDataCleanerProvider = Provider<AccountDataCleaner>(
+  (ref) => DriftAccountDataCleaner(ref.watch(appDatabaseProvider)),
+  name: 'accountDataCleaner',
 );
 
 final currentUserProvider = Provider<CurrentUser>((ref) {
