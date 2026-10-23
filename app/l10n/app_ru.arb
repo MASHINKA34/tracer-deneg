@@ -990,5 +990,94 @@
   "apiErrorConflict": "Данные уже изменились. Обнови и попробуй снова",
   "@apiErrorConflict": { "description": "Ошибка API: код conflict" },
   "apiErrorPayloadTooLarge": "Слишком много данных за раз",
-  "@apiErrorPayloadTooLarge": { "description": "Ошибка API: код payload_too_large (тело больше 1 МБ)" }
+  "@apiErrorPayloadTooLarge": { "description": "Ошибка API: код payload_too_large (тело больше 1 МБ)" },
+
+  "authSlogan": "Копейка к копейке — и вот он, миллион",
+  "@authSlogan": { "description": "Вход: слоган под названием в шапке с узором (14:1120)" },
+  "authLoginTitle": "С возвращением!",
+  "@authLoginTitle": { "description": "Вход: заголовок формы (14:1120)" },
+  "authLoginSubtitle": "Войди — и траты подтянутся на этот телефон",
+  "@authLoginSubtitle": { "description": "Вход: подзаголовок формы (14:1120)" },
+  "authLoginLabel": "Логин",
+  "@authLoginLabel": { "description": "Вход и регистрация: подпись поля логина" },
+  "authPasswordLabel": "Пароль",
+  "@authPasswordLabel": { "description": "Вход и регистрация: подпись поля пароля" },
+  "authSignIn": "Войти",
+  "@authSignIn": { "description": "Вход: кнопка «Войти»; регистрация: ссылка «Войти» после «Уже есть аккаунт?»" },
+  "authForgotPassword": "Забыл пароль?",
+  "@authForgotPassword": { "description": "Вход: ссылка на восстановление пароля (42:4149)" },
+  "authNoAccount": "Нет аккаунта?",
+  "@authNoAccount": { "description": "Вход: текст перед ссылкой «Зарегистрироваться» (14:1120)" },
+  "authRegisterLink": "Зарегистрироваться",
+  "@authRegisterLink": { "description": "Вход: ссылка на регистрацию (14:1120)" },
+  "authRegisterTitle": "Регистрация",
+  "@authRegisterTitle": { "description": "Регистрация: заголовок (14:1295)" },
+  "authRegisterSubtitle": "Займёт полминуты",
+  "@authRegisterSubtitle": { "description": "Регистрация: подзаголовок (14:1295)" },
+  "authRegisterNote": "Почта не нужна — только логин и пароль. Траты хранятся на сервере и видны с любого телефона.",
+  "@authRegisterNote": { "description": "Регистрация: плашка с облаком над полями (14:1295)" },
+  "authNameLabel": "Как тебя зовут",
+  "@authNameLabel": { "description": "Регистрация: подпись поля имени (14:1295)" },
+  "authPasswordRepeatLabel": "Повтори пароль",
+  "@authPasswordRepeatLabel": { "description": "Регистрация: подпись поля повтора пароля (14:1295)" },
+  "authPasswordHint": "Минимум {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authPasswordHint": {
+    "description": "Регистрация: подсказка под полем пароля (14:1295), count — минимальная длина пароля",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authCreateAccount": "Создать аккаунт",
+  "@authCreateAccount": { "description": "Регистрация: кнопка (14:1295)" },
+  "authHaveAccount": "Уже есть аккаунт?",
+  "@authHaveAccount": { "description": "Регистрация: текст перед ссылкой «Войти» (14:1295)" },
+  "authForgotTitle": "Восстановить доступ",
+  "@authForgotTitle": { "description": "Забыл пароль: заголовок экрана (42:4074), пока экран-заглушка" },
+  "authLoginEmpty": "Введи логин",
+  "@authLoginEmpty": { "description": "Вход и регистрация: ошибка под полем логина, логин пустой (login_empty)" },
+  "authLoginInvalidChars": "В логине можно только латинские буквы, цифры, точку и подчёркивание",
+  "@authLoginInvalidChars": { "description": "Вход и регистрация: ошибка под полем логина, недопустимые символы (login_invalid_chars)" },
+  "authLoginTooShort": "Логин слишком короткий: нужно от {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authLoginTooShort": {
+    "description": "Вход и регистрация: ошибка под полем логина (login_too_short), count — минимальная длина",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authLoginTooLong": "Логин слишком длинный: не больше {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authLoginTooLong": {
+    "description": "Вход и регистрация: ошибка под полем логина (login_too_long), count — максимальная длина",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authPasswordEmpty": "Введи пароль",
+  "@authPasswordEmpty": { "description": "Вход и регистрация: ошибка под полем пароля, пароль пустой (password_empty)" },
+  "authPasswordTooShort": "Пароль слишком короткий: нужно от {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authPasswordTooShort": {
+    "description": "Вход и регистрация: ошибка под полем пароля (password_too_short), count — минимальная длина",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authPasswordTooLong": "Пароль слишком длинный: не больше {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authPasswordTooLong": {
+    "description": "Вход и регистрация: ошибка под полем пароля (password_too_long), count — максимальная длина",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authNameEmpty": "Введи имя",
+  "@authNameEmpty": { "description": "Регистрация: ошибка под полем имени, имя пустое (name_empty)" },
+  "authNameTooLong": "Имя слишком длинное: не больше {count, plural, one{{count} символа} few{{count} символов} many{{count} символов} other{{count} символа}}",
+  "@authNameTooLong": {
+    "description": "Регистрация: ошибка под полем имени (name_too_long), count — максимальная длина",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "authPasswordMismatch": "Пароли не совпадают",
+  "@authPasswordMismatch": { "description": "Регистрация: ошибка под полем повтора пароля, повтор не совпадает с паролем" },
+  "authSaveFailed": "Не получилось сохранить вход на телефоне. Попробуй ещё раз",
+  "@authSaveFailed": { "description": "Вход и регистрация: снекбар, сервер ответил успехом, но сессию не удалось записать на телефон" }
 }

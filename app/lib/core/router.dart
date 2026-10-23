@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
 
+import '../features/auth/forgot_password_stub_screen.dart';
+import '../features/auth/login_screen.dart';
 import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
 import '../features/expense/edit_expense_screen.dart';
@@ -22,6 +24,7 @@ import '../features/shell/tab_stub_screen.dart';
 import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'app_frame.dart';
+import 'auth_gate.dart';
 import 'logging/navigation_logger.dart';
 
 final _log = Logger('nav');
@@ -41,6 +44,9 @@ abstract final class AppRoutes {
   static const String category = '/categories/:id';
   static const String export = '/export';
   static const String catalog = '/catalog';
+  static const String login = '/auth/login';
+  static const String register = '/auth/register';
+  static const String forgotPassword = '/auth/forgot';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
@@ -51,6 +57,14 @@ abstract final class AppRoutes {
   static const String exportName = 'export';
   static const String newRecurringName = 'newRecurring';
   static const String recurringRuleName = 'recurringRule';
+  static const String loginName = 'login';
+  static const String registerName = 'register';
+  static const String forgotPasswordName = 'forgotPassword';
+
+  static const String authStack = '/auth';
+
+  static bool isAuthStack(String path) =>
+      path == authStack || path.startsWith('$authStack/');
 
   static const String deepLinkScheme = 'milionchik';
   static const String addDeepLinkHost = 'add';
@@ -153,14 +167,20 @@ bool isAddExpenseLink(Uri uri) =>
 /// Маршруты приложения. Пока заглушка «Милиончик» (главная появится на
 /// этапе 05) и — только в debug-сборке — каталог компонентов `/catalog`
 /// (долгий тап по логотипу на заглушке).
-GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
+GoRouter buildRouter({
+  String initialLocation = AppRoutes.month,
+  AuthGate? auth,
+}) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   late final GoRouter router;
   return router = GoRouter(
     navigatorKey: rootKey,
     initialLocation: initialLocation,
     observers: [NavigationLogger()],
+    refreshListenable: auth?.changes,
     redirect: (context, state) {
+      final signIn = auth?.redirect(state.uri);
+      if (signIn != null) return signIn;
       if (!isAddExpenseLink(state.uri)) return null;
       final current = router.routerDelegate.currentConfiguration;
       _log.info(
@@ -319,6 +339,19 @@ GoRouter buildRouter({String initialLocation = AppRoutes.month}) {
         name: AppRoutes.exportName,
         parentNavigatorKey: rootKey,
         builder: (context, state) => const AppFrame(child: ExportScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        name: AppRoutes.loginName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const AppFrame(child: LoginScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: AppRoutes.forgotPasswordName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) =>
+            const AppFrame(child: ForgotPasswordStubScreen()),
       ),
       if (kDebugMode)
         GoRoute(

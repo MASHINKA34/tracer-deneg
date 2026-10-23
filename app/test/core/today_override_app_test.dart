@@ -8,8 +8,10 @@ import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
 import 'package:milionchik/core/clock.dart';
 import 'package:milionchik/core/data_startup.dart';
+import 'package:milionchik/data/api/token_store.dart';
 import 'package:milionchik/data/db/app_database.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
+import 'package:milionchik/data/session/session.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/ui/catalog/catalog_screen.dart';
@@ -49,7 +51,20 @@ void main() {
         await DriftPrefsRepository(db)
             .setString(PrefKeys.todayOverride, stored);
       }
-      return startData(open: () async => db);
+      return startData(
+        open: () async => db,
+        readSession: () async => const Session(
+          user: SessionUser(
+            userId: 'user-today-1',
+            login: 'today_user',
+            displayName: 'Сегодня',
+          ),
+          tokens: AuthTokens(
+            accessToken: 'ACCESS-today',
+            refreshToken: 'REFRESH-today',
+          ),
+        ),
+      );
     });
     await tester.pumpWidget(appRoot(data!));
     await tester.pumpAndSettle();

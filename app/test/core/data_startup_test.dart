@@ -9,9 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
 import 'package:milionchik/core/data_startup.dart';
+import 'package:milionchik/data/api/token_store.dart';
 import 'package:milionchik/data/db/app_database.dart';
 import 'package:milionchik/data/dev_seed.dart';
 import 'package:milionchik/data/providers.dart';
+import 'package:milionchik/data/session/session.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/startup/database_error_app.dart';
 import 'package:milionchik/ui/components/logo.dart';
@@ -178,7 +180,23 @@ void main() {
     final db = AppDatabase.memory();
 
     await tester.pumpWidget(
-      appRoot(DataReady(db, const DevSeedResult(DevSeedStatus.off))),
+      appRoot(
+        DataReady(
+          db,
+          const DevSeedResult(DevSeedStatus.off),
+          session: const Session(
+            user: SessionUser(
+              userId: 'user-startup-1',
+              login: 'startup_user',
+              displayName: 'Старт',
+            ),
+            tokens: AuthTokens(
+              accessToken: 'ACCESS-startup',
+              refreshToken: 'REFRESH-startup',
+            ),
+          ),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
