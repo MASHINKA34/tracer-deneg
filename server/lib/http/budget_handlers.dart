@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
 
 import '../auth/auth_middleware.dart';
 import '../budgets/budget_service.dart';
@@ -66,6 +67,38 @@ Handler createBudgetHandler(BudgetService budgets) => (Request request) async {
         'budget': created.budget.toJson(),
       }),
     );
+  } on BudgetFailure catch (e) {
+    return _failure(e);
+  }
+};
+
+Handler createInviteHandler(BudgetService budgets) => (Request request) async {
+  try {
+    final invite = await budgets.createInvite(
+      userId: authContextOf(request).userId,
+      budgetId: request.params['id'] ?? '',
+    );
+    return _noStore(
+      jsonResponse(201, {
+        'code': invite.code,
+        'expiresAt': encodeInstant(invite.expiresAt),
+      }),
+    );
+  } on BudgetFailure catch (e) {
+    return _failure(e);
+  }
+};
+
+Handler joinBudgetHandler(BudgetService budgets) => (Request request) async {
+  const operation = 'budget join';
+  final userId = authContextOf(request).userId;
+  final body = await _readBody(request, operation, userId);
+  if (body.error != null) return body.error!;
+  final code = body.fields!['code'];
+  if (code is! String) return _badFields(operation, userId, ['code']);
+  try {
+    final joined = await budgets.join(userId: userId, code: code);
+    return _noStore(jsonResponse(200, {'budget': joined.budget.toJson()}));
   } on BudgetFailure catch (e) {
     return _failure(e);
   }

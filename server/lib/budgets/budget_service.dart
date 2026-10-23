@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:cryptography/dart.dart' show DartSha256;
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart' as pg;
 import 'package:shared/shared.dart';
@@ -5,6 +9,10 @@ import 'package:shared/shared.dart';
 import '../db/database.dart';
 
 final _log = Logger('budgets');
+
+const Duration inviteTtl = Duration(hours: 24);
+
+const int inviteCodeAttempts = 5;
 
 const String _budgetColumns =
     'id, kind, name, emoji, owner_id, created_at, updated_at, updated_by, '
@@ -37,6 +45,31 @@ final class CreatedBudget {
   final bool replayed;
 }
 
+final class IssuedInvite {
+  const IssuedInvite({required this.code, required this.expiresAt});
+
+  final String code;
+  final DateTime expiresAt;
+}
+
+enum JoinResult { joined, rejoined, alreadyMember }
+
+final class JoinedBudget {
+  const JoinedBudget({required this.budget, required this.result});
+
+  final Budget budget;
+  final JoinResult result;
+}
+
+String hashInviteCode(String normalizedCode) {
+  final digest = const DartSha256().hashSync(utf8.encode(normalizedCode)).bytes;
+  final buffer = StringBuffer();
+  for (final byte in digest) {
+    buffer.write(byte.toRadixString(16).padLeft(2, '0'));
+  }
+  return buffer.toString();
+}
+
 final class _Outcome<T> {
   const _Outcome.ok(T this.value) : reason = null, problem = null;
 
@@ -48,11 +81,27 @@ final class _Outcome<T> {
   final String? problem;
 }
 
+final class _Access {
+  const _Access({
+    required this.exists,
+    required this.deleted,
+    required this.kind,
+    required this.role,
+  });
+
+  final bool exists;
+  final bool deleted;
+  final BudgetKind? kind;
+  final MemberRole? role;
+}
+
 class BudgetService {
-  BudgetService({required this.db, this._now = DateTime.now});
+  BudgetService({required this.db, this._now = DateTime.now, Random? random})
+    : _random = random ?? Random.secure();
 
   final Database db;
   final DateTime Function() _now;
+  final Random _random;
 
   Future<CreatedBudget> create({
     required String userId,
@@ -187,6 +236,370 @@ class BudgetService {
     );
   }
 
+  Future<IssuedInvite> createInvite({
+    required String userId,
+    required String budgetId,
+  }) async {
+    const action = 'invite';
+    final sw = Stopwatch()..start();
+    final context = {'budgetId': budgetId, 'userId': userId};
+    _checkBudgetId(action, budgetId, context, sw);
+    final now = normalizeInstant(_now());
+    final expiresAt = now.add(inviteTtl);
+    final outcome = await _run<_Invite>(action, context, sw, (tx) async {
+      final access = await _lockBudget(tx, budgetId, userId, action);
+      final denied = _denied<_Invite>(access, ownerOnly: true);
+      if (denied != null) return denied;
+      for (var attempt = 1; attempt <= inviteCodeAttempts; attempt++) {
+        final code = normalizeInviteCode(generateInviteCode(_random))!;
+        final hash = hashInviteCode(code);
+        final inserted = await tx.execute(
+          'INSERT INTO invites (code_hash, budget_id, created_by, created_at, '
+          r'expires_at) VALUES ($1, $2::uuid, $3::uuid, $4::timestamptz, '
+          r'$5::timestamptz) ON CONFLICT (code_hash) DO UPDATE SET '
+          'budget_id = EXCLUDED.budget_id, created_by = EXCLUDED.created_by, '
+          'created_at = EXCLUDED.created_at, '
+          'expires_at = EXCLUDED.expires_at, revoked_at = NULL '
+          'WHERE invites.revoked_at IS NOT NULL '
+          'OR invites.expires_at <= EXCLUDED.created_at '
+          'RETURNING budget_id',
+          parameters: [hash, budgetId, userId, now, expiresAt],
+          what: 'insert invite code hash',
+          logParams: {
+            ...context,
+            'code': maskInviteCode(code),
+            'attempt': '$attempt/$inviteCodeAttempts',
+          },
+        );
+        if (inserted.isEmpty) {
+          _log.fine(
+            'invite code collides with an active invite, generating another '
+            '${formatContext(context)} '
+            'attempt=$attempt/$inviteCodeAttempts',
+          );
+          continue;
+        }
+        final revoked = await tx.execute(
+          r'UPDATE invites SET revoked_at = $3::timestamptz '
+          r'WHERE budget_id = $1::uuid AND code_hash <> $2 '
+          'AND revoked_at IS NULL',
+          parameters: [budgetId, hash, now],
+          what: 'revoke previous invites of budget',
+          logParams: context,
+        );
+        return _Outcome.ok((
+          code: code,
+          attempts: attempt,
+          revoked: revoked.affectedRows,
+        ));
+      }
+      throw StateError(
+        'invite for budget $budgetId: every one of $inviteCodeAttempts '
+        'generated codes collides with an active invite',
+      );
+    });
+    final issued = _unwrap(action, outcome, context, sw);
+    _log.info(
+      'budget $action ok budgetId=$budgetId userId=$userId '
+      'code=${maskInviteCode(issued.code)} '
+      'expiresAt=${encodeInstant(expiresAt)} '
+      'previousRevoked=${issued.revoked} attempts=${issued.attempts} '
+      'in ${sw.elapsedMilliseconds}ms',
+    );
+    return IssuedInvite(code: issued.code, expiresAt: expiresAt);
+  }
+
+  Future<JoinedBudget> join({
+    required String userId,
+    required String code,
+  }) async {
+    const action = 'join';
+    final sw = Stopwatch()..start();
+    final context = <String, Object?>{
+      'userId': userId,
+      'code': maskInviteCode(code),
+    };
+    final normalized = normalizeInviteCode(code);
+    if (normalized == null) {
+      _reject(
+        action,
+        BudgetFailureReason.inviteNotFound,
+        'code is not MLN-XXXX in Crockford base32 '
+        '(length ${code.length})',
+        context,
+        sw,
+      );
+    }
+    final hash = hashInviteCode(normalized);
+    final now = normalizeInstant(_now());
+    String? budgetId;
+    final outcome = await _run<_Joined>(action, context, sw, (tx) async {
+      final found = await tx.execute(
+        r'SELECT budget_id FROM invites WHERE code_hash = $1',
+        parameters: [hash],
+        what: 'find invite by code hash',
+        logParams: context,
+      );
+      if (found.isEmpty) {
+        return const _Outcome.rejected(
+          BudgetFailureReason.inviteNotFound,
+          'no invite with this code',
+        );
+      }
+      final id = found.single[0]! as String;
+      budgetId = id;
+      final budgetContext = {...context, 'budgetId': id};
+      final budget = await tx.execute(
+        r'SELECT kind, deleted_at IS NOT NULL FROM budgets '
+        r'WHERE id = $1::uuid FOR UPDATE',
+        parameters: [id],
+        what: 'lock invited budget',
+        logParams: budgetContext,
+      );
+      final invite = await tx.execute(
+        r'SELECT budget_id, expires_at, revoked_at FROM invites '
+        r'WHERE code_hash = $1',
+        parameters: [hash],
+        what: 'recheck invite after budget lock',
+        logParams: budgetContext,
+      );
+      final problem = _inviteProblem(invite, budget, id, now);
+      if (problem != null) {
+        return _Outcome.rejected(BudgetFailureReason.inviteNotFound, problem);
+      }
+
+      final member = await tx.execute(
+        r'SELECT left_at IS NOT NULL FROM budget_members '
+        r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
+        parameters: [id, userId],
+        what: 'membership of joining user',
+        logParams: budgetContext,
+      );
+      if (member.isNotEmpty && member.single[0] == false) {
+        final rows = await tx.execute(
+          'SELECT $_budgetColumns FROM budgets WHERE id = \$1::uuid',
+          parameters: [id],
+          what: 'read budget for already joined member',
+          logParams: budgetContext,
+        );
+        return _Outcome.ok((
+          budget: _budgetFromRow(rows.single),
+          result: JoinResult.alreadyMember,
+          color: null,
+          reissued: null,
+        ));
+      }
+
+      final used = await tx.execute(
+        r'SELECT avatar_color FROM budget_members '
+        r'WHERE budget_id = $1::uuid AND left_at IS NULL',
+        parameters: [id],
+        what: 'avatar colors of active members',
+        logParams: budgetContext,
+      );
+      final color = _nextAvatarColor([
+        for (final row in used) row[0]! as String,
+      ]);
+      final colorContext = {...budgetContext, 'avatarColor': color.name};
+      final JoinResult result;
+      if (member.isEmpty) {
+        await tx.execute(
+          r'INSERT INTO budget_members (budget_id, user_id, role, '
+          r'avatar_color, joined_at) VALUES ($1::uuid, $2::uuid, $3, $4, '
+          r'$5::timestamptz)',
+          parameters: [id, userId, MemberRole.member.name, color.name, now],
+          what: 'insert joined member',
+          logParams: colorContext,
+        );
+        result = JoinResult.joined;
+      } else {
+        await tx.execute(
+          r'UPDATE budget_members SET role = $3, avatar_color = $4, '
+          r'joined_at = $5::timestamptz, left_at = NULL '
+          r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
+          parameters: [id, userId, MemberRole.member.name, color.name, now],
+          what: 'return former member to budget',
+          logParams: colorContext,
+        );
+        result = JoinResult.rejoined;
+      }
+      final reissued = await _reissue(tx, id, budgetContext);
+      return _Outcome.ok((
+        budget: reissued.budget,
+        result: result,
+        color: color,
+        reissued: reissued.counts,
+      ));
+    });
+    if (budgetId != null) context['budgetId'] = budgetId;
+    final joined = _unwrap(action, outcome, context, sw);
+    if (joined.result == JoinResult.alreadyMember) {
+      _log.info(
+        'budget $action ok result=already_member, nothing written '
+        'budgetId=$budgetId userId=$userId code=${maskInviteCode(code)} '
+        'in ${sw.elapsedMilliseconds}ms',
+      );
+    } else {
+      final counts = joined.reissued!;
+      _log.info(
+        'budget $action ok result=${joined.result.name} '
+        'budgetId=$budgetId userId=$userId code=${maskInviteCode(code)} '
+        'role=${MemberRole.member.name} avatarColor=${joined.color!.name} '
+        'seqReissued=budget:1,members:${counts['members']},'
+        'categories:${counts['categories']},'
+        'recurring:${counts['recurring']},expenses:${counts['expenses']} '
+        'seq=${joined.budget.seq} in ${sw.elapsedMilliseconds}ms',
+      );
+    }
+    return JoinedBudget(budget: joined.budget, result: joined.result);
+  }
+
+  String? _inviteProblem(
+    pg.Result invite,
+    pg.Result budget,
+    String budgetId,
+    DateTime now,
+  ) {
+    if (invite.isEmpty || invite.single[0] != budgetId) {
+      return 'invite was replaced concurrently';
+    }
+    final expiresAt = invite.single[1]! as DateTime;
+    final revokedAt = invite.single[2] as DateTime?;
+    if (revokedAt != null) {
+      return 'invite revoked at ${encodeInstant(revokedAt)}';
+    }
+    if (!expiresAt.isAfter(now)) {
+      return 'invite expired at ${encodeInstant(expiresAt)} '
+          'now=${encodeInstant(now)}';
+    }
+    if (budget.isEmpty) return 'budget of invite no longer exists';
+    if (budget.single[1] == true) return 'budget of invite is deleted';
+    if (budget.single[0] != BudgetKind.shared.name) {
+      return 'invite points to a ${budget.single[0]} budget';
+    }
+    return null;
+  }
+
+  Future<({Budget budget, Map<String, int> counts})> _reissue(
+    DbSession tx,
+    String budgetId,
+    Map<String, Object?> context,
+  ) async {
+    final budget = await tx.execute(
+      'UPDATE budgets SET id = id WHERE id = \$1::uuid '
+      'RETURNING $_budgetColumns',
+      parameters: [budgetId],
+      what: 'reissue seq of joined budget',
+      logParams: context,
+    );
+    final counts = <String, int>{};
+    for (final MapEntry(key: name, value: sql) in _reissueSql.entries) {
+      final result = await tx.execute(
+        sql,
+        parameters: [budgetId],
+        what: 'reissue seq of $name for joined member',
+        logParams: context,
+      );
+      counts[name] = result.affectedRows;
+    }
+    _log.fine(
+      'seq reissued so the joined member pulls the whole budget '
+      '${formatContext(context)} '
+      '${counts.entries.map((e) => '${e.key}=${e.value}').join(' ')}',
+    );
+    return (budget: _budgetFromRow(budget.single), counts: counts);
+  }
+
+  Future<_Access> _lockBudget(
+    DbSession tx,
+    String budgetId,
+    String userId,
+    String action,
+  ) async {
+    final context = {'budgetId': budgetId, 'userId': userId};
+    final budget = await tx.execute(
+      r'SELECT kind, deleted_at IS NOT NULL FROM budgets '
+      r'WHERE id = $1::uuid FOR UPDATE',
+      parameters: [budgetId],
+      what: 'lock budget for $action',
+      logParams: context,
+    );
+    if (budget.isEmpty) {
+      return const _Access(
+        exists: false,
+        deleted: false,
+        kind: null,
+        role: null,
+      );
+    }
+    final member = await tx.execute(
+      r'SELECT role FROM budget_members WHERE budget_id = $1::uuid '
+      r'AND user_id = $2::uuid AND left_at IS NULL',
+      parameters: [budgetId, userId],
+      what: 'membership of user for $action',
+      logParams: context,
+    );
+    return _Access(
+      exists: true,
+      deleted: budget.single[1]! as bool,
+      kind: BudgetKind.values.byName(budget.single[0]! as String),
+      role: member.isEmpty
+          ? null
+          : MemberRole.values.byName(member.single[0]! as String),
+    );
+  }
+
+  _Outcome<T>? _denied<T>(_Access access, {required bool ownerOnly}) {
+    if (!access.exists) {
+      return _Outcome<T>.rejected(
+        BudgetFailureReason.notFound,
+        'no such budget',
+      );
+    }
+    if (access.deleted) {
+      return _Outcome<T>.rejected(
+        BudgetFailureReason.notFound,
+        'budget is deleted',
+      );
+    }
+    if (access.role == null) {
+      return _Outcome<T>.rejected(
+        BudgetFailureReason.notFound,
+        'not an active member',
+      );
+    }
+    if (access.kind == BudgetKind.personal) {
+      return _Outcome<T>.rejected(
+        BudgetFailureReason.personalBudget,
+        'personal budget is not shared',
+      );
+    }
+    if (ownerOnly && access.role != MemberRole.owner) {
+      return _Outcome<T>.rejected(
+        BudgetFailureReason.forbidden,
+        'only the owner can do this, role=${access.role!.name}',
+      );
+    }
+    return null;
+  }
+
+  void _checkBudgetId(
+    String action,
+    String budgetId,
+    Map<String, Object?> context,
+    Stopwatch sw,
+  ) {
+    if (isUuid(budgetId)) return;
+    context['budgetId'] = truncateBody(budgetId, maxBytes: 64);
+    _reject(
+      action,
+      BudgetFailureReason.notFound,
+      'budget id is not a uuid',
+      context,
+      sw,
+    );
+  }
+
   Future<_Outcome<T>> _run<T>(
     String action,
     Map<String, Object?> context,
@@ -235,6 +648,37 @@ class BudgetService {
     );
     throw BudgetFailure(reason, problem);
   }
+}
+
+typedef _Invite = ({String code, int attempts, int revoked});
+
+typedef _Joined = ({
+  Budget budget,
+  JoinResult result,
+  CategoryColor? color,
+  Map<String, int>? reissued,
+});
+
+const Map<String, String> _reissueSql = {
+  'members':
+      'UPDATE budget_members SET budget_id = budget_id '
+      r'WHERE budget_id = $1::uuid AND left_at IS NULL',
+  'categories':
+      'UPDATE categories SET budget_id = budget_id '
+      r'WHERE budget_id = $1::uuid',
+  'recurring':
+      'UPDATE recurring_rules SET budget_id = budget_id '
+      r'WHERE budget_id = $1::uuid AND deleted_at IS NULL',
+  'expenses':
+      'UPDATE expenses SET budget_id = budget_id '
+      r'WHERE budget_id = $1::uuid AND deleted_at IS NULL',
+};
+
+CategoryColor _nextAvatarColor(List<String> used) {
+  for (final color in CategoryColor.values) {
+    if (!used.contains(color.name)) return color;
+  }
+  return CategoryColor.values[used.length % CategoryColor.values.length];
 }
 
 String _reasonCode(BudgetFailureReason reason) => switch (reason) {

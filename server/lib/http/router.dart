@@ -92,6 +92,18 @@ Handler buildHandler({
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(createBudgetHandler(budgets)),
+    )
+    ..post(
+      '/api/v1/budgets/<id>/invites',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(createInviteHandler(budgets)),
+    )
+    ..post(
+      '/api/v1/invites/join',
+      const Pipeline()
+          .addMiddleware(requireAuth)
+          .addHandler(joinBudgetHandler(budgets)),
     );
 
   return const Pipeline()
