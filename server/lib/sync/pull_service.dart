@@ -8,7 +8,7 @@ import '../db/database.dart';
 
 final _log = Logger('sync');
 
-enum _Kind { budget, member, profile, category, expense, recurring }
+enum _Kind { budget, member, profile, category, expense, recurring, removed }
 
 class _Item {
   const _Item(this.kind, this.seq, this.value);
@@ -74,6 +74,17 @@ const String _profilesSql =
     'SELECT id, display_name, birthday_month, birthday_day, avatar_color, seq '
     'FROM profiles WHERE $_range';
 
+const String _removedSql =
+    'WITH removed AS (SELECT b.id, greatest('
+    r'CASE WHEN m.left_at IS NOT NULL AND m.seq > $2::bigint '
+    r'AND m.seq <= $3::bigint THEN m.seq END, '
+    r'CASE WHEN b.deleted_at IS NOT NULL AND b.seq > $2::bigint '
+    r'AND b.seq <= $3::bigint THEN b.seq END) AS seq '
+    'FROM budget_members m JOIN budgets b ON b.id = m.budget_id '
+    r'WHERE m.user_id = $1::uuid '
+    'AND (m.left_at IS NOT NULL OR b.deleted_at IS NOT NULL)) '
+    'SELECT id, seq FROM removed WHERE $_range';
+
 const String _lockNotAvailable = '55P03';
 
 class PullService {
@@ -111,6 +122,7 @@ class PullService {
         'categories=${response.categories.length} '
         'expenses=${response.expenses.length} '
         'recurring=${response.recurring.length} '
+        'removed=${response.removedBudgetIds.length} '
         'total=${response.totalCount} hasMore=${response.hasMore} '
         'limit=${query.limit} bound=$bound in ${sw.elapsedMilliseconds}ms',
       );
@@ -228,6 +240,13 @@ class PullService {
         _recurring,
         11,
       ),
+      ...await select(
+        'pull removed budgets',
+        _removedSql,
+        _Kind.removed,
+        (row) => row[0]! as String,
+        1,
+      ),
     ];
   });
 }
@@ -267,6 +286,7 @@ SyncPullResponse _response(List<_Item> items, int cursor, bool hasMore) {
     categories: of<Category>(_Kind.category),
     expenses: of<Expense>(_Kind.expense),
     recurring: of<RecurringRule>(_Kind.recurring),
+    removedBudgetIds: of<String>(_Kind.removed),
     cursor: items.isEmpty ? cursor : items.last.seq,
     hasMore: hasMore,
   );
