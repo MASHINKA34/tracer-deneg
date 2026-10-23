@@ -142,7 +142,8 @@ String describeDioFailure(DioException err) {
     DioExceptionType.connectionError => 'connection error',
     DioExceptionType.cancel => 'cancelled',
     DioExceptionType.badResponse => 'bad response',
-    DioExceptionType.unknown => 'unknown error',
+    DioExceptionType.unknown =>
+      err.error is IOException ? 'connection error' : 'unknown error',
   };
   final cause = err.error;
   if (cause == null) return kind;

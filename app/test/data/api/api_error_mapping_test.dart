@@ -138,6 +138,8 @@ void main() {
     expect((e as ApiNetworkFailure).problem, ApiNetworkProblem.connection);
     expect(e.toString(), contains('cause=SocketException: Connection refused'));
     expect(e.toString(), contains('errno = 111'));
+    expect(logs.text, contains('POST /api/v1/budgets failed in '));
+    expect(logs.text, contains('connection error cause=SocketException'));
     expect(
       apiErrorText(l10n, e),
       'Нет связи с сервером. Проверь интернет и попробуй ещё раз',
