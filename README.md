@@ -33,8 +33,9 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 
 1. База для разработки (порт 5434, данные в томе Docker):
    ```powershell
-   docker compose -f deploy/docker-compose.dev.yml up -d --wait
+   docker compose -f deploy/docker-compose.dev.yml up -d --wait db
    ```
+   Имя сервиса `db` обязательно: без него поднимется и сервер в Docker (см. ниже) и займёт порт 8080.
 2. Настройки: скопировать `server/.env.example` в `server/.env` и вписать `JWT_SECRET` (не короче 32 символов; команда генерации — в файле). Переменные окружения важнее значений из `.env`.
 3. Запуск из папки `server`:
    ```powershell
@@ -57,6 +58,31 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 | `PORT` | нет | `8080` | Порт HTTP |
 | `LOG_LEVEL` | нет | `info` | `debug`, `info`, `warn`, `error` |
 | `MIGRATIONS_DIR` | нет | `migrations` | Папка SQL-миграций (относительный путь — от папки запуска) |
+
+### Сервер в Docker
+
+Образ — `server/Dockerfile`, контекст сборки — корень репозитория (нужен `shared/`). Сборка `dart compile exe` в `dart:3.13.6`, запуск в `busybox:1.38.0-musl` с библиотеками из `/runtime` образа Dart, пользователь `milionchik` (uid 10001, не root), миграции в `/app/migrations`. В контекст сборки попадает только белый список из `.dockerignore`, `server/.env` в образ не копируется.
+
+1. Сборка и запуск вместе с базой:
+   ```powershell
+   docker compose -f deploy/docker-compose.dev.yml up -d --build
+   ```
+2. Проверка:
+   ```powershell
+   curl.exe http://127.0.0.1:8080/api/v1/health
+   docker compose -f deploy/docker-compose.dev.yml ps
+   docker compose -f deploy/docker-compose.dev.yml exec server id
+   ```
+   Ответ `{"status":"ok","version":"0.1.0","db":"ok"}`, у `server` статус `(healthy)`, `id` — `uid=10001(milionchik)`. `HEALTHCHECK` образа запрашивает `/api/v1/health` раз в 30 с (на старте — раз в 2 с); если база не отвечает, сервер отдаёт 503 и после трёх неудач подряд контейнер становится `unhealthy`.
+3. Логи — `docker compose -f deploy/docker-compose.dev.yml logs -f server`: тот же формат, что без Docker, время в UTC.
+4. Остановка сервера — `docker compose -f deploy/docker-compose.dev.yml stop server`, всего — `docker compose -f deploy/docker-compose.dev.yml down` (том с данными базы остаётся).
+
+Настройки контейнер берёт из переменных окружения при `up`, `server/.env` он не читает. `DATABASE_URL` указывает на сервис `db`. `JWT_SECRET` по умолчанию — несекретная строка для разработки из compose-файла; `LOG_LEVEL` (по умолчанию `info`), `PRIVACY_CONTACT`, `PRIVACY_OPERATOR` — как в таблице выше. Пример:
+```powershell
+$env:LOG_LEVEL = "debug"; docker compose -f deploy/docker-compose.dev.yml up -d --wait
+```
+
+Сервер в Docker и `dart run bin/server.dart` слушают один порт 8080, поэтому работает только один из них: перед `dart run` останови контейнер командой из п. 4.
 
 ## Приложение
 
