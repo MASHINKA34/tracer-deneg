@@ -5,6 +5,8 @@ import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 import 'package:shelf/shelf.dart';
 
+import '../limits/request_limits.dart';
+
 final _log = Logger('web');
 
 const String privacyPath = '/privacy';
@@ -120,6 +122,13 @@ Middleware webErrorPages() =>
       try {
         return await inner(request);
       } on HijackException {
+        rethrow;
+      } on RequestBodyTooLarge catch (e) {
+        _log.fine(
+          'web page body over limit ${request.method} '
+          '${request.requestedUri.path} read=${e.received} '
+          '→ passed to body size limit',
+        );
         rethrow;
       } catch (e, st) {
         final rid = currentRequestId();
