@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
@@ -74,6 +75,7 @@ final class AuthHarness {
     bool signInRequired = true,
     Size size = const Size(360, 800),
     double textScale = 1,
+    List<Override> overrides = const [],
   }) async {
     final logs = LogCapture();
     addTearDown(logs.dispose);
@@ -110,6 +112,7 @@ final class AuthHarness {
             sessionProvider.overrideWithBuild(
               (ref, _) => SessionActive(session.user),
             ),
+          ...overrides,
         ],
         child: MilionchikApp(today: LocalDate.fromDateTime(testNow)),
       ),
