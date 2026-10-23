@@ -7,6 +7,7 @@ import 'package:postgres/postgres.dart' as pg;
 import 'package:shared/shared.dart';
 
 import '../db/database.dart';
+import '../sync/sync_notifier.dart';
 
 final _log = Logger('budgets');
 
@@ -105,11 +106,16 @@ typedef _Tombstones = ({
 });
 
 class BudgetService {
-  BudgetService({required this.db, this._now = DateTime.now, Random? random})
-    : _random = random ?? Random.secure();
+  BudgetService({
+    required this.db,
+    this._now = DateTime.now,
+    this._notifier = const NoopSyncNotifier(),
+    Random? random,
+  }) : _random = random ?? Random.secure();
 
   final Database db;
   final DateTime Function() _now;
+  final SyncNotifier _notifier;
   final Random _random;
 
   Future<CreatedBudget> create({
@@ -129,6 +135,7 @@ class BudgetService {
       newId: newId,
     );
     final color = CategoryColor.values.first;
+    int? cursor;
     final outcome = await _run<CreatedBudget>(action, context, sw, (tx) async {
       final inserted = await tx.execute(
         'INSERT INTO budgets (id, kind, name, emoji, owner_id, created_at, '
@@ -177,6 +184,7 @@ class BudgetService {
           },
         );
       }
+      cursor = await _lastSeq(tx, context);
       return _Outcome.ok(
         CreatedBudget(budget: _budgetFromRow(inserted.single), replayed: false),
       );
@@ -194,6 +202,14 @@ class BudgetService {
         'role=${MemberRole.owner.name} avatarColor=${color.name} '
         'categories=${categories.length} seq=${created.budget.seq} '
         'in ${sw.elapsedMilliseconds}ms',
+      );
+      _notify(
+        BudgetsChanged(
+          reason: 'budget_create',
+          userId: userId,
+          budgetIds: {budgetId},
+          cursor: cursor!,
+        ),
       );
     }
     return created;
@@ -342,6 +358,7 @@ class BudgetService {
     final hash = hashInviteCode(normalized);
     final now = normalizeInstant(_now());
     String? budgetId;
+    int? cursor;
     final outcome = await _run<_Joined>(action, context, sw, (tx) async {
       final found = await tx.execute(
         r'SELECT budget_id FROM invites WHERE code_hash = $1',
@@ -433,6 +450,7 @@ class BudgetService {
         result = JoinResult.rejoined;
       }
       final reissued = await _reissue(tx, id, budgetContext);
+      cursor = await _lastSeq(tx, budgetContext);
       return _Outcome.ok((
         budget: reissued.budget,
         result: result,
@@ -458,6 +476,14 @@ class BudgetService {
         'categories:${counts['categories']},'
         'recurring:${counts['recurring']},expenses:${counts['expenses']} '
         'seq=${joined.budget.seq} in ${sw.elapsedMilliseconds}ms',
+      );
+      _notify(
+        BudgetsChanged(
+          reason: 'budget_join',
+          userId: userId,
+          budgetIds: {budgetId!},
+          cursor: cursor!,
+        ),
       );
     }
     return JoinedBudget(budget: joined.budget, result: joined.result);
@@ -528,6 +554,7 @@ class BudgetService {
     final context = {'budgetId': budgetId, 'userId': userId};
     _checkBudgetId(action, budgetId, context, sw);
     final now = normalizeInstant(_now());
+    int? cursor;
     final outcome = await _run<_Left>(action, context, sw, (tx) async {
       final access = await _lockBudget(tx, budgetId, userId, action);
       final denied = _denied<_Left>(access, ownerOnly: false);
@@ -544,6 +571,7 @@ class BudgetService {
       if (heirs.isEmpty) {
         final tombstones = await _tombstone(tx, budgetId, userId, now);
         await _markLeft(tx, budgetId, userId, now, 'leave as last member');
+        cursor = await _lastSeq(tx, context);
         return _Outcome.ok((
           result: LeaveResult.deleted,
           heirId: null,
@@ -554,6 +582,7 @@ class BudgetService {
 
       if (access.role == MemberRole.member) {
         await _markLeft(tx, budgetId, userId, now, 'leave shared budget');
+        cursor = await _lastSeq(tx, context);
         return _Outcome.ok((
           result: LeaveResult.left,
           heirId: null,
@@ -587,6 +616,7 @@ class BudgetService {
         logParams: transferContext,
       );
       final invites = await _revokeInvites(tx, budgetId, now);
+      cursor = await _lastSeq(tx, transferContext);
       return _Outcome.ok((
         result: LeaveResult.transferred,
         heirId: heirId,
@@ -607,6 +637,15 @@ class BudgetService {
     _log.info(
       'budget $action ok result=${left.result.name} budgetId=$budgetId '
       'userId=$userId $details in ${sw.elapsedMilliseconds}ms',
+    );
+    _notify(
+      BudgetsChanged(
+        reason: 'budget_leave',
+        userId: userId,
+        budgetIds: {budgetId},
+        cursor: cursor!,
+        formerMemberIds: {userId},
+      ),
     );
     return left.result;
   }
@@ -665,6 +704,15 @@ class BudgetService {
       'budget $action ok budgetId=$budgetId userId=$userId '
       'memberId=$memberId seq=$seq in ${sw.elapsedMilliseconds}ms',
     );
+    _notify(
+      BudgetsChanged(
+        reason: 'budget_remove_member',
+        userId: userId,
+        budgetIds: {budgetId},
+        cursor: seq,
+        formerMemberIds: {memberId},
+      ),
+    );
   }
 
   Future<void> deleteBudget({
@@ -676,6 +724,7 @@ class BudgetService {
     final context = {'budgetId': budgetId, 'userId': userId};
     _checkBudgetId(action, budgetId, context, sw);
     final now = normalizeInstant(_now());
+    int? cursor;
     final outcome = await _run<_Deleted>(action, context, sw, (tx) async {
       final access = await _lockBudget(tx, budgetId, userId, action);
       final denied = _denied<_Deleted>(access, ownerOnly: true);
@@ -688,6 +737,7 @@ class BudgetService {
         logParams: context,
       );
       final tombstones = await _tombstone(tx, budgetId, userId, now);
+      cursor = await _lastSeq(tx, context);
       return _Outcome.ok((
         members: members.single[0]! as int,
         tombstones: tombstones,
@@ -700,6 +750,37 @@ class BudgetService {
       '${_describeTombstones(deleted.tombstones)} '
       'in ${sw.elapsedMilliseconds}ms',
     );
+    _notify(
+      BudgetsChanged(
+        reason: 'budget_delete',
+        userId: userId,
+        budgetIds: {budgetId},
+        cursor: cursor!,
+      ),
+    );
+  }
+
+  Future<int> _lastSeq(DbSession tx, Map<String, Object?> context) async {
+    final rows = await tx.execute(
+      "SELECT currval('change_seq')",
+      what: 'last change seq written by this transaction',
+      logParams: context,
+    );
+    return rows.single[0]! as int;
+  }
+
+  void _notify(BudgetsChanged event) {
+    try {
+      _notifier.budgetsChanged(event);
+      _log.fine('budget change event handed to notifier $event');
+    } catch (e, st) {
+      _log.warning(
+        'budget change event failed after commit, clients learn on next pull '
+        'event=$event: ${describeError(e)}',
+        e,
+        st,
+      );
+    }
   }
 
   Future<_Tombstones> _tombstone(

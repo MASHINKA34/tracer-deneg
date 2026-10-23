@@ -36,7 +36,7 @@ Handler buildHandler({
   final account = AccountService(db: db, hasher: auth.hasher);
   final pull = PullService(db: db);
   final push = PushService(db: db, notifier: notifier);
-  final budgets = BudgetService(db: db, now: now);
+  final budgets = BudgetService(db: db, now: now, notifier: notifier);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))

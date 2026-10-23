@@ -8,17 +8,21 @@ final class BudgetsChanged {
     required this.userId,
     required Set<String> budgetIds,
     required this.cursor,
-  }) : budgetIds = Set.unmodifiable(budgetIds);
+    Set<String> formerMemberIds = const {},
+  }) : budgetIds = Set.unmodifiable(budgetIds),
+       formerMemberIds = Set.unmodifiable(formerMemberIds);
 
   final String reason;
   final String userId;
   final Set<String> budgetIds;
   final int cursor;
+  final Set<String> formerMemberIds;
 
   @override
   String toString() =>
       'BudgetsChanged($reason userId=$userId '
-      'budgetIds=[${(budgetIds.toList()..sort()).join(',')}] cursor=$cursor)';
+      'budgetIds=[${(budgetIds.toList()..sort()).join(',')}] cursor=$cursor'
+      '${formerMemberIds.isEmpty ? '' : ' formerMemberIds=[${(formerMemberIds.toList()..sort()).join(',')}]'})';
 }
 
 abstract interface class SyncNotifier {

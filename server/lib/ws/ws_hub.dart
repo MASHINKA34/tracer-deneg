@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:postgres/postgres.dart' as pg;
 import 'package:shared/logging.dart';
 
 import '../auth/auth_middleware.dart';
 import '../db/database.dart';
+import '../sync/sync_notifier.dart';
 import 'ws_protocol.dart';
 
 final _log = Logger('ws');
@@ -46,7 +48,7 @@ final class _Connection {
       'userId=${auth.userId} sessionId=${auth.sessionId} conn=$id';
 }
 
-class WsHub {
+class WsHub implements SyncNotifier {
   WsHub({required this.db, this._now = DateTime.now});
 
   final Database db;
@@ -112,6 +114,98 @@ class WsHub {
         '${_closeAllTimeout.inMilliseconds}ms, still open=$open '
         'of ${all.length}, process exit drops them',
       );
+    }
+  }
+
+  @override
+  void budgetsChanged(BudgetsChanged event) {
+    unawaited(_broadcast(event));
+  }
+
+  Future<void> _broadcast(BudgetsChanged event) async {
+    final sw = Stopwatch()..start();
+    if (_byUser.isEmpty) {
+      _log.fine('ws changed not sent, no connections $event');
+      return;
+    }
+    try {
+      final targets = await _recipients(event);
+      var delivered = 0;
+      var failed = 0;
+      for (final MapEntry(key: userId, value: budgetIds) in targets.entries) {
+        final message = encodeChangedMessage(
+          budgetIds: budgetIds,
+          cursor: event.cursor,
+        );
+        for (final connection in [...?_byUser[userId]]) {
+          if (_send(connection, message, WsMessageType.changed)) {
+            delivered++;
+          } else {
+            failed++;
+          }
+        }
+      }
+      _log.fine(
+        'ws changed broadcast reason=${event.reason} '
+        'budgetIds=[${_sorted(event.budgetIds)}] cursor=${event.cursor} '
+        'users=${targets.length} recipients=$delivered failed=$failed '
+        'in ${sw.elapsedMilliseconds}ms',
+      );
+    } catch (e, st) {
+      _log.warning(
+        'ws changed broadcast failed, clients learn on next pull $event '
+        'in ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
+        e,
+        st,
+      );
+    }
+  }
+
+  Future<Map<String, Set<String>>> _recipients(BudgetsChanged event) async {
+    final connected = _byUser.keys.toList()..sort();
+    final budgetIds = event.budgetIds.toList()..sort();
+    final rows = await db.execute(
+      'SELECT user_id, budget_id FROM budget_members '
+      r'WHERE budget_id = ANY($1::text[]::uuid[]) '
+      r'AND user_id = ANY($2::text[]::uuid[]) AND left_at IS NULL',
+      parameters: [
+        pg.TypedValue(pg.Type.textArray, budgetIds),
+        pg.TypedValue(pg.Type.textArray, connected),
+      ],
+      what: 'connected members of changed budgets',
+      logParams: {
+        'reason': event.reason,
+        'budgets': budgetIds.length,
+        'connectedUsers': connected.length,
+      },
+    );
+    final targets = <String, Set<String>>{};
+    for (final row in rows) {
+      targets.putIfAbsent(row[0]! as String, () => {}).add(row[1]! as String);
+    }
+    for (final userId in {event.userId, ...event.formerMemberIds}) {
+      if (!_byUser.containsKey(userId)) continue;
+      targets.putIfAbsent(userId, () => {}).addAll(event.budgetIds);
+    }
+    return targets;
+  }
+
+  bool _send(_Connection connection, String message, String type) {
+    if (connection.closedBy != null || connection.finished.isCompleted) {
+      return false;
+    }
+    try {
+      connection.peer.send(message);
+      connection.sent++;
+      return true;
+    } catch (e, st) {
+      _log.warning(
+        'ws send failed type=$type ${connection.label} '
+        'size=${message.length}: ${describeError(e)}',
+        e,
+        st,
+      );
+      return false;
     }
   }
 
@@ -190,6 +284,8 @@ class WsHub {
     if (connections.isEmpty) _byUser.remove(connection.userId);
   }
 }
+
+String _sorted(Iterable<String> ids) => (ids.toList()..sort()).join(',');
 
 String _describeMessage(Object? message) {
   if (message is String) {
