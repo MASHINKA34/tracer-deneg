@@ -216,52 +216,57 @@ class AuthInterceptor extends Interceptor {
   }
 
   Future<_RefreshOutcome> _refreshOnce(RequestOptions options) async {
+    final pending = _refreshing;
+    if (pending != null) {
+      _log.info(
+        'session refresh already in progress → waiting '
+        'rid=${requestIdOfOptions(options)}',
+      );
+      return pending;
+    }
+    final started = _refreshInSlot(options);
+    _refreshing = started;
+    try {
+      return await started;
+    } finally {
+      if (identical(_refreshing, started)) _refreshing = null;
+    }
+  }
+
+  Future<_RefreshOutcome> _refreshInSlot(RequestOptions options) async {
     final rid = requestIdOfOptions(options);
     final sent = _bearerOf(options);
-    var pending = _refreshing;
-    if (pending == null) {
-      final AuthTokens? current;
-      try {
-        current = await _tokens.readTokens();
-      } catch (e, st) {
-        _log.warning(
-          'session refresh skipped: token store read failed: '
-          '${describeError(e)} rid=$rid',
-          e,
-          st,
-        );
-        return _Failed(
-          DioException(requestOptions: options, error: e, stackTrace: st),
-        );
-      }
-      pending = _refreshing;
-      if (pending == null) {
-        if (current == null) {
-          _log.info('session refresh impossible: no tokens → sign-in rid=$rid');
-          return const _Ended(SessionEndReason.noSession);
-        }
-        if (current.refreshToken == _endedRefreshToken) {
-          _log.info('session refresh skipped: session already ended rid=$rid');
-          return const _Ended(SessionEndReason.endedEarlier);
-        }
-        if (sent != null && sent != current.accessToken) {
-          _log.info(
-            'access token already refreshed by another request → retry '
-            'without refresh rid=$rid',
-          );
-          return const _Refreshed();
-        }
-        final started = _refresh(current, options);
-        _refreshing = started;
-        try {
-          return await started;
-        } finally {
-          if (identical(_refreshing, started)) _refreshing = null;
-        }
-      }
+    _log.fine('session refresh slot taken → reading current tokens rid=$rid');
+    final AuthTokens? current;
+    try {
+      current = await _tokens.readTokens();
+    } catch (e, st) {
+      _log.warning(
+        'session refresh skipped: token store read failed: '
+        '${describeError(e)} rid=$rid',
+        e,
+        st,
+      );
+      return _Failed(
+        DioException(requestOptions: options, error: e, stackTrace: st),
+      );
     }
-    _log.info('session refresh already in progress → waiting rid=$rid');
-    return pending;
+    if (current == null) {
+      _log.info('session refresh impossible: no tokens → sign-in rid=$rid');
+      return const _Ended(SessionEndReason.noSession);
+    }
+    if (current.refreshToken == _endedRefreshToken) {
+      _log.info('session refresh skipped: session already ended rid=$rid');
+      return const _Ended(SessionEndReason.endedEarlier);
+    }
+    if (sent != null && sent != current.accessToken) {
+      _log.info(
+        'access token already refreshed by another request → retry '
+        'without refresh rid=$rid',
+      );
+      return const _Refreshed();
+    }
+    return _refresh(current, options);
   }
 
   Future<_RefreshOutcome> _refresh(
