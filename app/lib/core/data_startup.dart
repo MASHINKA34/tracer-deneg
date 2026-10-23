@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -17,6 +18,7 @@ import '../data/session/session.dart';
 import '../data/session/session_providers.dart';
 import '../data/session/session_state.dart';
 import '../data/session/session_store.dart';
+import '../features/profile/theme_mode.dart';
 import '../features/startup/database_error_app.dart';
 import 'auth_gate.dart';
 import 'clock.dart';
@@ -42,12 +44,19 @@ sealed class DataStartup {
 }
 
 final class DataReady extends DataStartup {
-  const DataReady(this.db, this.seed, {this.todayOverride, this.session});
+  const DataReady(
+    this.db,
+    this.seed, {
+    this.todayOverride,
+    this.session,
+    this.themeMode = ThemeMode.system,
+  });
 
   final AppDatabase db;
   final DevSeedResult seed;
   final LocalDate? todayOverride;
   final Session? session;
+  final ThemeMode themeMode;
 
   bool get devSeedDemo =>
       seed.status == DevSeedStatus.seeded ||
@@ -115,7 +124,14 @@ Future<DataStartup> startData({
   if (kDebugMode) {
     todayOverride = await loadTodayOverride(DriftPrefsRepository(db));
   }
-  return DataReady(db, result, todayOverride: todayOverride, session: session);
+  final themeMode = await loadThemeMode(DriftPrefsRepository(db));
+  return DataReady(
+    db,
+    result,
+    todayOverride: todayOverride,
+    session: session,
+    themeMode: themeMode,
+  );
 }
 
 Future<bool> _devSeedBlocked(
@@ -199,20 +215,27 @@ void _logSeed(DevSeedResult result, int ms) {
 }
 
 Widget appRoot(DataStartup data) => switch (data) {
-  DataReady(:final db, :final todayOverride, :final session) => ProviderScope(
-    overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      signInRequiredProvider.overrideWithValue(_signInRequired(data)),
-      if (session != null)
-        sessionProvider.overrideWithBuild(
-          (ref, _) => SessionActive(session.user),
-        ),
-      if (kDebugMode && todayOverride != null)
-        todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
-    ],
-    observers: const [ProviderLogger()],
-    child: const RecurringTriggersScope(child: MilionchikApp()),
-  ),
+  DataReady(
+    :final db,
+    :final todayOverride,
+    :final session,
+    :final themeMode,
+  ) =>
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        themeModeProvider.overrideWithBuild((ref, _) => themeMode),
+        signInRequiredProvider.overrideWithValue(_signInRequired(data)),
+        if (session != null)
+          sessionProvider.overrideWithBuild(
+            (ref, _) => SessionActive(session.user),
+          ),
+        if (kDebugMode && todayOverride != null)
+          todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
+      ],
+      observers: const [ProviderLogger()],
+      child: const RecurringTriggersScope(child: MilionchikApp()),
+    ),
   DataUnavailable() => const DatabaseErrorApp(),
 };
 

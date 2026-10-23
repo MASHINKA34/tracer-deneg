@@ -11,6 +11,7 @@ abstract final class PrefKeys {
   static const String localUserId = 'localUserId';
   static const String todayOverride = 'debugTodayOverride';
   static const String signedInBefore = 'signedInBefore';
+  static const String themeMode = 'themeMode';
 }
 
 abstract interface class PrefsRepository {

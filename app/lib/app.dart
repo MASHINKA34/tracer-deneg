@@ -13,13 +13,14 @@ import 'data/session/session_providers.dart';
 import 'data/session/session_state.dart';
 import 'features/auth/recovery_code_state.dart';
 import 'features/expense/expense_snackbar_layer.dart';
+import 'features/profile/theme_mode.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/theme/app_theme.dart';
 
 final _log = Logger('app');
 
 /// Корневой виджет: русская локаль, тема дизайн-системы (светлая/тёмная —
-/// как в системе), настроение — по сегодняшней дате, прозрачные системные
+/// из настроек), настроение — по сегодняшней дате, прозрачные системные
 /// панели, go_router.
 class MilionchikApp extends ConsumerStatefulWidget {
   const MilionchikApp({super.key, this.today});
@@ -98,6 +99,7 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: AppTheme.build(Brightness.light, _mood),
       darkTheme: AppTheme.build(Brightness.dark, _mood),
+      themeMode: ref.watch(themeModeProvider),
       themeAnimationDuration: AppTheme.transition,
       routerConfig: _router,
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
