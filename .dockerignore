@@ -1,0 +1,8 @@
+*
+!server/pubspec.yaml
+!server/pubspec.lock
+!server/bin/
+!server/lib/
+!server/migrations/
+!shared/pubspec.yaml
+!shared/lib/
