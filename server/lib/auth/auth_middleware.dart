@@ -70,6 +70,54 @@ Middleware authMiddleware(AuthService auth) =>
       return inner(request.change(context: {authContextKey: context}));
     };
 
+const authSkipContextKey = 'milionchik.auth.skip';
+
+AuthContext? optionalAuthContextOf(Request request) {
+  final value = request.context[authContextKey];
+  return value is AuthContext ? value : null;
+}
+
+String? authSkipReasonOf(Request request) {
+  final value = request.context[authSkipContextKey];
+  return value is String ? value : null;
+}
+
+Middleware optionalAuthMiddleware(AuthService auth) =>
+    (inner) => (request) async {
+      final sw = Stopwatch()..start();
+      final header = request.headers['authorization'];
+      if (header == null) {
+        _log.fine(
+          'anonymous ${request.method} ${request.requestedUri.path}: '
+          'no authorization header',
+        );
+        return inner(request.change(context: {authSkipContextKey: 'none'}));
+      }
+      final token = _bearer.firstMatch(header)?[1];
+      final check = token == null ? null : await auth.authenticate(token);
+      final rejection = check == null ? 'malformed_header' : check.rejection;
+      if (rejection != null) {
+        _log.info(
+          'optional auth skipped ${request.method} '
+          '${request.requestedUri.path} '
+          '${formatContext({'reason': rejection, 'userId': check?.userId, 'sessionId': check?.sessionId})} '
+          'in ${sw.elapsedMilliseconds}ms → continuing anonymously',
+        );
+        return inner(request.change(context: {authSkipContextKey: rejection}));
+      }
+      final context = AuthContext(
+        userId: check!.userId!,
+        sessionId: check.sessionId!,
+        expiresAt: check.expiresAt!,
+      );
+      _log.fine(
+        'authorized (optional) ${request.method} '
+        '${request.requestedUri.path} userId=${context.userId} '
+        'sessionId=${context.sessionId} in ${sw.elapsedMilliseconds}ms',
+      );
+      return inner(request.change(context: {authContextKey: context}));
+    };
+
 Response _reject(
   Request request,
   String reason,

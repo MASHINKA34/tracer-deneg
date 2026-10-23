@@ -5,6 +5,7 @@ import '../account/account_service.dart';
 import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
 import '../budgets/budget_service.dart';
+import '../client_errors/client_error_store.dart';
 import '../db/database.dart';
 import '../limits/request_limits.dart';
 import '../sync/pull_service.dart';
@@ -16,6 +17,7 @@ import '../ws/ws_protocol.dart';
 import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'budget_handlers.dart';
+import 'client_error_handlers.dart';
 import 'health.dart';
 import 'json.dart';
 import 'middleware.dart';
@@ -37,6 +39,7 @@ Handler buildHandler({
   final pull = PullService(db: db);
   final push = PushService(db: db, notifier: notifier);
   final budgets = BudgetService(db: db, now: now, notifier: notifier);
+  final clientErrors = ClientErrorStore(db);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))
@@ -126,6 +129,12 @@ Handler buildHandler({
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(joinBudgetHandler(budgets)),
+    )
+    ..post(
+      '/api/v1/client-errors',
+      const Pipeline()
+          .addMiddleware(optionalAuthMiddleware(auth))
+          .addHandler(clientErrorsHandler(clientErrors)),
     );
   if (ws != null) {
     router.get(
