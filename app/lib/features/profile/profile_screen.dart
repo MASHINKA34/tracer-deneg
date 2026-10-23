@@ -17,9 +17,11 @@ import '../../ui/components/snackbar.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
+import '../auth/sign_out_service.dart';
 import '../expense/expense_snackbar_layer.dart';
 import 'profile_account_card.dart';
 import 'profile_budgets.dart';
+import 'sign_out_dialog.dart';
 import 'theme_mode.dart';
 
 final _log = Logger('profile');
@@ -78,7 +80,6 @@ enum ProfileStub {
   holidays,
   reminders,
   sendLogs,
-  signOut,
   deleteAccount,
 }
 
@@ -92,6 +93,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final Stopwatch _sw = Stopwatch()..start();
   bool _loggedSession = false;
+  bool _signingOut = false;
 
   @override
   void initState() {
@@ -149,6 +151,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _log.fine('profile row $row tap → $location');
     context.push(location);
   }
+
+  Future<void> _signOut() async {
+    if (_signingOut) {
+      _log.fine('profile sign out tap ignored: sign-out already open');
+      return;
+    }
+    _signingOut = true;
+    try {
+      final service = ref.read(signOutServiceProvider);
+      final queue = await service.queueSize();
+      if (!mounted) return;
+      if (queue == null) {
+        _showSnackbar(AppLocalizations.of(context).signOutFailed);
+        return;
+      }
+      final done = await showSignOutDialog(context, queueSize: queue);
+      if (!mounted || done != true) return;
+      _log.fine(
+        'profile signed out, sign-in not forced by the gate → '
+        '${AppRoutes.login}',
+      );
+      context.go(AppRoutes.login);
+    } finally {
+      _signingOut = false;
+    }
+  }
+
+  void _showSnackbar(String text) => showAppSnackbar(
+    context,
+    text: text,
+    margin: const EdgeInsets.fromLTRB(
+      expenseSnackbarSide,
+      0,
+      expenseSnackbarSide,
+      expenseSnackbarAboveAnchor,
+    ),
+  );
 
   void _stub(ProfileStub stub, {String details = ''}) {
     _log.fine(
@@ -282,10 +321,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ListRow(
                           icon: AppIcons.logOut,
                           title: l10n.profileSignOut,
-                          value: l10n.profileSoon,
                           chevron: false,
                           danger: true,
-                          onTap: () => _stub(ProfileStub.signOut),
+                          onTap: _signOut,
                         ),
                         ListRow(
                           icon: AppIcons.trash,
