@@ -1,0 +1,310 @@
+import 'dart:math';
+
+import 'package:logging/logging.dart';
+import 'package:postgres/postgres.dart' as pg;
+import 'package:shared/shared.dart';
+
+import '../db/database.dart';
+
+final _log = Logger('sync');
+
+enum _Kind { budget, member, profile, category, expense, recurring }
+
+class _Item {
+  const _Item(this.kind, this.seq, this.value);
+
+  final _Kind kind;
+  final int seq;
+  final Object value;
+}
+
+const String _activeBudgets =
+    'WITH active AS (SELECT m.budget_id AS id FROM budget_members m '
+    'JOIN budgets b ON b.id = m.budget_id '
+    r'WHERE m.user_id = $1::uuid AND m.left_at IS NULL '
+    'AND b.deleted_at IS NULL) ';
+
+const String _range =
+    r'seq > $2::bigint AND seq <= $3::bigint ORDER BY seq LIMIT $4::int';
+
+const String _budgetsSql =
+    '${_activeBudgets}SELECT id, kind, name, emoji, owner_id, created_at, '
+    'updated_at, updated_by, deleted_at, seq FROM budgets '
+    'WHERE id IN (SELECT id FROM active) AND $_range';
+
+const String _membersSql =
+    '${_activeBudgets}SELECT budget_id, user_id, role, avatar_color, '
+    'joined_at, left_at, seq FROM budget_members '
+    'WHERE budget_id IN (SELECT id FROM active) AND $_range';
+
+const String _categoriesSql =
+    '${_activeBudgets}SELECT id, budget_id, name, emoji, color, sort_order, '
+    'is_system, updated_at, updated_by, deleted_at, seq FROM categories '
+    'WHERE budget_id IN (SELECT id FROM active) AND $_range';
+
+const String _expensesSql =
+    '${_activeBudgets}SELECT id, budget_id, category_id, amount_kopecks, '
+    'spent_on::text, comment, author_id, recurring_id, recurring_month, '
+    'created_at, updated_at, updated_by, deleted_at, seq FROM expenses '
+    'WHERE budget_id IN (SELECT id FROM active) AND $_range';
+
+const String _recurringSql =
+    '${_activeBudgets}SELECT id, budget_id, category_id, title, '
+    'amount_kopecks, day_of_month, start_month, created_at, updated_at, '
+    'updated_by, deleted_at, seq FROM recurring_rules '
+    'WHERE budget_id IN (SELECT id FROM active) AND $_range';
+
+const String _profilesSql =
+    'WITH shared_budgets AS (SELECT m.budget_id AS id FROM budget_members m '
+    'JOIN budgets b ON b.id = m.budget_id '
+    r'WHERE m.user_id = $1::uuid AND m.left_at IS NULL '
+    "AND b.deleted_at IS NULL AND b.kind = 'shared'), "
+    'links AS (SELECT x.user_id, x.avatar_color, x.seq, '
+    'row_number() OVER (PARTITION BY x.user_id '
+    'ORDER BY x.left_at IS NOT NULL, x.joined_at, x.budget_id) AS rank '
+    'FROM budget_members x JOIN users u ON u.id = x.user_id '
+    'WHERE x.budget_id IN (SELECT id FROM shared_budgets) '
+    r'AND x.user_id <> $1::uuid '
+    'AND (x.left_at IS NULL OR u.deleted_at IS NOT NULL)), '
+    'profiles AS (SELECT u.id, u.display_name, u.birthday_month, '
+    'u.birthday_day, '
+    'max(l.avatar_color) FILTER (WHERE l.rank = 1) AS avatar_color, '
+    'greatest(u.seq, max(l.seq)) AS seq '
+    'FROM users u JOIN links l ON l.user_id = u.id GROUP BY u.id) '
+    'SELECT id, display_name, birthday_month, birthday_day, avatar_color, seq '
+    'FROM profiles WHERE $_range';
+
+class PullService {
+  PullService({required this.db});
+
+  final Database db;
+
+  Future<SyncPullResponse> pull({
+    required String userId,
+    required SyncPullQuery query,
+  }) async {
+    final sw = Stopwatch()..start();
+    final context = {
+      'userId': userId,
+      'cursor': query.cursor,
+      'limit': query.limit,
+    };
+    try {
+      final bound = await _upperBound(context);
+      final items = bound <= query.cursor
+          ? <_Item>[]
+          : await _read(userId, query, bound, context);
+      final page = _cut(items, query.limit);
+      final response = _response(page.items, query.cursor, page.hasMore);
+      _log.info(
+        'pull userId=$userId cursor=${query.cursor}→${response.cursor} '
+        'budgets=${response.budgets.length} '
+        'members=${response.members.length} '
+        'profiles=${response.profiles.length} '
+        'categories=${response.categories.length} '
+        'expenses=${response.expenses.length} '
+        'recurring=${response.recurring.length} '
+        'total=${response.totalCount} hasMore=${response.hasMore} '
+        'limit=${query.limit} bound=$bound in ${sw.elapsedMilliseconds}ms',
+      );
+      return response;
+    } catch (e) {
+      _log.warning(
+        'pull failed ${formatContext(context)} '
+        'in ${sw.elapsedMilliseconds}ms: ${describeError(e)}',
+      );
+      rethrow;
+    }
+  }
+
+  Future<int> _upperBound(Map<String, Object?> context) async {
+    final rows = await db.execute(
+      'SELECT last_value, is_called FROM change_seq',
+      what: 'read last change seq',
+      logParams: context,
+    );
+    final row = rows.single;
+    final last = row[0]! as int;
+    return row[1]! as bool ? last : last - 1;
+  }
+
+  Future<List<_Item>> _read(
+    String userId,
+    SyncPullQuery query,
+    int bound,
+    Map<String, Object?> context,
+  ) => db.transaction('sync pull', (tx) async {
+    await tx.execute(
+      'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY',
+      what: 'pull snapshot',
+    );
+    final parameters = [userId, query.cursor, bound, query.limit + 1];
+    final logParams = {...context, 'bound': bound};
+    Future<List<_Item>> select(
+      String what,
+      String sql,
+      _Kind kind,
+      Object Function(pg.ResultRow row) decode,
+      int seqColumn,
+    ) async {
+      final rows = await tx.execute(
+        sql,
+        parameters: parameters,
+        what: what,
+        logParams: logParams,
+      );
+      return [
+        for (final row in rows)
+          _Item(kind, row[seqColumn]! as int, decode(row)),
+      ];
+    }
+
+    return [
+      ...await select('pull budgets', _budgetsSql, _Kind.budget, _budget, 9),
+      ...await select('pull members', _membersSql, _Kind.member, _member, 6),
+      ...await select(
+        'pull profiles',
+        _profilesSql,
+        _Kind.profile,
+        _profile,
+        5,
+      ),
+      ...await select(
+        'pull categories',
+        _categoriesSql,
+        _Kind.category,
+        _category,
+        10,
+      ),
+      ...await select(
+        'pull expenses',
+        _expensesSql,
+        _Kind.expense,
+        _expense,
+        13,
+      ),
+      ...await select(
+        'pull recurring',
+        _recurringSql,
+        _Kind.recurring,
+        _recurring,
+        11,
+      ),
+    ];
+  });
+}
+
+({List<_Item> items, bool hasMore}) _cut(List<_Item> items, int limit) {
+  items.sort((a, b) {
+    final bySeq = a.seq.compareTo(b.seq);
+    return bySeq != 0 ? bySeq : a.kind.index.compareTo(b.kind.index);
+  });
+  var take = min(items.length, limit);
+  if (items.length > take) {
+    final split = items[take].seq;
+    var cut = take;
+    while (cut > 0 && items[cut - 1].seq == split) {
+      cut--;
+    }
+    if (cut > 0) {
+      take = cut;
+    } else {
+      while (take < items.length && items[take].seq == split) {
+        take++;
+      }
+    }
+  }
+  return (items: items.sublist(0, take), hasMore: items.length > take);
+}
+
+SyncPullResponse _response(List<_Item> items, int cursor, bool hasMore) {
+  List<T> of<T>(_Kind kind) => [
+    for (final item in items)
+      if (item.kind == kind) item.value as T,
+  ];
+  return SyncPullResponse(
+    budgets: of<Budget>(_Kind.budget),
+    members: of<BudgetMember>(_Kind.member),
+    profiles: of<MemberProfile>(_Kind.profile),
+    categories: of<Category>(_Kind.category),
+    expenses: of<Expense>(_Kind.expense),
+    recurring: of<RecurringRule>(_Kind.recurring),
+    cursor: items.isEmpty ? cursor : items.last.seq,
+    hasMore: hasMore,
+  );
+}
+
+Budget _budget(pg.ResultRow row) => Budget(
+  id: row[0]! as String,
+  kind: BudgetKind.values.byName(row[1]! as String),
+  name: row[2]! as String,
+  emoji: row[3]! as String,
+  ownerId: row[4]! as String,
+  createdAt: row[5]! as DateTime,
+  updatedAt: row[6]! as DateTime,
+  updatedBy: row[7]! as String,
+  deletedAt: row[8] as DateTime?,
+  seq: row[9]! as int,
+);
+
+BudgetMember _member(pg.ResultRow row) => BudgetMember(
+  budgetId: row[0]! as String,
+  userId: row[1]! as String,
+  role: MemberRole.values.byName(row[2]! as String),
+  avatarColor: CategoryColor.values.byName(row[3]! as String),
+  joinedAt: row[4]! as DateTime,
+  leftAt: row[5] as DateTime?,
+);
+
+MemberProfile _profile(pg.ResultRow row) => MemberProfile(
+  userId: row[0]! as String,
+  displayName: row[1]! as String,
+  birthday: MonthDay.fromParts(row[2] as int?, row[3] as int?),
+  avatarColor: CategoryColor.values.byName(row[4]! as String),
+);
+
+Category _category(pg.ResultRow row) => Category(
+  id: row[0]! as String,
+  budgetId: row[1]! as String,
+  name: row[2]! as String,
+  emoji: row[3]! as String,
+  color: row[4] == null ? null : CategoryColor.values.byName(row[4]! as String),
+  sortOrder: row[5]! as int,
+  isSystem: row[6]! as bool,
+  updatedAt: row[7]! as DateTime,
+  updatedBy: row[8]! as String,
+  deletedAt: row[9] as DateTime?,
+  seq: row[10]! as int,
+);
+
+Expense _expense(pg.ResultRow row) => Expense(
+  id: row[0]! as String,
+  budgetId: row[1]! as String,
+  categoryId: row[2]! as String,
+  amount: Money(row[3]! as int),
+  spentOn: LocalDate.parse(row[4]! as String),
+  comment: row[5]! as String,
+  authorId: row[6]! as String,
+  recurringId: row[7] as String?,
+  recurringMonth: row[8] == null ? null : YearMonth.parse(row[8]! as String),
+  createdAt: row[9]! as DateTime,
+  updatedAt: row[10]! as DateTime,
+  updatedBy: row[11]! as String,
+  deletedAt: row[12] as DateTime?,
+  seq: row[13]! as int,
+);
+
+RecurringRule _recurring(pg.ResultRow row) => RecurringRule(
+  id: row[0]! as String,
+  budgetId: row[1]! as String,
+  categoryId: row[2]! as String,
+  title: row[3]! as String,
+  amount: Money(row[4]! as int),
+  dayOfMonth: row[5]! as int,
+  startMonth: YearMonth.parse(row[6]! as String),
+  createdAt: row[7]! as DateTime,
+  updatedAt: row[8]! as DateTime,
+  updatedBy: row[9]! as String,
+  deletedAt: row[10] as DateTime?,
+  seq: row[11]! as int,
+);

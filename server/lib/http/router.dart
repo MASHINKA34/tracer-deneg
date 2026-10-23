@@ -6,11 +6,13 @@ import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
 import '../db/database.dart';
 import '../limits/request_limits.dart';
+import '../sync/pull_service.dart';
 import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'health.dart';
 import 'json.dart';
 import 'middleware.dart';
+import 'sync_handlers.dart';
 
 /// Обработчик всех запросов: id запроса → лог запроса → перехват ошибок →
 /// маршруты `/api/v1/…`.
@@ -22,6 +24,7 @@ Handler buildHandler({
   final requestLimits = limits ?? RequestLimits();
   final requireAuth = authMiddleware(auth);
   final account = AccountService(db: db, hasher: auth.hasher);
+  final pull = PullService(db: db);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))
     ..post('/api/v1/auth/register', registerHandler(auth))
@@ -67,6 +70,10 @@ Handler buildHandler({
       const Pipeline()
           .addMiddleware(requireAuth)
           .addHandler(deleteAccountHandler(account)),
+    )
+    ..get(
+      '/api/v1/sync/pull',
+      const Pipeline().addMiddleware(requireAuth).addHandler(pullHandler(pull)),
     );
 
   return const Pipeline()
