@@ -12,6 +12,7 @@ import '../../data/sync/pull_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/month_card.dart';
 import '../../ui/components/snackbar.dart';
+import '../../ui/theme/app_theme.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
@@ -82,6 +83,11 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         _pull.run(PullReason.retry);
       },
     );
+  }
+
+  Future<void> _onRefresh() async {
+    _log.fine('month pulled down → pull reason=manual');
+    await _pull.run(PullReason.manual);
   }
 
   void _onDragEnd(DragEndDetails details) {
@@ -223,17 +229,23 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
               child: const MonthHeader(),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(12, 6, 12, 20 + bottom),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ?card,
-                    if (current) ...[
-                      const SizedBox(height: 20),
-                      TodayBlock(today: today),
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                color: context.mood.accentStrong,
+                backgroundColor: context.colors.bgSurface,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(12, 6, 12, 20 + bottom),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ?card,
+                      if (current) ...[
+                        const SizedBox(height: 20),
+                        TodayBlock(today: today),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
