@@ -20,10 +20,14 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     config: ref.watch(apiConfigProvider),
     tokens: ref.watch(tokenStoreProvider),
   );
+  listenSessionExpired(ref, client);
+  ref.onDispose(client.close);
+  return client;
+}, name: 'apiClient');
+
+void listenSessionExpired(Ref ref, ApiClient client) {
   final ended = client.sessionExpired.listen(
     (event) => ref.read(sessionProvider.notifier).ended(event.reason),
   );
   ref.onDispose(ended.cancel);
-  ref.onDispose(client.close);
-  return client;
-}, name: 'apiClient');
+}

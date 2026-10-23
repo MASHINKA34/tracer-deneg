@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../data/api/api_exception.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/pull_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -60,6 +61,14 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         Future.microtask(() {
           if (mounted) _pull.startRequested();
         });
+      case PullFailed(:final id, :final failure)
+          when failure.error is ApiSessionExpired &&
+              _pull.claimFailureNotice(id):
+        _log.info(
+          'pull failed #$id reason=${failure.reason.name} '
+          '${failure.errorType}: session ended → sign-in screen, no retry '
+          'snackbar, data on the phone kept',
+        );
       case PullFailed(:final id, :final failure)
           when _pull.claimFailureNotice(id):
         _log.info(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,7 @@ import 'core/system_ui.dart';
 import 'data/session/session_providers.dart';
 import 'data/session/session_state.dart';
 import 'features/auth/recovery_code_state.dart';
+import 'features/auth/session_end_service.dart';
 import 'features/expense/expense_snackbar_layer.dart';
 import 'features/profile/theme_mode.dart';
 import 'l10n/app_localizations.dart';
@@ -67,6 +70,9 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
         'redirect',
       );
       _session.value = next;
+      if (next is SessionEnded && previous is! SessionEnded) {
+        unawaited(ref.read(sessionEndServiceProvider).reportEnded(next));
+      }
     });
     ref.listenManual(pendingRecoveryCodeProvider, (previous, next) {
       _log.fine(

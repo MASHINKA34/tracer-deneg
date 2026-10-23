@@ -6,6 +6,8 @@ import 'package:shared/shared.dart';
 
 import '../../core/router.dart';
 import '../../data/api/api_error_text.dart';
+import '../../data/session/session_providers.dart';
+import '../../data/session/session_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/button.dart';
 import '../../ui/components/fitting_text.dart';
@@ -40,7 +42,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _log.fine('login screen opened');
+    final session = ref.read(sessionProvider);
+    if (session is SessionEnded) {
+      _log.info(
+        'login screen opened after session end reason=${session.reason.name} '
+        'userId=${session.user.userId} → "session ended" notice shown, '
+        'local data kept',
+      );
+    } else {
+      _log.fine('login screen opened');
+    }
   }
 
   @override
@@ -137,6 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final colors = context.colors;
     final media = MediaQuery.of(context);
     final local = _local;
+    final ended = ref.watch(sessionProvider.select((s) => s is SessionEnded));
     String? errorOf(AuthField field) =>
         (local[field] ?? _rejected[field])?.text(l10n);
 
@@ -168,7 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.authLoginSubtitle,
+                    ended ? l10n.authSessionEnded : l10n.authLoginSubtitle,
                     style: AppText.bodyM.copyWith(color: colors.textSecondary),
                   ),
                   const SizedBox(height: authFormGap),
