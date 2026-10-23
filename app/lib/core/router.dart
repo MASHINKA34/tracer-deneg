@@ -17,6 +17,7 @@ import '../features/expense/edit_expense_screen.dart';
 import '../features/expense/new_expense_screen.dart';
 import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
+import '../features/profile/delete_account_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/recovery_code_reissue_screen.dart';
 import '../features/profile/theme_screen.dart';
@@ -41,6 +42,7 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String theme = '/profile/theme';
   static const String recoveryReissue = '/profile/recovery-code';
+  static const String deleteAccount = '/profile/delete-account';
   static const String newExpense = '/expense/new';
   static const String expense = '/expense/:id';
   static const String search = '/search';
@@ -69,6 +71,7 @@ abstract final class AppRoutes {
   static const String recoveryCodeName = 'recoveryCode';
   static const String themeName = 'theme';
   static const String recoveryReissueName = 'recoveryReissue';
+  static const String deleteAccountName = 'deleteAccount';
 
   static const String authStack = '/auth';
 
@@ -291,6 +294,13 @@ GoRouter buildRouter({
                     parentNavigatorKey: rootKey,
                     builder: (context, state) =>
                         const AppFrame(child: RecoveryCodeReissueScreen()),
+                  ),
+                  GoRoute(
+                    path: 'delete-account',
+                    name: AppRoutes.deleteAccountName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        const AppFrame(child: DeleteAccountScreen()),
                   ),
                 ],
               ),

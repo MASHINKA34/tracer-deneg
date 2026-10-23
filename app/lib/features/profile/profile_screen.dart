@@ -80,7 +80,6 @@ enum ProfileStub {
   holidays,
   reminders,
   sendLogs,
-  deleteAccount,
 }
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -328,10 +327,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ListRow(
                           icon: AppIcons.trash,
                           title: l10n.profileDeleteAccount,
-                          value: l10n.profileSoon,
                           chevron: false,
                           danger: true,
-                          onTap: () => _stub(ProfileStub.deleteAccount),
+                          onTap: () =>
+                              _push('delete account', AppRoutes.deleteAccount),
                         ),
                       ],
                     ),
