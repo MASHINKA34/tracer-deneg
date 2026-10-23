@@ -71,8 +71,8 @@ class AccountSwitchDialog extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return AppDialog(
       icon: AppIcons.cloudOff,
-      title: l10n.authSwitchTitle(queueSize),
-      message: l10n.authSwitchMessage,
+      title: l10n.authSwitchTitle,
+      message: l10n.authSwitchMessage(queueSize),
       primary: AppDialogAction(
         l10n.authSwitchConfirm,
         () => Navigator.of(context).pop(true),
