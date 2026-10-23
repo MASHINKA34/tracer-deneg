@@ -7,7 +7,11 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../data/sync/pull_controller.dart';
+import '../../data/sync/pull_service.dart';
+import '../../l10n/app_localizations.dart';
 import '../../ui/components/month_card.dart';
+import '../../ui/components/snackbar.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
@@ -39,9 +43,46 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       'month screen opened month=${ref.read(monthControllerProvider)} '
       'today=${ref.read(clockProvider).today()}',
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onPull(null, ref.read(pullControllerProvider));
+    });
   }
 
   MonthController get _controller => ref.read(monthControllerProvider.notifier);
+
+  PullController get _pull => ref.read(pullControllerProvider.notifier);
+
+  void _onPull(PullStatus? previous, PullStatus next) {
+    switch (next) {
+      case PullPending():
+        Future.microtask(() {
+          if (mounted) _pull.startRequested();
+        });
+      case PullFailed(:final id, :final failure)
+          when _pull.claimFailureNotice(id):
+        _log.info(
+          'pull failed #$id reason=${failure.reason.name} '
+          '${failure.errorType} → snackbar with retry, data on the phone kept',
+        );
+        Future.microtask(() {
+          if (mounted) _showPullFailed();
+        });
+      default:
+    }
+  }
+
+  void _showPullFailed() {
+    final l10n = AppLocalizations.of(context);
+    showAppSnackbar(
+      context,
+      text: l10n.pullFailed,
+      actionLabel: l10n.pullRetry,
+      onAction: () {
+        _log.info('pull retry tap on snackbar → pull reason=retry');
+        _pull.run(PullReason.retry);
+      },
+    );
+  }
 
   void _onDragEnd(DragEndDetails details) {
     final dx = _dragDx;
@@ -133,6 +174,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
   Widget build(BuildContext context) {
     final today = ref.watch(clockProvider).today();
     ref.listen(monthControllerProvider, _logTodayBlock);
+    ref.listen(pullControllerProvider, _onPull);
     final requested = ref.watch(monthControllerProvider);
     final shown = ref.watch(shownMonthProvider);
     final sheetDay = ref.watch(openDaySheetProvider);

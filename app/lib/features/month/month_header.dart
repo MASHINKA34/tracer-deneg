@@ -11,6 +11,7 @@ import '../../core/clock.dart';
 import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
+import '../../data/sync/pull_controller.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/avatar.dart';
 import '../../ui/components/bottom_nav.dart';
@@ -21,6 +22,14 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
 
 final _log = Logger('month');
+
+enum HeaderSync { done, loading, failed }
+
+HeaderSync headerSyncOf(PullStatus status) => switch (status) {
+  PullFailed() => HeaderSync.failed,
+  _ when status.showsIndicator => HeaderSync.loading,
+  _ => HeaderSync.done,
+};
 
 String avatarLetterOf(String name) {
   final letters = name.trim().characters;
@@ -44,9 +53,12 @@ class MonthHeader extends ConsumerWidget {
         ? null
         : ref.watch(budgetProvider(budgetId)).value;
     final debugToday = kDebugMode ? ref.watch(todayOverrideProvider) : null;
+    ref.listen(pullControllerProvider, _logSync);
+    final sync = headerSyncOf(ref.watch(pullControllerProvider));
 
     return MonthHeaderView(
       debugToday: debugToday,
+      sync: sync,
       budgetName: budget?.name,
       budgetEmoji: budget?.emoji,
       avatarLetter: budget == null ? '' : avatarLetterOf(budget.name),
@@ -87,6 +99,16 @@ class MonthHeader extends ConsumerWidget {
         );
       default:
     }
+  }
+
+  static void _logSync(PullStatus? previous, PullStatus next) {
+    final before = previous == null ? null : headerSyncOf(previous);
+    final after = headerSyncOf(next);
+    if (before == after) return;
+    _log.fine(
+      'header sync indicator ${before?.name ?? '-'} → ${after.name} '
+      'status=$next',
+    );
   }
 
   static void _logBudget(String budgetId, AsyncValue<Budget?> next) {
@@ -135,6 +157,7 @@ class MonthHeaderView extends StatelessWidget {
     this.onSearchTap,
     this.onAvatarTap,
     this.debugToday,
+    this.sync = HeaderSync.done,
   });
 
   final String? budgetName;
@@ -145,12 +168,27 @@ class MonthHeaderView extends StatelessWidget {
   final VoidCallback? onSearchTap;
   final VoidCallback? onAvatarTap;
   final LocalDate? debugToday;
+  final HeaderSync sync;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = AppLocalizations.of(context);
     final name = budgetName;
+    final (String syncLabel, Widget syncIcon) = switch (sync) {
+      HeaderSync.done => (
+        l10n.syncDone,
+        AppIcon(AppIcons.cloudCheck, size: 20, color: colors.statusSuccess),
+      ),
+      HeaderSync.loading => (
+        l10n.syncLoading,
+        _SyncSpinner(color: context.mood.accentStrong),
+      ),
+      HeaderSync.failed => (
+        l10n.syncError,
+        AppIcon(AppIcons.alertCircle, size: 20, color: colors.statusDanger),
+      ),
+    };
     final debugDay = debugToday;
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 52),
@@ -192,18 +230,13 @@ class MonthHeaderView extends StatelessWidget {
             ),
             Semantics(
               container: true,
-              label: l10n.syncDone,
+              liveRegion: sync != HeaderSync.done,
+              label: syncLabel,
               excludeSemantics: true,
               child: SizedBox(
                 width: 32 - 2 * _HeaderButton.overhang,
                 height: kMinTapTarget,
-                child: Center(
-                  child: AppIcon(
-                    AppIcons.cloudCheck,
-                    size: 20,
-                    color: colors.statusSuccess,
-                  ),
-                ),
+                child: Center(child: syncIcon),
               ),
             ),
             _HeaderButton(
@@ -220,6 +253,47 @@ class MonthHeaderView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SyncSpinner extends StatefulWidget {
+  const _SyncSpinner({required this.color});
+
+  final Color color;
+
+  @override
+  State<_SyncSpinner> createState() => _SyncSpinnerState();
+}
+
+class _SyncSpinnerState extends State<_SyncSpinner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 1),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _spin
+        ..stop()
+        ..value = 0;
+    } else if (!_spin.isAnimating) {
+      _spin.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RotationTransition(
+    turns: _spin,
+    child: AppIcon(AppIcons.refresh, size: 20, color: widget.color),
+  );
 }
 
 class _DebugTodayLabel extends StatelessWidget {

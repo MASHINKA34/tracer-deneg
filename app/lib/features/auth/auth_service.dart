@@ -9,6 +9,8 @@ import '../../data/providers.dart';
 import '../../data/repositories/prefs_repository.dart';
 import '../../data/session/device_name.dart';
 import '../../data/session/session_providers.dart';
+import '../../data/sync/pull_controller.dart';
+import '../../data/sync/pull_service.dart';
 import 'recovery_code_state.dart';
 
 final _log = Logger('auth');
@@ -171,6 +173,13 @@ class AuthService {
       '${action.name} ok userId=$userId login=$masked '
       '${code == null ? '' : 'recoveryCode=issued '}'
       'rid=${result.requestId} in ${sw.elapsedMilliseconds}ms',
+    );
+    _ref.read(pullControllerProvider.notifier).requestAfterSignIn(
+      switch (action) {
+        AuthAction.login => PullReason.login,
+        AuthAction.register => PullReason.register,
+        AuthAction.recover => PullReason.recover,
+      },
     );
     return AuthSignedIn(result);
   }
