@@ -123,7 +123,7 @@ Future<RunningServer> startServer(
   _log.info('starting HTTP server on ${config.host}:${config.port}');
   try {
     final http = await shelf_io.serve(
-      buildHandler(db: db, auth: auth, limits: limits, ws: ws),
+      buildHandler(db: db, auth: auth, limits: limits, notifier: ws, ws: ws),
       config.host,
       config.port,
     );
