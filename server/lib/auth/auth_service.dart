@@ -86,13 +86,18 @@ class _RefreshOutcome {
 }
 
 class SessionCheck {
-  const SessionCheck.ok(String this.userId, String this.sessionId)
-    : rejection = null;
+  const SessionCheck.ok(
+    String this.userId,
+    String this.sessionId,
+    DateTime this.expiresAt,
+  ) : rejection = null;
 
-  const SessionCheck.rejected(this.rejection, {this.userId, this.sessionId});
+  const SessionCheck.rejected(this.rejection, {this.userId, this.sessionId})
+    : expiresAt = null;
 
   final String? userId;
   final String? sessionId;
+  final DateTime? expiresAt;
   final String? rejection;
 }
 
@@ -491,7 +496,7 @@ class AuthService {
         sessionId: claims.sessionId,
       );
     }
-    return SessionCheck.ok(claims.userId, claims.sessionId);
+    return SessionCheck.ok(claims.userId, claims.sessionId, claims.expiresAt);
   }
 
   Future<void> logout({

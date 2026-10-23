@@ -57,8 +57,14 @@ Middleware accessLogMiddleware() =>
           'size=${response.contentLength ?? '?'} ip=$ip',
         );
         return response;
+      } on HijackException {
+        _log.info(
+          '$method $path 101 upgraded to websocket '
+          'in ${sw.elapsedMilliseconds}ms ip=$ip',
+        );
+        rethrow;
       } catch (e, st) {
-        // Сюда доходят только HijackException и ошибки, которые не поймал
+        // Сюда доходят только ошибки, которые не поймал
         // errorMiddleware; пишем и пробрасываем дальше в shelf.
         _log.warning(
           '$method $path aborted in ${sw.elapsedMilliseconds}ms ip=$ip: '

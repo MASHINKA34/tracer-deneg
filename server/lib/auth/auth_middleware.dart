@@ -10,10 +10,15 @@ final _log = Logger('auth');
 const authContextKey = 'milionchik.auth';
 
 class AuthContext {
-  const AuthContext({required this.userId, required this.sessionId});
+  const AuthContext({
+    required this.userId,
+    required this.sessionId,
+    required this.expiresAt,
+  });
 
   final String userId;
   final String sessionId;
+  final DateTime expiresAt;
 }
 
 AuthContext authContextOf(Request request) {
@@ -55,6 +60,7 @@ Middleware authMiddleware(AuthService auth) =>
       final context = AuthContext(
         userId: check.userId!,
         sessionId: check.sessionId!,
+        expiresAt: check.expiresAt!,
       );
       _log.fine(
         'authorized ${request.method} ${request.requestedUri.path} '

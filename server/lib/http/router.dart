@@ -10,6 +10,9 @@ import '../limits/request_limits.dart';
 import '../sync/pull_service.dart';
 import '../sync/push_service.dart';
 import '../sync/sync_notifier.dart';
+import '../ws/ws_handler.dart';
+import '../ws/ws_hub.dart';
+import '../ws/ws_protocol.dart';
 import 'account_handlers.dart';
 import 'auth_handlers.dart';
 import 'budget_handlers.dart';
@@ -25,6 +28,7 @@ Handler buildHandler({
   required AuthService auth,
   RequestLimits? limits,
   SyncNotifier notifier = const NoopSyncNotifier(),
+  WsHub? ws,
   DateTime Function() now = DateTime.now,
 }) {
   final requestLimits = limits ?? RequestLimits();
@@ -123,6 +127,12 @@ Handler buildHandler({
           .addMiddleware(requireAuth)
           .addHandler(joinBudgetHandler(budgets)),
     );
+  if (ws != null) {
+    router.get(
+      wsPath,
+      const Pipeline().addMiddleware(requireAuth).addHandler(wsHandler(ws)),
+    );
+  }
 
   return const Pipeline()
       .addMiddleware(requestIdMiddleware())

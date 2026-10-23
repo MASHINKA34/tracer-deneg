@@ -15,15 +15,18 @@ import 'db/migrator.dart';
 import 'http/router.dart';
 import 'limits/request_limits.dart';
 import 'version.dart';
+import 'ws/ws_hub.dart';
+import 'ws/ws_protocol.dart';
 
 final _log = Logger('server');
 
 /// Запущенный сервер: HTTP и пул БД. [shutdown] закрывает всё по порядку.
 class RunningServer {
-  RunningServer._(this.http, this.db);
+  RunningServer._(this.http, this.db, this.ws);
 
   final HttpServer http;
   final Database db;
+  final WsHub ws;
 
   int get port => http.port;
 
@@ -31,6 +34,8 @@ class RunningServer {
   Future<void> shutdown(String reason) async {
     final total = Stopwatch()..start();
     _log.info('shutting down: $reason');
+
+    await ws.closeAll(reason);
 
     final httpSw = Stopwatch()..start();
     final active = http.connectionsInfo().active;
@@ -106,11 +111,19 @@ Future<RunningServer> startServer(
   final limits = RequestLimits(trustedProxies: config.trustedProxies);
   _log.info('limits ready ${formatContext(limits.toLogContext())}');
 
+  final ws = WsHub(db: db);
+  _log.info(
+    'realtime ready path=$wsPath '
+    'clientPing=${wsClientPingInterval.inSeconds}s '
+    'idleTimeout=${wsIdleTimeout.inSeconds}s '
+    'closeCodes=${WsClose.values.map((c) => '${c.reason}:${c.code}').join(',')}',
+  );
+
   final sw = Stopwatch()..start();
   _log.info('starting HTTP server on ${config.host}:${config.port}');
   try {
     final http = await shelf_io.serve(
-      buildHandler(db: db, auth: auth, limits: limits),
+      buildHandler(db: db, auth: auth, limits: limits, ws: ws),
       config.host,
       config.port,
     );
@@ -118,7 +131,7 @@ Future<RunningServer> startServer(
       'HTTP server listening on ${http.address.address}:${http.port} '
       'in ${sw.elapsedMilliseconds}ms',
     );
-    return RunningServer._(http, db);
+    return RunningServer._(http, db, ws);
   } catch (e, st) {
     _log.severe(
       'HTTP server failed to bind ${config.host}:${config.port}: '
