@@ -268,28 +268,68 @@ final budgetProvider = StreamProvider.autoDispose.family<Budget?, String>(
 );
 
 final selectedBudgetIdProvider = StreamProvider<String?>(
-  (ref) => ref
-      .watch(budgetsRepositoryProvider)
-      .watchAll()
-      .map(_personalBudgetId)
-      .distinct()
-      .map(_logSelected),
+  (ref) {
+    final ownerId = ref.watch(sessionProvider.select((s) => s.userId));
+    return ref
+        .watch(budgetsRepositoryProvider)
+        .watchAll()
+        .map((budgets) => _personalChoice(budgets, ownerId))
+        .distinct()
+        .map((choice) => _logSelected(choice, ownerId));
+  },
   name: 'selectedBudgetId',
   retry: _noRetry,
 );
 
-String? _personalBudgetId(List<Budget> budgets) {
+bool isBudgetVisibleTo(Budget budget, String? ownerId) =>
+    budget.kind != BudgetKind.personal ||
+    ownerId == null ||
+    budget.ownerId == ownerId;
+
+List<Budget> visibleBudgets(List<Budget> budgets, String? ownerId) => [
+  for (final budget in budgets)
+    if (isBudgetVisibleTo(budget, ownerId)) budget,
+];
+
+typedef _PersonalChoice = ({String? budgetId, int hidden});
+
+_PersonalChoice _personalChoice(List<Budget> budgets, String? ownerId) {
+  String? chosen;
+  var hidden = 0;
   for (final budget in budgets) {
-    if (budget.kind == BudgetKind.personal) return budget.id;
+    if (budget.kind != BudgetKind.personal) continue;
+    if (!isBudgetVisibleTo(budget, ownerId)) {
+      hidden++;
+    } else {
+      chosen ??= budget.id;
+    }
   }
-  return null;
+  return (budgetId: chosen, hidden: hidden);
 }
 
-String? _logSelected(String? budgetId) {
-  if (budgetId == null) {
-    _log.info('selected budget: none, no personal budget in database yet');
+String? _logSelected(_PersonalChoice choice, String? ownerId) {
+  final budgetId = choice.budgetId;
+  final hidden = choice.hidden == 0
+      ? ''
+      : ' hiddenPersonal=${choice.hidden} (personal budgets of another owner, '
+            'e.g. made on this phone before sign-in: kept in the database, '
+            'not shown)';
+  if (ownerId == null) {
+    if (budgetId == null) {
+      _log.info('selected budget: none, no personal budget in database yet');
+    } else {
+      _log.info('selected budget budgetId=$budgetId reason=personal');
+    }
+  } else if (budgetId == null) {
+    _log.info(
+      'selected budget: none, no personal budget of userId=$ownerId yet '
+      '(comes with the first pull)$hidden',
+    );
   } else {
-    _log.info('selected budget budgetId=$budgetId reason=personal');
+    _log.info(
+      'selected budget budgetId=$budgetId reason=personal '
+      'ownerId=$ownerId$hidden',
+    );
   }
   return budgetId;
 }

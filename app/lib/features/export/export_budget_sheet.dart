@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../data/providers.dart';
+import '../../data/session/session_providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/components/radio.dart';
@@ -18,7 +19,13 @@ final _log = Logger('export');
 Duration? _noRetry(int retryCount, Object error) => null;
 
 final exportBudgetsProvider = StreamProvider.autoDispose<List<Budget>>(
-  (ref) => ref.watch(budgetsRepositoryProvider).watchAll(),
+  (ref) {
+    final ownerId = ref.watch(sessionProvider.select((s) => s.userId));
+    return ref
+        .watch(budgetsRepositoryProvider)
+        .watchAll()
+        .map((budgets) => visibleBudgets(budgets, ownerId));
+  },
   name: 'exportBudgets',
   retry: _noRetry,
 );
