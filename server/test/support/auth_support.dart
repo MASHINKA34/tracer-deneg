@@ -7,6 +7,7 @@ import 'package:server/auth/tokens.dart';
 import 'package:server/db/database.dart';
 import 'package:server/db/migrator.dart';
 import 'package:server/http/router.dart';
+import 'package:server/sync/sync_notifier.dart';
 import 'package:shelf/shelf.dart';
 
 import 'test_support.dart';
@@ -32,7 +33,10 @@ class ApiResponse {
 class AuthHarness {
   AuthHarness._(this.db, this.auth, this.handler);
 
-  static Future<AuthHarness> start({AccessTokens? accessTokens}) async {
+  static Future<AuthHarness> start({
+    AccessTokens? accessTokens,
+    SyncNotifier notifier = const NoopSyncNotifier(),
+  }) async {
     final db = await openScratchDatabase();
     await Migrator(db, directory: Directory('migrations')).run();
     final auth = AuthService(
@@ -40,7 +44,11 @@ class AuthHarness {
       hasher: PasswordHasher(),
       accessTokens: accessTokens ?? AccessTokens(testJwtSecret),
     );
-    return AuthHarness._(db, auth, buildHandler(db: db, auth: auth));
+    return AuthHarness._(
+      db,
+      auth,
+      buildHandler(db: db, auth: auth, notifier: notifier),
+    );
   }
 
   final Database db;
