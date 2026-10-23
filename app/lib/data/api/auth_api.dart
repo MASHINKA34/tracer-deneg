@@ -1,0 +1,123 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
+import 'package:shared/shared.dart';
+
+import '../session/session.dart';
+import 'api_client.dart';
+import 'api_exception.dart';
+import 'api_providers.dart';
+import 'token_store.dart';
+
+final _log = Logger('auth');
+
+const String loginPath = '/auth/login';
+
+const String registerPath = '/auth/register';
+
+final class AuthResult {
+  const AuthResult({
+    required this.session,
+    required this.requestId,
+    this.recoveryCode,
+  });
+
+  final Session session;
+  final String requestId;
+  final String? recoveryCode;
+
+  @override
+  String toString() =>
+      'AuthResult(${session.user}, rid=$requestId, '
+      'recoveryCode=${recoveryCode == null ? 'none' : maskRecoveryCode(recoveryCode)})';
+}
+
+class AuthApi {
+  AuthApi(this._client);
+
+  final ApiClient _client;
+
+  Future<AuthResult> login({
+    required String login,
+    required String password,
+    required String deviceName,
+  }) async {
+    final response = await _client.post(
+      loginPath,
+      auth: false,
+      body: {'login': login, 'password': password, 'deviceName': deviceName},
+    );
+    return _parse(response, loginPath, recoveryCode: false);
+  }
+
+  Future<AuthResult> register({
+    required String login,
+    required String displayName,
+    required String password,
+    required String deviceName,
+  }) async {
+    final response = await _client.post(
+      registerPath,
+      auth: false,
+      body: {
+        'login': login,
+        'displayName': displayName,
+        'password': password,
+        'deviceName': deviceName,
+      },
+    );
+    return _parse(response, registerPath, recoveryCode: true);
+  }
+
+  AuthResult _parse(
+    ApiResponse response,
+    String path, {
+    required bool recoveryCode,
+  }) {
+    try {
+      final reader = JsonReader.of(response.data, 'AuthResponse');
+      final user = User.fromJson(reader.json['user']);
+      final tokens = AuthTokens(
+        accessToken: _nonEmpty(reader, 'accessToken'),
+        refreshToken: _nonEmpty(reader, 'refreshToken'),
+      );
+      return AuthResult(
+        session: Session(
+          user: SessionUser(
+            userId: user.id,
+            login: user.login,
+            displayName: user.displayName,
+          ),
+          tokens: tokens,
+        ),
+        requestId: response.requestId,
+        recoveryCode: recoveryCode ? _nonEmpty(reader, 'recoveryCode') : null,
+      );
+    } on FormatException catch (e) {
+      _log.warning(
+        'POST $path ${response.statusCode} answered without '
+        '{user, accessToken, refreshToken${recoveryCode ? ', recoveryCode' : ''}} '
+        '→ bad response: ${e.message} rid=${response.requestId}',
+      );
+      throw ApiBadResponse(
+        method: 'POST',
+        path: '${_client.config.baseUrl.path}$path',
+        requestId: response.requestId,
+        statusCode: response.statusCode,
+        reason: 'auth: ${e.message}',
+      );
+    }
+  }
+}
+
+String _nonEmpty(JsonReader reader, String key) {
+  final value = reader.string(key);
+  if (value.isEmpty) {
+    throw FormatException('${reader.type}.$key: expected non-empty string');
+  }
+  return value;
+}
+
+final authApiProvider = Provider<AuthApi>(
+  (ref) => AuthApi(ref.watch(apiClientProvider)),
+  name: 'authApi',
+);
