@@ -84,8 +84,8 @@ Future<void> main() async {
     );
   } on ApiConfigException catch (e, st) {
     _log.severe(
-      'api config invalid (${e.problem.name}), showing config error screen '
-      'instead of the app: ${e.message}',
+      'api config invalid, showing config error screen instead of the app: '
+      '${describeError(e)}',
       e,
       st,
     );

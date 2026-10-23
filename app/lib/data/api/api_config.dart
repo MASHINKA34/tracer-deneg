@@ -19,7 +19,7 @@ final class ApiConfigException implements Exception {
   final String message;
 
   @override
-  String toString() => 'ApiConfigException(${problem.name}): $message';
+  String toString() => 'ApiConfigException: $message (${problem.name})';
 }
 
 final class ApiConfig {

@@ -24,7 +24,7 @@ sealed class ApiException implements Exception {
   String get details;
 
   @override
-  String toString() => '$runtimeType($method $path $details rid=$requestId)';
+  String toString() => '$runtimeType: $method $path $details rid=$requestId';
 }
 
 final class ApiErrorResponse extends ApiException {
