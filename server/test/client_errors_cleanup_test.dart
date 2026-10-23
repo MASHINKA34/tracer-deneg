@@ -164,8 +164,8 @@ void main() {
     expect(
       logs.text,
       contains(
-        'INFO  [jobs] daily jobs scheduled jobs=client-errors-cleanup '
-        'interval=1d firstRun=now',
+        'INFO  [jobs] daily jobs scheduled jobs=client-errors-cleanup,'
+        'invites-cleanup,sessions-cleanup interval=1d firstRun=now',
       ),
     );
     expect(
@@ -192,7 +192,7 @@ void main() {
       logs.text,
       contains(
         RegExp(
-          r'INFO  \[jobs\] daily jobs run #1 finished ok=1 failed=0 in \d+ms '
+          r'INFO  \[jobs\] daily jobs run #1 finished ok=3 failed=0 in \d+ms '
           r'nextRun=\d{4}-\d\d-\d\dT',
         ),
       ),

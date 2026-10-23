@@ -8,13 +8,12 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'auth/auth_service.dart';
 import 'auth/password_hasher.dart';
 import 'auth/tokens.dart';
-import 'client_errors/client_error_store.dart';
 import 'config/config.dart';
 import 'config/dotenv.dart';
 import 'db/database.dart';
 import 'db/migrator.dart';
 import 'http/router.dart';
-import 'jobs/client_errors_cleanup.dart';
+import 'jobs/daily_job_list.dart';
 import 'jobs/daily_jobs.dart';
 import 'limits/request_limits.dart';
 import 'version.dart';
@@ -164,9 +163,7 @@ Future<RunningServer> startServer(
       'HTTP server listening on ${http.address.address}:${http.port} '
       'in ${sw.elapsedMilliseconds}ms',
     );
-    final jobs = DailyJobs([
-      ClientErrorsCleanup(store: ClientErrorStore(db)).job,
-    ]);
+    final jobs = DailyJobs(dailyJobList(db));
     jobs.start();
     return RunningServer._(http, db, ws, jobs);
   } catch (e, st) {
