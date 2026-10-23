@@ -5,6 +5,10 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate, Mood;
 
 import '../../core/clock.dart';
+import '../../data/api/api_error_text.dart';
+import '../../data/api/api_exception.dart';
+import '../../data/api/api_providers.dart';
+import '../../l10n/app_localizations.dart';
 import '../components/button.dart';
 import '../components/chip.dart';
 import '../components/dialog.dart';
@@ -396,8 +400,51 @@ class _Actions extends StatelessWidget {
               );
             },
           ),
+          const _ApiHealthButton(),
         ],
       ),
     );
   }
+}
+
+class _ApiHealthButton extends ConsumerWidget {
+  const _ApiHealthButton();
+
+  Future<void> _check(BuildContext context, WidgetRef ref) async {
+    final api = ref.read(apiClientProvider);
+    _log.info('catalog api health check tap baseUrl=${api.config.baseUrlText}');
+    final sw = Stopwatch()..start();
+    try {
+      final health = await api.health();
+      _log.info(
+        'catalog api health ok status=${health.status} '
+        'version=${health.version} db=${health.db} '
+        'in ${sw.elapsedMilliseconds}ms rid=${health.requestId}',
+      );
+      if (!context.mounted) return;
+      showAppSnackbar(
+        context,
+        text:
+            'Сервер ${health.status}, v${health.version}, rid=${health.requestId}',
+      );
+    } on ApiException catch (e) {
+      _log.warning(
+        'catalog api health failed in ${sw.elapsedMilliseconds}ms: $e',
+      );
+      if (!context.mounted) return;
+      showAppSnackbar(
+        context,
+        text:
+            '${apiErrorText(AppLocalizations.of(context), e)} rid=${e.requestId}',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AppButton(
+    label: 'GET /health',
+    size: AppButtonSize.m,
+    type: AppButtonType.soft,
+    onPressed: () => _check(context, ref),
+  );
 }
