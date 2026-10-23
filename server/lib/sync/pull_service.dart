@@ -25,7 +25,8 @@ const String _activeBudgets =
     'AND b.deleted_at IS NULL) ';
 
 const String _range =
-    r'seq > $2::bigint AND seq <= $3::bigint ORDER BY seq LIMIT $4::int';
+    r'seq > $2::bigint AND seq <= $3::bigint ORDER BY seq '
+    r'FETCH FIRST ($4::int) ROWS WITH TIES';
 
 const String _budgetsSql =
     '${_activeBudgets}SELECT id, kind, name, emoji, owner_id, created_at, '
@@ -116,11 +117,17 @@ class PullService {
     };
     try {
       final bound = await _upperBound(context);
-      final items = bound <= query.cursor
-          ? <_Item>[]
+      final read = bound <= query.cursor
+          ? (items: <_Item>[], filled: <_Kind>{})
           : await _read(userId, query, bound, context);
-      final page = _cut(items, query.limit);
+      final page = _cut(read.items, query.limit, filled: read.filled);
       final response = _response(page.items, query.cursor, page.hasMore);
+      _log.fine(
+        'pull page cut on seq boundary fetched=${read.items.length} '
+        'kept=${page.items.length} fetchSize=${query.limit + 1} '
+        'queriesAtFetchSize=[${read.filled.map((k) => k.name).join(',')}] '
+        'hasMore=${page.hasMore} ${formatContext(context)}',
+      );
       _log.info(
         'pull userId=$userId cursor=${query.cursor}→${response.cursor} '
         'budgets=${response.budgets.length} '
@@ -185,7 +192,7 @@ class PullService {
     }
   }
 
-  Future<List<_Item>> _read(
+  Future<({List<_Item> items, Set<_Kind> filled})> _read(
     String userId,
     SyncPullQuery query,
     int bound,
@@ -195,8 +202,10 @@ class PullService {
       'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY',
       what: 'pull snapshot',
     );
-    final parameters = [userId, query.cursor, bound, query.limit + 1];
+    final fetchSize = query.limit + 1;
+    final parameters = [userId, query.cursor, bound, fetchSize];
     final logParams = {...context, 'bound': bound};
+    final filled = <_Kind>{};
     Future<List<_Item>> select(
       String what,
       String sql,
@@ -210,13 +219,14 @@ class PullService {
         what: what,
         logParams: logParams,
       );
+      if (rows.length >= fetchSize) filled.add(kind);
       return [
         for (final row in rows)
           _Item(kind, row[seqColumn]! as int, decode(row)),
       ];
     }
 
-    return [
+    final items = [
       ...await select('pull budgets', _budgetsSql, _Kind.budget, _budget, 9),
       ...await select('pull members', _membersSql, _Kind.member, _member, 6),
       ...await select(
@@ -255,10 +265,15 @@ class PullService {
         1,
       ),
     ];
+    return (items: items, filled: filled);
   });
 }
 
-({List<_Item> items, bool hasMore}) _cut(List<_Item> items, int limit) {
+({List<_Item> items, bool hasMore}) _cut(
+  List<_Item> items,
+  int limit, {
+  required Set<_Kind> filled,
+}) {
   items.sort((a, b) {
     final bySeq = a.seq.compareTo(b.seq);
     return bySeq != 0 ? bySeq : a.kind.index.compareTo(b.kind.index);
@@ -278,7 +293,10 @@ class PullService {
       }
     }
   }
-  return (items: items.sublist(0, take), hasMore: items.length > take);
+  return (
+    items: items.sublist(0, take),
+    hasMore: items.length > take || filled.isNotEmpty,
+  );
 }
 
 SyncPullResponse _response(List<_Item> items, int cursor, bool hasMore) {
