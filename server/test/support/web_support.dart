@@ -87,7 +87,7 @@ class WebHarness {
   Future<WebPage> postForm(
     String path, {
     Map<String, String>? fields,
-    String? rawBody,
+    Object? rawBody,
     String contentType = formContentType,
     String ip = defaultTestIp,
     String? forwardedFor,
