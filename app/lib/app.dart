@@ -11,6 +11,7 @@ import 'core/router.dart';
 import 'core/system_ui.dart';
 import 'data/session/session_providers.dart';
 import 'data/session/session_state.dart';
+import 'features/auth/recovery_code_state.dart';
 import 'features/expense/expense_snackbar_layer.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/theme/app_theme.dart';
@@ -34,11 +35,15 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
   late final ValueNotifier<SessionState> _session = ValueNotifier(
     ref.read(sessionProvider),
   );
+  late final ValueNotifier<bool> _recoveryCodePending = ValueNotifier(
+    ref.read(pendingRecoveryCodeProvider) != null,
+  );
   late final GoRouter _router = buildRouter(
     auth: AuthGate(
       session: () => _session.value,
-      changes: _session,
+      changes: Listenable.merge([_session, _recoveryCodePending]),
       signInRequired: ref.read(signInRequiredProvider),
+      recoveryCodePending: () => _recoveryCodePending.value,
     ),
   );
   LocalDate? _moodDay;
@@ -62,12 +67,20 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
       );
       _session.value = next;
     });
+    ref.listenManual(pendingRecoveryCodeProvider, (previous, next) {
+      _log.fine(
+        'recovery code ${previous == null ? 'none' : 'pending'} → '
+        '${next == null ? 'none' : 'pending'}: re-checking sign-in redirect',
+      );
+      _recoveryCodePending.value = next != null;
+    });
   }
 
   @override
   void dispose() {
     _router.dispose();
     _session.dispose();
+    _recoveryCodePending.dispose();
     super.dispose();
   }
 

@@ -14,7 +14,7 @@ const _login = 'anyalogin';
 const _password = 'Pass-Word-Auth-Api-Ninety-One';
 const _access = 'access-token-auth-api-cccccccccccccc';
 const _refresh = 'refresh-token-auth-api-dddddddddddddd';
-const _recovery = 'RCVR-CODE-AUTHAPI-QWERTY';
+const _recovery = 'RCVR-QWTY-ZXCV';
 
 Map<String, Object?> _user({String login = _login}) => {
   'id': 'user-server-42',

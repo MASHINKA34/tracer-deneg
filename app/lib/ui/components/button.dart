@@ -32,6 +32,8 @@ class AppButton extends StatelessWidget {
     this.expand = false,
     this.destructive = false,
     this.statesController,
+    this.background,
+    this.horizontalPadding,
   });
 
   final String label;
@@ -52,6 +54,10 @@ class AppButton extends StatelessWidget {
 
   /// Внешнее управление состояниями (фокус, «нажата» в каталоге).
   final WidgetStatesController? statesController;
+
+  final Color? background;
+
+  final double? horizontalPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +100,8 @@ class AppButton extends StatelessWidget {
         colors.textInverse.withValues(alpha: 0.16),
       ),
     };
-    final filled = background != Colors.transparent;
+    final fill = this.background ?? background;
+    final filled = fill != Colors.transparent;
     final disabledBackground =
         type == AppButtonType.outline || type == AppButtonType.text
         ? Colors.transparent
@@ -109,7 +116,8 @@ class AppButton extends StatelessWidget {
         EdgeInsets.symmetric(
           // У Outline обводка 1,5 входит в размер, как в Figma (105 / 86).
           horizontal:
-              (isL ? 22 : 16) + (type == AppButtonType.outline ? 1.5 : 0),
+              (horizontalPadding ?? (isL ? 22 : 16)) +
+              (type == AppButtonType.outline ? 1.5 : 0),
           vertical: (height - lineHeight) / 2,
         ),
       ),
@@ -131,10 +139,10 @@ class AppButton extends StatelessWidget {
         if (filled && states.contains(WidgetState.pressed)) {
           return Color.alphaBlend(
             const Color(0xFF1E1A15).withValues(alpha: 0.08),
-            background,
+            fill,
           );
         }
-        return background;
+        return fill;
       }),
       foregroundColor: WidgetStatePropertyAll(fg),
       overlayColor: WidgetStateProperty.resolveWith(

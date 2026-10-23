@@ -9,10 +9,11 @@ import '../../data/providers.dart';
 import '../../data/repositories/prefs_repository.dart';
 import '../../data/session/device_name.dart';
 import '../../data/session/session_providers.dart';
+import 'recovery_code_state.dart';
 
 final _log = Logger('auth');
 
-enum AuthAction { login, register }
+enum AuthAction { login, register, recover }
 
 sealed class AuthOutcome {
   const AuthOutcome();
@@ -83,6 +84,33 @@ class AuthService {
     );
   }
 
+  Future<AuthOutcome> recover({
+    required String login,
+    required String recoveryCode,
+    required String newPassword,
+  }) {
+    final normalized = normalizeLogin(login);
+    final code = normalizeRecoveryCode(recoveryCode);
+    if (code == null) {
+      _log.fine(
+        'recover: code does not normalize (length=${recoveryCode.length}) → '
+        'sending as typed, the server will reject it',
+      );
+    }
+    return _run(
+      AuthAction.recover,
+      normalized,
+      (deviceName) => _ref
+          .read(authApiProvider)
+          .recover(
+            login: normalized,
+            recoveryCode: code ?? recoveryCode,
+            newPassword: newPassword,
+            deviceName: deviceName,
+          ),
+    );
+  }
+
   Future<AuthOutcome> _run(
     AuthAction action,
     String login,
@@ -118,15 +146,22 @@ class AuthService {
     }
 
     final userId = result.session.user.userId;
+    final code = result.recoveryCode;
     await _rememberSignIn(action, userId);
+    if (code != null) {
+      _ref
+          .read(pendingRecoveryCodeProvider.notifier)
+          .show(code, _reasonOf(action));
+    }
     try {
       await _ref.read(sessionProvider.notifier).save(result.session);
     } catch (e, st) {
       _log.severe(
         '${action.name} accepted by server but session not saved on the '
         'phone userId=$userId login=$masked rid=${result.requestId} '
-        'after ${sw.elapsedMilliseconds}ms → staying on the ${action.name} '
-        'screen: ${describeError(e)}',
+        'after ${sw.elapsedMilliseconds}ms → '
+        '${code == null ? 'staying on the ${action.name} screen' : 'showing the recovery code, then the sign-in screen'}: '
+        '${describeError(e)}',
         e,
         st,
       );
@@ -134,11 +169,16 @@ class AuthService {
     }
     _log.info(
       '${action.name} ok userId=$userId login=$masked '
-      '${action == AuthAction.register ? 'recoveryCode=issued ' : ''}'
+      '${code == null ? '' : 'recoveryCode=issued '}'
       'rid=${result.requestId} in ${sw.elapsedMilliseconds}ms',
     );
     return AuthSignedIn(result);
   }
+
+  RecoveryCodeReason _reasonOf(AuthAction action) => switch (action) {
+    AuthAction.recover => RecoveryCodeReason.recover,
+    AuthAction.register || AuthAction.login => RecoveryCodeReason.register,
+  };
 
   Future<void> _rememberSignIn(AuthAction action, String userId) async {
     final sw = Stopwatch()..start();

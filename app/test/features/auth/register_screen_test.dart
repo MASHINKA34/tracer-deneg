@@ -6,6 +6,7 @@ import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/data/session/session_state.dart';
 import 'package:milionchik/data/session/session_store.dart';
 import 'package:milionchik/features/auth/login_screen.dart';
+import 'package:milionchik/features/auth/recovery_code_screen.dart';
 import 'package:milionchik/features/auth/register_screen.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
@@ -16,7 +17,7 @@ import '../../data/api/fake_api_adapter.dart';
 import 'auth_harness.dart';
 
 const _password = 'Pass-Word-Register-Sixty-Three';
-const _recovery = 'RCVR-REGISTER-SCREEN-ZXCV';
+const _recovery = 'RCVR-RGST-ZXCV';
 
 FakeReply _noServer(FakeCall call) =>
     throw StateError('no request expected, got ${call.method} ${call.path}');
@@ -219,8 +220,10 @@ void main() {
     expect(h.adapter.calls, hasLength(2));
   });
 
-  testWidgets('успешная регистрация: сессия сохранена, сразу главная, код '
-      'восстановления не попадает в лог', (tester) async {
+  testWidgets('успешная регистрация: сессия сохранена, экран кода, после '
+      '«Продолжить» главная, код восстановления не попадает в лог', (
+    tester,
+  ) async {
     final h = await openRegister(
       tester,
       server: (call) =>
@@ -241,9 +244,17 @@ void main() {
       ),
       isTrue,
     );
-    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(RecoveryCodeScreen), findsOneWidget);
+    expect(find.text(_recovery), findsOneWidget);
+    expect(find.byType(MonthScreen), findsNothing);
     expect(find.byType(RegisterScreen), findsNothing);
     expect(find.byType(LoginScreen), findsNothing);
+
+    await h.tapText('Я сохранил код в надёжном месте');
+    await h.tapText('Продолжить');
+
+    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(RecoveryCodeScreen), findsNothing);
     expect(
       h.linesOf('auth', Level.INFO),
       contains(

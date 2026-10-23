@@ -14,6 +14,8 @@ const String loginPath = '/auth/login';
 
 const String registerPath = '/auth/register';
 
+const String recoverPath = '/auth/recover';
+
 final class AuthResult {
   const AuthResult({
     required this.session,
@@ -68,6 +70,25 @@ class AuthApi {
     return _parse(response, registerPath, recoveryCode: true);
   }
 
+  Future<AuthResult> recover({
+    required String login,
+    required String recoveryCode,
+    required String newPassword,
+    required String deviceName,
+  }) async {
+    final response = await _client.post(
+      recoverPath,
+      auth: false,
+      body: {
+        'login': login,
+        'recoveryCode': recoveryCode,
+        'newPassword': newPassword,
+        'deviceName': deviceName,
+      },
+    );
+    return _parse(response, recoverPath, recoveryCode: true);
+  }
+
   AuthResult _parse(
     ApiResponse response,
     String path, {
@@ -90,7 +111,7 @@ class AuthApi {
           tokens: tokens,
         ),
         requestId: response.requestId,
-        recoveryCode: recoveryCode ? _nonEmpty(reader, 'recoveryCode') : null,
+        recoveryCode: recoveryCode ? _recoveryCode(reader) : null,
       );
     } on FormatException catch (e) {
       _log.warning(
@@ -115,6 +136,17 @@ String _nonEmpty(JsonReader reader, String key) {
     throw FormatException('${reader.type}.$key: expected non-empty string');
   }
   return value;
+}
+
+String _recoveryCode(JsonReader reader) {
+  final value = _nonEmpty(reader, 'recoveryCode');
+  if (normalizeRecoveryCode(value) == null) {
+    throw FormatException(
+      '${reader.type}.recoveryCode: not a recovery code '
+      '(length=${value.length})',
+    );
+  }
+  return formatRecoveryCode(value);
 }
 
 final authApiProvider = Provider<AuthApi>(

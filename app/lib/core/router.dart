@@ -9,6 +9,7 @@ import 'package:shared/shared.dart' show LocalDate;
 
 import '../features/auth/forgot_password_stub_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/recovery_code_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
@@ -48,6 +49,7 @@ abstract final class AppRoutes {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String forgotPassword = '/auth/forgot';
+  static const String recoveryCode = '/auth/code';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
@@ -61,6 +63,7 @@ abstract final class AppRoutes {
   static const String loginName = 'login';
   static const String registerName = 'register';
   static const String forgotPasswordName = 'forgotPassword';
+  static const String recoveryCodeName = 'recoveryCode';
 
   static const String authStack = '/auth';
 
@@ -359,6 +362,12 @@ GoRouter buildRouter({
         parentNavigatorKey: rootKey,
         builder: (context, state) =>
             const AppFrame(child: ForgotPasswordStubScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryCode,
+        name: AppRoutes.recoveryCodeName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const AppFrame(child: RecoveryCodeRoute()),
       ),
       if (kDebugMode)
         GoRoute(

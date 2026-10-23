@@ -17,16 +17,19 @@ final class AuthGate {
     required this.session,
     required this.changes,
     required this.signInRequired,
+    this.recoveryCodePending,
   });
 
   final SessionState Function() session;
   final Listenable changes;
   final bool signInRequired;
+  final bool Function()? recoveryCodePending;
 
   String? redirect(Uri uri) => authRedirect(
     uri: uri,
     session: session(),
     signInRequired: signInRequired,
+    recoveryCodePending: recoveryCodePending?.call() ?? false,
   );
 }
 
@@ -34,8 +37,17 @@ String? authRedirect({
   required Uri uri,
   required SessionState session,
   required bool signInRequired,
+  bool recoveryCodePending = false,
 }) {
   final path = uri.path;
+  if (recoveryCodePending) {
+    if (path == AppRoutes.recoveryCode) return null;
+    _log.fine(
+      'auth stack: recovery code not confirmed yet → leaving ${_place(uri)} '
+      'for ${AppRoutes.recoveryCode}',
+    );
+    return AppRoutes.recoveryCode;
+  }
   final inAuthStack = AppRoutes.isAuthStack(path);
   switch (session) {
     case SessionActive(:final user):
@@ -46,6 +58,13 @@ String? authRedirect({
       );
       return AppRoutes.month;
     case SessionAbsent() || SessionEnded():
+      if (path == AppRoutes.recoveryCode) {
+        _log.fine(
+          'auth stack: ${AppRoutes.recoveryCode} has no code to show and '
+          'session is ${session.name} → ${AppRoutes.login}',
+        );
+        return AppRoutes.login;
+      }
       if (inAuthStack || !signInRequired) return null;
       _log.fine(
         'auth stack: session ${session.name} → ${_place(uri)} needs sign-in '
