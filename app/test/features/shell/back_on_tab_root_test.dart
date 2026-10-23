@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milionchik/features/month/month_screen.dart';
-import 'package:milionchik/features/shell/tab_stub_screen.dart';
+import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 
 import 'shell_harness.dart';
@@ -16,7 +16,7 @@ void main() {
 
     expect(h.activeTab, AppNavTab.month);
     expect(find.byType(MonthScreen), findsOneWidget);
-    expect(find.byType(TabStubScreen), findsNothing);
+    expect(find.byType(ProfileScreen), findsNothing);
     expect(h.systemPops, 0);
     expect(h.navDebug(), contains('back on stats root → month'));
   });

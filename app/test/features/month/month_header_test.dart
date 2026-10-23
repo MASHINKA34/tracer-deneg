@@ -6,8 +6,8 @@ import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
+import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/features/search/search_screen.dart';
-import 'package:milionchik/features/shell/tab_stub_screen.dart';
 import 'package:milionchik/ui/components/avatar.dart';
 import 'package:milionchik/ui/components/bottom_nav.dart';
 import 'package:milionchik/ui/icons/app_icon.dart';
@@ -146,7 +146,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(h.activeTab, AppNavTab.profile);
-    expect(find.byType(TabStubScreen), findsOneWidget);
+    expect(find.byType(ProfileScreen), findsOneWidget);
     expect(find.byType(MonthHeaderView), findsNothing);
     expect(
       _monthDebug(h),

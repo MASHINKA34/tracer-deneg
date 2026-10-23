@@ -17,6 +17,7 @@ class ListRow extends StatelessWidget {
     this.value,
     this.chevron = true,
     this.onTap,
+    this.danger = false,
   });
 
   final AppIcons icon;
@@ -24,6 +25,7 @@ class ListRow extends StatelessWidget {
   final String? value;
   final bool chevron;
   final VoidCallback? onTap;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +46,11 @@ class ListRow extends StatelessWidget {
                   color: colors.bgSurface2,
                   borderRadius: BorderRadius.circular(RadiusTokens.xs),
                 ),
-                child: AppIcon(icon, size: 20, color: colors.textSecondary),
+                child: AppIcon(
+                  icon,
+                  size: 20,
+                  color: danger ? colors.statusDanger : colors.textSecondary,
+                ),
               ),
               const SizedBox(width: 14),
               // Заголовок и значение — в одну строку (значение у правого
@@ -59,7 +65,11 @@ class ListRow extends StatelessWidget {
                   children: [
                     FittingText(
                       title,
-                      style: AppText.bodyL.copyWith(color: colors.textPrimary),
+                      style: AppText.bodyL.copyWith(
+                        color: danger
+                            ? colors.statusDanger
+                            : colors.textPrimary,
+                      ),
                     ),
                     if (value != null)
                       FittingText(

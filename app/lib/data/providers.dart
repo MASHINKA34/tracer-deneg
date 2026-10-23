@@ -10,6 +10,7 @@ import 'queries/month_queries.dart';
 import 'queries/recurring_queries.dart';
 import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
+import 'queries/sync_state_queries.dart';
 import 'queries/today_queries.dart';
 import 'repositories/budgets_repository.dart';
 import 'repositories/categories_repository.dart';
@@ -140,6 +141,17 @@ final recurringQueriesProvider = Provider<RecurringQueries>(
   name: 'recurringQueries',
 );
 
+final syncStateQueriesProvider = Provider<SyncStateQueries>(
+  (ref) => DriftSyncStateQueries(ref.watch(appDatabaseProvider)),
+  name: 'syncStateQueries',
+);
+
+final lastSyncAtProvider = StreamProvider.autoDispose<DateTime?>(
+  (ref) => ref.watch(syncStateQueriesProvider).watchLastSyncAt(),
+  name: 'lastSyncAt',
+  retry: _noRetry,
+);
+
 final dayTotalsProvider = StreamProvider.autoDispose
     .family<Map<int, Money>, BudgetMonth>(
       (ref, arg) => ref
@@ -266,6 +278,24 @@ final budgetProvider = StreamProvider.autoDispose.family<Budget?, String>(
   name: 'budget',
   retry: _noRetry,
 );
+
+final budgetMembersProvider = StreamProvider.autoDispose
+    .family<List<BudgetMember>, String>(
+      (ref, budgetId) =>
+          ref.watch(membersRepositoryProvider).watchByBudget(budgetId),
+      name: 'budgetMembers',
+      retry: _noRetry,
+    );
+
+final memberProfilesProvider =
+    StreamProvider.autoDispose<Map<String, MemberProfile>>(
+      (ref) => ref
+          .watch(membersRepositoryProvider)
+          .watchProfiles()
+          .map((profiles) => {for (final p in profiles) p.userId: p}),
+      name: 'memberProfiles',
+      retry: _noRetry,
+    );
 
 final selectedBudgetIdProvider = StreamProvider<String?>(
   (ref) {

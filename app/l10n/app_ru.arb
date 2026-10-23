@@ -887,7 +887,7 @@
   "@expenseUndoFailed": { "description": "Снекбар: «Отменить» не вернуло трату — окно 5 секунд уже прошло или ошибка базы на телефоне; трата остаётся удалённой" },
 
   "profileExport": "Экспорт трат в CSV",
-  "@profileExport": { "description": "Профиль (47:13952): строка, открывает экран экспорта; пока временная строка на заглушке профиля" },
+  "@profileExport": { "description": "Профиль (47:13952): строка настроек, открывает экран экспорта" },
   "exportTitle": "Экспорт трат",
   "@exportTitle": { "description": "Экспорт в CSV (46:5585): заголовок экрана" },
   "exportBudget": "Бюджет",
@@ -1149,5 +1149,118 @@
   "authRecoveryCodeInvalid": "Проверь код: в нём 12 латинских букв и цифр",
   "@authRecoveryCodeInvalid": { "description": "Забыл пароль: ошибка под полем кода, после удаления дефисов и пробелов не 12 символов алфавита кода" },
   "authRecoverBadCredentials": "Неверный логин или код восстановления",
-  "@authRecoverBadCredentials": { "description": "Забыл пароль: ошибка под полем кода, сервер ответил 401 bad_credentials" }
+  "@authRecoverBadCredentials": { "description": "Забыл пароль: ошибка под полем кода, сервер ответил 401 bad_credentials" },
+
+  "profileLogin": "логин: {login}",
+  "@profileLogin": {
+    "description": "Профиль (47:13952): логин под именем в карточке аккаунта",
+    "placeholders": {
+      "login": { "type": "String" }
+    }
+  },
+  "profileSynced": "Синхронизировано · {ago}",
+  "@profileSynced": {
+    "description": "Профиль (47:13952): статус в карточке аккаунта — когда последний раз загрузили данные с сервера; ago — «только что», «2 мин назад», «3 ч назад» или дата",
+    "placeholders": {
+      "ago": { "type": "String" }
+    }
+  },
+  "profileNotSynced": "Ещё не синхронизировано",
+  "@profileNotSynced": { "description": "Профиль: статус в карточке аккаунта, данные с сервера ещё ни разу не загружались" },
+  "profileAgoNow": "только что",
+  "@profileAgoNow": { "description": "Профиль: «Синхронизировано · только что» — меньше минуты назад" },
+  "profileAgoMinutes": "{count} мин назад",
+  "@profileAgoMinutes": {
+    "description": "Профиль: «Синхронизировано · 2 мин назад» — меньше часа назад",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileAgoHours": "{count} ч назад",
+  "@profileAgoHours": {
+    "description": "Профиль: «Синхронизировано · 3 ч назад» — меньше суток назад",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileBudgets": "Бюджеты",
+  "@profileBudgets": { "description": "Профиль (47:13952): заголовок раздела бюджетов (справа — их число)" },
+  "profilePersonalBudget": "Личный",
+  "@profilePersonalBudget": { "description": "Профиль (47:13952): название личного бюджета в списке бюджетов" },
+  "profileBudgetPersonal": "Только ты",
+  "@profileBudgetPersonal": { "description": "Профиль (47:13952): подпись под личным бюджетом" },
+  "profileBudgetShared": "Общий · {count, plural, one{{count} участник} few{{count} участника} many{{count} участников} other{{count} участника}}",
+  "@profileBudgetShared": {
+    "description": "Профиль (47:13952): подпись под общим бюджетом с числом участников",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileBudgetOpenNow": "{details} · открыт сейчас",
+  "@profileBudgetOpenNow": {
+    "description": "Профиль (47:13952): подпись под бюджетом, который сейчас открыт на главной; details — «Только ты» или «Общий · 3 участника»",
+    "placeholders": {
+      "details": { "type": "String" }
+    }
+  },
+  "profileCreateBudget": "Создать общий бюджет",
+  "@profileCreateBudget": { "description": "Профиль (47:13952): строка под списком бюджетов" },
+  "profileCreateBudgetHint": "Позови близких вести траты вместе",
+  "@profileCreateBudgetHint": { "description": "Профиль (47:13952): подпись под «Создать общий бюджет»" },
+  "profileJoinBudget": "Войти по коду приглашения",
+  "@profileJoinBudget": { "description": "Профиль (47:13952): строка под списком бюджетов" },
+  "profileSettings": "Настройки",
+  "@profileSettings": { "description": "Профиль (47:13952): заголовок раздела настроек" },
+  "profileHolidays": "Праздники",
+  "@profileHolidays": { "description": "Профиль (47:13952): строка настроек «Праздники»" },
+  "profileCategories": "Категории",
+  "@profileCategories": { "description": "Профиль (47:13952): строка настроек, открывает «Категории»; справа — число категорий открытого бюджета без «Другое»" },
+  "profileTheme": "Тема",
+  "@profileTheme": { "description": "Профиль (47:13952): строка настроек, открывает «Тему» (47:5458); справа — выбранная тема" },
+  "profileReminders": "Напоминания",
+  "@profileReminders": { "description": "Профиль (47:13952): строка настроек «Напоминания»" },
+  "profileRecoveryCode": "Код восстановления",
+  "@profileRecoveryCode": { "description": "Профиль (47:13952): строка настроек, открывает перевыпуск кода восстановления" },
+  "profileRecoveryCodeValue": "Перевыпустить",
+  "@profileRecoveryCodeValue": { "description": "Профиль (47:13952): значение справа в строке «Код восстановления»" },
+  "profileSendLogs": "Отправить логи разработчику",
+  "@profileSendLogs": { "description": "Профиль (47:13952): строка настроек «Отправить логи разработчику»" },
+  "profileSignOut": "Выйти",
+  "@profileSignOut": { "description": "Профиль (47:13952): строка «Выйти» красным" },
+  "profileDeleteAccount": "Удалить аккаунт",
+  "@profileDeleteAccount": { "description": "Профиль (47:13952): строка «Удалить аккаунт» красным" },
+  "profileSoon": "скоро",
+  "@profileSoon": { "description": "Профиль: значение справа в строке, которой ещё нет в приложении (заглушка)" },
+  "profileSoonSnackbar": "Появится в следующем обновлении",
+  "@profileSoonSnackbar": { "description": "Профиль: снекбар по тапу на строку-заглушку или на то, чего ещё нет в приложении" },
+  "profileLoadFailed": "Не удалось загрузить бюджеты",
+  "@profileLoadFailed": { "description": "Профиль: вместо списка бюджетов, если база на телефоне не ответила" },
+
+  "themeTitle": "Тема",
+  "@themeTitle": { "description": "Тема (47:5458): заголовок экрана" },
+  "themeSystem": "Как в системе",
+  "@themeSystem": { "description": "Тема (47:5458): вариант «как в настройках телефона»; он же значение в строке «Тема» профиля" },
+  "themeSystemNowLight": "Сейчас светлая",
+  "@themeSystemNowLight": { "description": "Тема (47:5458): подпись под «Как в системе», в телефоне сейчас светлая тема" },
+  "themeSystemNowDark": "Сейчас тёмная",
+  "@themeSystemNowDark": { "description": "Тема (47:5458): подпись под «Как в системе», в телефоне сейчас тёмная тема" },
+  "themeLight": "Светлая",
+  "@themeLight": { "description": "Тема (47:5458): вариант; он же значение в строке «Тема» профиля" },
+  "themeDark": "Тёмная",
+  "@themeDark": { "description": "Тема (47:5458): вариант; он же значение в строке «Тема» профиля" },
+  "themeNote": "Сезонные и праздничные цвета работают в любой теме. Хеллоуин в тёмной теме — жуткий, в светлой — милый.",
+  "@themeNote": { "description": "Тема (47:5458): подпись под вариантами" },
+  "themeSaveFailed": "Не удалось сохранить тему. Попробуй ещё раз",
+  "@themeSaveFailed": { "description": "Тема: снекбар, выбор не записался в базу на телефоне — тема осталась прежней" },
+
+  "recoveryReissueTitle": "Код восстановления",
+  "@recoveryReissueTitle": { "description": "Перевыпуск кода восстановления (из профиля): заголовок экрана" },
+  "recoveryReissueText": "Выпустим новый код восстановления, а старый сразу перестанет работать. Новый код покажем один раз — сохрани его в надёжном месте.",
+  "@recoveryReissueText": { "description": "Перевыпуск кода восстановления: текст под заголовком" },
+  "recoveryReissuePasswordLabel": "Введи пароль, чтобы подтвердить",
+  "@recoveryReissuePasswordLabel": { "description": "Перевыпуск кода восстановления: подпись поля пароля (как на «Удалить аккаунт» 42:4394)" },
+  "recoveryReissueButton": "Перевыпустить код",
+  "@recoveryReissueButton": { "description": "Перевыпуск кода восстановления: кнопка отправки" },
+  "recoveryReissueWrongPassword": "Неверный пароль",
+  "@recoveryReissueWrongPassword": { "description": "Перевыпуск кода восстановления: ошибка под полем пароля, сервер ответил 401 bad_credentials" }
 }

@@ -15,14 +15,14 @@ import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
 import '../features/expense/edit_expense_screen.dart';
 import '../features/expense/new_expense_screen.dart';
-import '../features/export/export_profile_entry.dart';
 import '../features/export/export_screen.dart';
 import '../features/month/month_screen.dart';
+import '../features/profile/profile_screen.dart';
+import '../features/profile/theme_screen.dart';
 import '../features/recurring/recurring_editor_screen.dart';
 import '../features/recurring/recurring_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/app_shell.dart';
-import '../features/shell/tab_stub_screen.dart';
 import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'app_frame.dart';
@@ -38,6 +38,8 @@ abstract final class AppRoutes {
   static const String newRecurring = '/recurring/new';
   static const String recurringRule = '/recurring/:id';
   static const String profile = '/profile';
+  static const String theme = '/profile/theme';
+  static const String recoveryReissue = '/profile/recovery-code';
   static const String newExpense = '/expense/new';
   static const String expense = '/expense/:id';
   static const String search = '/search';
@@ -64,6 +66,8 @@ abstract final class AppRoutes {
   static const String registerName = 'register';
   static const String forgotPasswordName = 'forgotPassword';
   static const String recoveryCodeName = 'recoveryCode';
+  static const String themeName = 'theme';
+  static const String recoveryReissueName = 'recoveryReissue';
 
   static const String authStack = '/auth';
 
@@ -271,10 +275,16 @@ GoRouter buildRouter({
               GoRoute(
                 path: AppRoutes.profile,
                 name: 'profile',
-                builder: (context, state) => TabStubScreen(
-                  title: (l10n) => l10n.profileTitle,
-                  children: const [ExportProfileEntry()],
-                ),
+                builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'theme',
+                    name: AppRoutes.themeName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        const AppFrame(child: ThemeScreen()),
+                  ),
+                ],
               ),
             ],
           ),
