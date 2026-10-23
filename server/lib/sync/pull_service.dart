@@ -74,10 +74,17 @@ const String _profilesSql =
     'SELECT id, display_name, birthday_month, birthday_day, avatar_color, seq '
     'FROM profiles WHERE $_range';
 
+const String _lockNotAvailable = '55P03';
+
 class PullService {
-  PullService({required this.db});
+  PullService({
+    required this.db,
+    this.barrierTimeout = const Duration(seconds: 2),
+  });
 
   final Database db;
+  final Duration barrierTimeout;
+  int _safeBound = 0;
 
   Future<SyncPullResponse> pull({
     required String userId,
@@ -118,14 +125,45 @@ class PullService {
   }
 
   Future<int> _upperBound(Map<String, Object?> context) async {
-    final rows = await db.execute(
-      'SELECT last_value, is_called FROM change_seq',
-      what: 'read last change seq',
-      logParams: context,
-    );
-    final row = rows.single;
-    final last = row[0]! as int;
-    return row[1]! as bool ? last : last - 1;
+    final sw = Stopwatch()..start();
+    try {
+      final bound = await db.transaction('pull seq barrier', (tx) async {
+        await tx.execute(
+          r"SELECT set_config('lock_timeout', $1, true)",
+          parameters: ['${barrierTimeout.inMilliseconds}ms'],
+          what: 'set seq barrier lock timeout',
+          logParams: {'timeoutMs': barrierTimeout.inMilliseconds},
+        );
+        await tx.execute(
+          'LOCK TABLE sync_seq_gate IN SHARE MODE',
+          what: 'wait for open transactions holding seq',
+          logParams: context,
+        );
+        final rows = await tx.execute(
+          'SELECT last_value, is_called FROM change_seq',
+          what: 'read last committed change seq',
+          logParams: context,
+        );
+        final row = rows.single;
+        final last = row[0]! as int;
+        return row[1]! as bool ? last : last - 1;
+      });
+      if (bound > _safeBound) _safeBound = bound;
+      _log.fine(
+        'pull seq barrier passed bound=$bound '
+        '${formatContext(context)} in ${sw.elapsedMilliseconds}ms',
+      );
+      return bound;
+    } on pg.ServerException catch (e) {
+      if (e.code != _lockNotAvailable) rethrow;
+      _log.warning(
+        'pull seq barrier timed out in ${sw.elapsedMilliseconds}ms '
+        '(limit ${barrierTimeout.inMilliseconds}ms): a transaction that took '
+        'a seq is still open, falling back to last safe bound=$_safeBound '
+        '${formatContext(context)}',
+      );
+      return _safeBound;
+    }
   }
 
   Future<List<_Item>> _read(

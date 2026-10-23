@@ -43,12 +43,17 @@ void main() {
       final db = await openScratchDatabase();
 
       final first = await Migrator(db, directory: _migrations).run();
-      expect(first.applied, ['0001_init.sql', '0002_used_refresh_tokens.sql']);
+      expect(first.applied, [
+        '0001_init.sql',
+        '0002_used_refresh_tokens.sql',
+        '0003_sync_seq_gate.sql',
+      ]);
       expect(first.alreadyApplied, 0);
-      expect(first.schemaVersion, 2);
+      expect(first.schemaVersion, 3);
       expect(await _appliedRows(db), [
         [1, '0001_init.sql'],
         [2, '0002_used_refresh_tokens.sql'],
+        [3, '0003_sync_seq_gate.sql'],
       ]);
       expect(
         logs.text,
@@ -72,17 +77,17 @@ void main() {
       logs.clear();
       final second = await Migrator(db, directory: _migrations).run();
       expect(second.applied, isEmpty);
-      expect(second.alreadyApplied, 2);
-      expect(second.schemaVersion, 2);
+      expect(second.alreadyApplied, 3);
+      expect(second.schemaVersion, 3);
       expect(
         logs.text,
         contains(
-          'INFO  [db] migrations: nothing to apply, 2 already applied, '
-          'schema version 2 (0002_used_refresh_tokens.sql)',
+          'INFO  [db] migrations: nothing to apply, 3 already applied, '
+          'schema version 3 (0003_sync_seq_gate.sql)',
         ),
       );
       expect(logs.text, isNot(contains('applying')));
-      expect(await _appliedRows(db), hasLength(2));
+      expect(await _appliedRows(db), hasLength(3));
     });
 
     test('файлы применяются по номеру, а не по порядку в папке', () async {
@@ -205,12 +210,16 @@ void main() {
       expect(
         results.map((r) => r.applied).toList(),
         unorderedEquals([
-          ['0001_init.sql', '0002_used_refresh_tokens.sql'],
+          [
+            '0001_init.sql',
+            '0002_used_refresh_tokens.sql',
+            '0003_sync_seq_gate.sql',
+          ],
           <String>[],
         ]),
       );
-      expect(results.map((r) => r.schemaVersion), everyElement(2));
-      expect(await _appliedRows(first), hasLength(2));
+      expect(results.map((r) => r.schemaVersion), everyElement(3));
+      expect(await _appliedRows(first), hasLength(3));
       expect(logs.text, isNot(contains('ERROR')));
     });
 
@@ -236,6 +245,7 @@ void main() {
           expect(result.applied, [
             '0001_init.sql',
             '0002_used_refresh_tokens.sql',
+            '0003_sync_seq_gate.sql',
           ]);
         });
 
@@ -332,6 +342,7 @@ void main() {
       expect(await _appliedRows(server.db), [
         [1, '0001_init.sql'],
         [2, '0002_used_refresh_tokens.sql'],
+        [3, '0003_sync_seq_gate.sql'],
       ]);
       int at(String text) =>
           logs.lines.indexWhere((line) => line.contains(text));

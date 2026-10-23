@@ -21,6 +21,7 @@ const _tables = {
   'push_batches',
   'client_errors',
   'used_refresh_tokens',
+  'sync_seq_gate',
 };
 
 const _syncTables = {
