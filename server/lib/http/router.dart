@@ -11,6 +11,8 @@ import '../limits/request_limits.dart';
 import '../sync/pull_service.dart';
 import '../sync/push_service.dart';
 import '../sync/sync_notifier.dart';
+import '../web/privacy_page.dart';
+import '../web/web_page.dart';
 import '../ws/ws_handler.dart';
 import '../ws/ws_hub.dart';
 import '../ws/ws_protocol.dart';
@@ -24,13 +26,14 @@ import 'middleware.dart';
 import 'sync_handlers.dart';
 
 /// Обработчик всех запросов: id запроса → лог запроса → перехват ошибок →
-/// маршруты `/api/v1/…`.
+/// маршруты `/api/v1/…` и веб-страницы.
 Handler buildHandler({
   required Database db,
   required AuthService auth,
   RequestLimits? limits,
   SyncNotifier notifier = const NoopSyncNotifier(),
   WsHub? ws,
+  PrivacySettings privacy = const PrivacySettings(),
   DateTime Function() now = DateTime.now,
 }) {
   final requestLimits = limits ?? RequestLimits();
@@ -135,6 +138,12 @@ Handler buildHandler({
       const Pipeline()
           .addMiddleware(optionalAuthMiddleware(auth))
           .addHandler(clientErrorsHandler(clientErrors)),
+    )
+    ..get(
+      privacyPath,
+      const Pipeline()
+          .addMiddleware(webErrorPages())
+          .addHandler(privacyPageHandler(privacy)),
     );
   if (ws != null) {
     router.get(

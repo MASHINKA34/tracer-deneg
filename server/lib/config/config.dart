@@ -99,6 +99,8 @@ class ServerConfig {
     required this.jwtSecret,
     this.migrationsDir = defaultMigrationsDir,
     this.trustedProxies = TrustedProxies.none,
+    this.privacyContact,
+    this.privacyOperator,
   });
 
   static const defaultHost = '0.0.0.0';
@@ -113,6 +115,8 @@ class ServerConfig {
   final String jwtSecret;
   final String migrationsDir;
   final TrustedProxies trustedProxies;
+  final String? privacyContact;
+  final String? privacyOperator;
 
   /// Разбирает и проверяет конфиг. [environment] (переменные окружения)
   /// важнее [dotEnv] (значения из файла `.env`).
@@ -197,6 +201,8 @@ class ServerConfig {
       jwtSecret: jwtSecret!,
       migrationsDir: value('MIGRATIONS_DIR') ?? defaultMigrationsDir,
       trustedProxies: trustedProxies,
+      privacyContact: value('PRIVACY_CONTACT'),
+      privacyOperator: value('PRIVACY_OPERATOR'),
     );
   }
 
@@ -209,5 +215,7 @@ class ServerConfig {
     'jwtSecret': maskToken(jwtSecret),
     'migrations': migrationsDir,
     'trustedProxies': trustedProxies.describe(),
+    'privacyContact': privacyContact == null ? 'empty' : 'set',
+    'privacyOperator': privacyOperator == null ? 'empty' : 'set',
   };
 }

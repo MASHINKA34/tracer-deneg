@@ -18,6 +18,7 @@ import 'jobs/client_errors_cleanup.dart';
 import 'jobs/daily_jobs.dart';
 import 'limits/request_limits.dart';
 import 'version.dart';
+import 'web/web_page.dart';
 import 'ws/ws_hub.dart';
 import 'ws/ws_protocol.dart';
 
@@ -125,11 +126,37 @@ Future<RunningServer> startServer(
     'closeCodes=${WsClose.values.map((c) => '${c.reason}:${c.code}').join(',')}',
   );
 
+  final privacy = PrivacySettings(
+    contact: config.privacyContact,
+    operator: config.privacyOperator,
+  );
+  _log.info(
+    'web pages ready paths=$privacyPath '
+    '${formatContext(privacy.toLogContext())}',
+  );
+  for (final (name, value) in [
+    ('PRIVACY_CONTACT', privacy.contact),
+    ('PRIVACY_OPERATOR', privacy.operator),
+  ]) {
+    if (value != null) continue;
+    _log.warning(
+      '$name is empty → $privacyPath shows «$notSpecified»; '
+      'set it in .env on the server before deploy',
+    );
+  }
+
   final sw = Stopwatch()..start();
   _log.info('starting HTTP server on ${config.host}:${config.port}');
   try {
     final http = await shelf_io.serve(
-      buildHandler(db: db, auth: auth, limits: limits, notifier: ws, ws: ws),
+      buildHandler(
+        db: db,
+        auth: auth,
+        limits: limits,
+        notifier: ws,
+        ws: ws,
+        privacy: privacy,
+      ),
       config.host,
       config.port,
     );
