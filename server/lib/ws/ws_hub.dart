@@ -36,7 +36,10 @@ final class _Connection {
   final AuthContext auth;
   final WsPeer peer;
   final Stopwatch age = Stopwatch()..start();
+  final Stopwatch silence = Stopwatch()..start();
   final Completer<void> finished = Completer<void>();
+  Timer? idle;
+  Timer? expiry;
   WsClose? closedBy;
   Object? error;
   int received = 0;
@@ -46,12 +49,22 @@ final class _Connection {
 
   String get label =>
       'userId=${auth.userId} sessionId=${auth.sessionId} conn=$id';
+
+  void stopTimers() {
+    idle?.cancel();
+    expiry?.cancel();
+  }
 }
 
 class WsHub implements SyncNotifier {
-  WsHub({required this.db, this._now = DateTime.now});
+  WsHub({
+    required this.db,
+    this.idleTimeout = wsIdleTimeout,
+    this._now = DateTime.now,
+  });
 
   final Database db;
+  final Duration idleTimeout;
   final DateTime Function() _now;
   final Map<String, Set<_Connection>> _byUser = {};
   bool _closing = false;
@@ -85,7 +98,39 @@ class WsHub implements SyncNotifier {
         'ws connection arrived during shutdown, closing ${connection.label}',
       );
       _close(connection, WsClose.serverShutdown);
+      return;
     }
+    if (expiresIn <= Duration.zero) {
+      _log.info(
+        'ws access token already expired on connect, closing '
+        '${connection.label} expiredAgo=${-expiresIn.inMilliseconds}ms',
+      );
+      _close(connection, WsClose.tokenExpired);
+      return;
+    }
+    connection.expiry = Timer(expiresIn, () {
+      _log.info(
+        'ws access token expired, closing so the client refreshes it '
+        '${connection.label} expiresAt=${auth.expiresAt.toIso8601String()} '
+        'after ${connection.age.elapsedMilliseconds}ms',
+      );
+      _close(connection, WsClose.tokenExpired);
+    });
+    _armIdle(connection);
+  }
+
+  void _armIdle(_Connection connection) {
+    connection.idle?.cancel();
+    connection.silence.reset();
+    connection.idle = Timer(idleTimeout, () {
+      _log.info(
+        'ws no messages from client for '
+        '${connection.silence.elapsedMilliseconds}ms '
+        '(limit ${idleTimeout.inMilliseconds}ms), closing ${connection.label} '
+        'received=${connection.received}',
+      );
+      _close(connection, WsClose.idleTimeout);
+    });
   }
 
   Future<void> closeAll(String reason) async {
@@ -211,6 +256,14 @@ class WsHub implements SyncNotifier {
 
   void _onMessage(_Connection connection, Object? message) {
     connection.received++;
+    if (connection.closedBy != null) return;
+    _armIdle(connection);
+    if (wsMessageType(message) == WsMessageType.ping) {
+      if (_send(connection, wsPongMessage, WsMessageType.pong)) {
+        _log.fine('ws ping → pong ${connection.label}');
+      }
+      return;
+    }
     _log.warning(
       'ws message ignored ${connection.label} '
       '${_describeMessage(message)}',
@@ -229,6 +282,7 @@ class WsHub implements SyncNotifier {
 
   void _onDone(_Connection connection) {
     if (connection.finished.isCompleted) return;
+    connection.stopTimers();
     _unregister(connection);
     final closedBy = connection.closedBy;
     final reason =
@@ -257,6 +311,7 @@ class WsHub implements SyncNotifier {
   void _close(_Connection connection, WsClose why) {
     if (connection.closedBy != null || connection.finished.isCompleted) return;
     connection.closedBy = why;
+    connection.stopTimers();
     _unregister(connection);
     _log.info(
       'ws closing by server ${connection.label} '
