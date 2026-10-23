@@ -20,6 +20,7 @@ import 'account_switch_dialog.dart';
 import 'auth_fields.dart';
 import 'auth_service.dart';
 import 'auth_widgets.dart';
+import 'sign_in_notice.dart';
 
 final _log = Logger('auth');
 
@@ -53,6 +54,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } else {
       _log.fine('login screen opened');
     }
+    ref.listenManual(
+      signInNoticeProvider,
+      (previous, next) => _onNotice(next),
+      fireImmediately: true,
+    );
+  }
+
+  void _onNotice(SignInNotice? notice) {
+    if (notice == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _log.fine('sign-in notice ${notice.name} left: login screen closed');
+        return;
+      }
+      final taken = ref.read(signInNoticeProvider.notifier).take();
+      if (taken == null) return;
+      final l10n = AppLocalizations.of(context);
+      switch (taken) {
+        case SignInNotice.accountDeleted:
+          _log.info(
+            'login screen after account deletion → "account deleted" snackbar',
+          );
+          showAppSnackbar(context, text: l10n.accountDeletedSnackbar);
+      }
+    });
   }
 
   @override

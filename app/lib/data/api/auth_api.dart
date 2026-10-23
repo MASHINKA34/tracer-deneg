@@ -20,6 +20,8 @@ const String recoveryCodePath = '/auth/recovery-code';
 
 const String logoutPath = '/auth/logout';
 
+const String accountPath = '/account';
+
 final class AuthResult {
   const AuthResult({
     required this.session,
@@ -139,6 +141,14 @@ class AuthApi {
 
   Future<String> logout() async {
     final response = await _client.post(logoutPath);
+    return response.requestId;
+  }
+
+  Future<String> deleteAccount({required String password}) async {
+    final response = await _client.delete(
+      accountPath,
+      body: {'password': password},
+    );
     return response.requestId;
   }
 
