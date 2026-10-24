@@ -8,7 +8,9 @@ import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared/logging.dart';
+import 'package:workmanager/workmanager.dart';
 
+import 'core/background_entry.dart';
 import 'core/data_startup.dart';
 import 'core/logging/app_logging.dart';
 import 'core/logging/crash_test.dart';
@@ -104,6 +106,23 @@ Future<void> main() async {
   }
   OrientationPolicy().start();
 
+  sw = Stopwatch()..start();
+  var background = false;
+  try {
+    await Workmanager().initialize(backgroundDispatcher);
+    background = true;
+    _log.info(
+      'background tasks ready (workmanager) in ${sw.elapsedMilliseconds}ms',
+    );
+  } catch (e, st) {
+    _log.severe(
+      'background tasks unavailable, sync runs only while the app is open: '
+      '${describeError(e)}',
+      e,
+      st,
+    );
+  }
+
   final data = await startData();
   final reporting = ErrorReporting(
     queue: reports,
@@ -124,7 +143,7 @@ Future<void> main() async {
     _log.info('first frame in ${startup.elapsedMilliseconds}ms');
   });
   _log.fine('runApp after ${startup.elapsedMilliseconds}ms');
-  runApp(appRoot(data, reporting: reporting));
+  runApp(appRoot(data, reporting: reporting, background: background));
 
   // 6. Шрифты на месте (в фоне, не задерживает первый кадр).
   unawaited(checkFontAssets(rootBundle));
