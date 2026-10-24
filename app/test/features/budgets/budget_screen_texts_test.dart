@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:milionchik/data/session/session.dart';
 import 'package:milionchik/features/budgets/budget_screen.dart';
 import 'package:milionchik/features/budgets/budget_screen_view.dart';
+import 'package:milionchik/features/budgets/expense_authors.dart';
 import 'package:milionchik/l10n/app_localizations.dart';
 import 'package:shared/shared.dart';
 
@@ -138,8 +139,8 @@ void main() {
     );
   });
 
-  test('автор траты: буква и цвет участника; вышедший - цвет из профиля; '
-      'неизвестный - без аватара', () {
+  test('автор траты: буква и цвет участника; вышедший и неизвестный - '
+      '«Удалённый участник»', () {
     const user = SessionUser(
       userId: 'user-anya',
       login: 'anya_m',
@@ -161,41 +162,22 @@ void main() {
         avatarColor: CategoryColor.teal,
       ),
     };
-    final day = _today;
-    final created = DateTime(2026, 10, 19, 12);
-    final dima = budgetExpenseAuthor(
-      _expense(day: day, created: created),
+    final authors = ExpenseAuthors(
+      budgetId: 'budget-family',
       members: members,
-      user: user,
       profiles: profiles,
-    )!;
+      user: user,
+    );
+    final dima = expenseRowAuthor(l10n, authors.of('user-dima')!);
     expect(
       (dima.letter, dima.color, dima.name),
       ('Д', CategoryColor.green, 'Дима'),
     );
-    final self = budgetExpenseAuthor(
-      _expense(day: day, created: created, author: 'user-anya'),
-      members: members,
-      user: user,
-      profiles: profiles,
-    )!;
+    final self = expenseRowAuthor(l10n, authors.of('user-anya')!);
     expect((self.letter, self.color), ('А', CategoryColor.blue));
-    final gone = budgetExpenseAuthor(
-      _expense(day: day, created: created, author: 'user-gone'),
-      members: members,
-      user: user,
-      profiles: profiles,
-    )!;
-    expect((gone.letter, gone.color), ('О', CategoryColor.teal));
-    expect(
-      budgetExpenseAuthor(
-        _expense(day: day, created: created, author: 'user-unknown'),
-        members: members,
-        user: user,
-        profiles: profiles,
-      ),
-      isNull,
-    );
+    final gone = expenseRowAuthor(l10n, authors.of('user-gone')!);
+    expect((gone.letter, gone.name), ('У', 'Удалённый участник'));
+    expect(authors.of('user-unknown'), isA<RemovedAuthor>());
   });
 
   test('код для TalkBack - по буквам', () {

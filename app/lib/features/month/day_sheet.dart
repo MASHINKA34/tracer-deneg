@@ -19,6 +19,7 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/expense_authors.dart';
 import '../expense/expense_swipe_to_delete.dart';
 
 final _log = Logger('month');
@@ -142,29 +143,40 @@ class DayExpenseRow extends StatelessWidget {
     required this.expense,
     required this.category,
     this.onTap,
+    this.author,
   });
 
   final Expense expense;
   final Category? category;
   final VoidCallback? onTap;
+  final ExpenseAuthorView? author;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final other = presetCategories.last;
     final category = this.category;
     final title = category?.name ?? other.name;
+    final author = this.author;
+    final label = expenseLabel(l10n, expense, title);
     return Semantics(
       button: onTap != null,
-      label: expenseLabel(AppLocalizations.of(context), expense, title),
+      label: author == null
+          ? label
+          : '$label, ${l10n.expenseRowAddedBy(expenseAuthorName(l10n, author))}',
       excludeSemantics: true,
       onTap: onTap,
-      child: ExpenseRow(
-        emoji: category?.emoji ?? other.emoji,
-        color: category == null ? other.color : category.color,
-        title: title,
-        subtitle: expenseSubtitle(expense),
-        amount: expense.amount.format(),
-        onTap: onTap,
+      child: withAuthorColors(
+        author,
+        ExpenseRow(
+          emoji: category?.emoji ?? other.emoji,
+          color: category == null ? other.color : category.color,
+          title: title,
+          subtitle: expenseSubtitle(expense),
+          amount: expense.amount.format(),
+          author: author == null ? null : expenseRowAuthor(l10n, author),
+          onTap: onTap,
+        ),
       ),
     );
   }
@@ -365,6 +377,9 @@ class _DaySheetState extends ConsumerState<DaySheet> {
         (expensesValue?.hasError ?? false) ||
         (categoriesValue?.hasError ?? false);
     final categories = _ok(categoriesValue) ?? const <Category>[];
+    final authors = budgetId == null
+        ? null
+        : ref.watch(expenseAuthorsProvider(budgetId));
     final List<Expense>? expenses = failed
         ? null
         : budget.hasValue && budgetId == null
@@ -410,6 +425,7 @@ class _DaySheetState extends ConsumerState<DaySheet> {
                         child: DayExpenseRow(
                           expense: expense,
                           category: _categoryOf(expense, categories, budgetId!),
+                          author: authors?.of(expense.authorId),
                           onTap: () => _open(expense),
                         ),
                       ),

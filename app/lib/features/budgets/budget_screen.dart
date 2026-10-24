@@ -18,7 +18,6 @@ import '../../data/session/session.dart';
 import '../../data/session/session_providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/dialog.dart';
-import '../../ui/components/expense_row.dart';
 import '../../ui/components/fitting_text.dart';
 import '../../ui/components/list_row.dart';
 import '../../ui/components/sheet.dart';
@@ -28,11 +27,11 @@ import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../expense/expense_snackbar_layer.dart';
 import '../month/day_sheet.dart' show expenseCategory;
-import '../month/month_header.dart' show avatarLetterOf;
 import '../profile/profile_budgets.dart' show ProfileCard;
 import 'budget_actions_service.dart';
 import 'budget_invite.dart';
 import 'budget_screen_view.dart';
+import 'expense_authors.dart';
 
 final _log = Logger('budgets');
 
@@ -65,26 +64,6 @@ String budgetMemberName(
 }) {
   if (user != null && member.userId == user.userId) return user.displayName;
   return profiles[member.userId]?.displayName ?? l10n.budgetScreenSomeone;
-}
-
-ExpenseAuthor? budgetExpenseAuthor(
-  Expense expense, {
-  required List<BudgetMember> members,
-  required SessionUser? user,
-  required Map<String, MemberProfile> profiles,
-}) {
-  final id = expense.authorId;
-  final profile = profiles[id];
-  final name = user != null && id == user.userId
-      ? user.displayName
-      : profile?.displayName;
-  CategoryColor? color;
-  for (final member in members) {
-    if (member.userId == id) color = member.avatarColor;
-  }
-  color ??= profile?.avatarColor;
-  if (name == null || color == null) return null;
-  return ExpenseAuthor(letter: avatarLetterOf(name), color: color, name: name);
 }
 
 String budgetActionFailureText(
@@ -598,6 +577,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
       (previous, next) => _logFailure('recent expenses', previous, next),
     );
     final recent = ref.watch(recentExpensesProvider(recentKey));
+    final authors = ref.watch(expenseAuthorsProvider(_id));
     ref.listen(
       categoriesProvider(_id),
       (previous, next) => _logFailure('categories', previous, next),
@@ -709,12 +689,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                     category: expenseCategory(expense, categories),
                     subtitle: recentExpenseSubtitle(l10n, expense, today),
                     when: recentExpenseWhen(l10n, expense, today),
-                    author: budgetExpenseAuthor(
-                      expense,
-                      members: list,
-                      user: user,
-                      profiles: profiles,
-                    ),
+                    author: authors?.of(expense.authorId),
                   ),
               ],
             ),

@@ -8,6 +8,7 @@ import '../../ui/components/fitting_text.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/expense_authors.dart' show ExpenseAuthorView;
 import '../expense/expense_swipe_to_delete.dart';
 import '../month/day_sheet.dart' show DayExpenseRow;
 import 'search_period.dart';
@@ -52,12 +53,14 @@ class SearchResults extends StatelessWidget {
     required this.today,
     required this.categoryOf,
     required this.onOpen,
+    this.authorOf,
   });
 
   final SearchResult result;
   final LocalDate today;
   final Category? Function(Expense expense) categoryOf;
   final ValueChanged<Expense> onOpen;
+  final ExpenseAuthorView? Function(Expense expense)? authorOf;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +112,7 @@ class SearchResults extends StatelessWidget {
                           child: DayExpenseRow(
                             expense: expense,
                             category: categoryOf(expense),
+                            author: authorOf?.call(expense),
                             onTap: () => onOpen(expense),
                           ),
                         ),

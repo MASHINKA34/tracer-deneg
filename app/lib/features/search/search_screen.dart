@@ -17,6 +17,7 @@ import '../../l10n/app_localizations.dart';
 import '../../ui/components/chip.dart';
 import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_theme.dart';
+import '../budgets/expense_authors.dart' show expenseAuthorsProvider;
 import '../month/day_sheet.dart' show expenseCategory;
 import 'search_categories_sheet.dart';
 import 'search_field.dart';
@@ -418,6 +419,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ? null
         : budgetValue.value;
     final categories = _categories ?? const <Category>[];
+    final authors = budgetId == null
+        ? null
+        : ref.watch(expenseAuthorsProvider(budgetId));
     final selectedCategories = [
       for (final c in categories)
         if (_categoryIds.contains(c.id)) c,
@@ -511,6 +515,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         result: result,
                         today: today,
                         categoryOf: (e) => _categoryOf(e, categories),
+                        authorOf: authors == null
+                            ? null
+                            : (e) => authors.of(e.authorId),
                         onOpen: _open,
                       ),
               ),

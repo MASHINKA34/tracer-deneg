@@ -1175,6 +1175,15 @@
   },
   "expenseEditRecurring": "Создано регулярной тратой",
   "@expenseEditRecurring": { "description": "Трата · редактирование (43:4368): подпись под полями у траты, созданной регулярной, когда правило удалено или его нет на телефоне" },
+  "expenseAuthorRemoved": "Удалённый участник",
+  "@expenseAuthorRemoved": { "description": "Автор траты общего бюджета, которого в бюджете больше нет (вышел, исключён или удалил аккаунт): «Добавил: …» в правке траты и TalkBack у аватара в строках трат" },
+  "expenseRowAddedBy": "добавил {name}",
+  "@expenseRowAddedBy": {
+    "description": "Строка траты общего бюджета (главная, шторка дня, поиск): TalkBack — автор траты в конце подписи строки",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" }
+    }
+  },
   "expenseMissingTitle": "Трата не найдена",
   "@expenseMissingTitle": { "description": "Экран траты: трату удалили или её нет на телефоне, заголовок" },
   "expenseMissingText": "Возможно, её удалили — здесь или на другом телефоне.",

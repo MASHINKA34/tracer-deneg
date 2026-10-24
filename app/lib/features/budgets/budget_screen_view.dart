@@ -15,6 +15,7 @@ import '../../ui/tokens/tokens.g.dart';
 import '../month/day_sheet.dart' show expenseTime, spokenAmount;
 import '../month/month_header.dart' show avatarLetterOf;
 import 'budget_invite.dart';
+import 'expense_authors.dart';
 
 const double budgetInviteButton = 52;
 
@@ -282,7 +283,7 @@ class BudgetRecentRow extends StatelessWidget {
   final Category? category;
   final String subtitle;
   final String when;
-  final ExpenseAuthor? author;
+  final ExpenseAuthorView? author;
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +291,8 @@ class BudgetRecentRow extends StatelessWidget {
     final other = presetCategories.last;
     final category = this.category;
     final title = category?.name ?? other.name;
-    final name = author?.name;
+    final author = this.author;
+    final name = author == null ? null : expenseAuthorName(l10n, author);
     final label = [
       title,
       if (expense.comment.isNotEmpty) expense.comment,
@@ -301,13 +303,16 @@ class BudgetRecentRow extends StatelessWidget {
     return Semantics(
       label: label,
       excludeSemantics: true,
-      child: ExpenseRow(
-        emoji: category?.emoji ?? other.emoji,
-        color: category == null ? other.color : category.color,
-        title: title,
-        subtitle: subtitle,
-        amount: expense.amount.format(),
-        author: author,
+      child: withAuthorColors(
+        author,
+        ExpenseRow(
+          emoji: category?.emoji ?? other.emoji,
+          color: category == null ? other.color : category.color,
+          title: title,
+          subtitle: subtitle,
+          amount: expense.amount.format(),
+          author: author == null ? null : expenseRowAuthor(l10n, author),
+        ),
       ),
     );
   }

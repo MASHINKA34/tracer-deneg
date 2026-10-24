@@ -16,6 +16,7 @@ import '../../ui/components/fitting_text.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/expense_authors.dart';
 import '../expense/expense_swipe_to_delete.dart';
 import 'day_sheet.dart';
 
@@ -237,6 +238,7 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
     final today = _ok(todayValue);
     final categories = _ok(categoriesValue);
     if (today == null || categories == null) return const SizedBox.shrink();
+    final authors = ref.watch(expenseAuthorsProvider(budgetId));
 
     if (!today.budgetHasExpenses) {
       return _TodayView(
@@ -264,6 +266,7 @@ class _TodayBlockState extends ConsumerState<TodayBlock> {
                 child: DayExpenseRow(
                   expense: expense,
                   category: _categoryOf(expense, categories, budgetId),
+                  author: authors?.of(expense.authorId),
                   onTap: () => _open(expense),
                 ),
               ),
