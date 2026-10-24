@@ -11,11 +11,13 @@ import 'core/auth_gate.dart';
 import 'core/clock.dart';
 import 'core/router.dart';
 import 'core/system_ui.dart';
+import 'data/holiday_settings.dart';
 import 'data/session/session_providers.dart';
 import 'data/session/session_state.dart';
 import 'features/auth/recovery_code_state.dart';
 import 'features/auth/session_end_service.dart';
 import 'features/expense/expense_snackbar_layer.dart';
+import 'features/holidays/mood_controller.dart';
 import 'features/profile/theme_mode.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/theme/app_theme.dart';
@@ -50,20 +52,14 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
       recoveryCodePending: () => _recoveryCodePending.value,
     ),
   );
-  LocalDate? _moodDay;
-  late Mood _mood;
-
-  /// Настроение на сегодня (00-spec §7.6.3). Настроек праздников ещё нет
-  /// (этап 13) — берём настройки по умолчанию: все праздники включены.
-  Mood _moodToday(LocalDate today) {
-    final mood = moodOn(today, const HolidaySettings());
-    _log.info('mood=${mood.name} today=$today (holiday settings: defaults)');
-    return mood;
-  }
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.read(moodControllerProvider.notifier).resumed(),
+    );
     ref.listenManual(sessionProvider, (previous, next) {
       _log.fine(
         'session ${previous?.name ?? '-'} → ${next.name}: re-checking sign-in '
@@ -85,6 +81,7 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _router.dispose();
     _session.dispose();
     _recoveryCodePending.dispose();
@@ -93,18 +90,17 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
 
   @override
   Widget build(BuildContext context) {
-    final today = widget.today ?? ref.watch(clockProvider).today();
-    if (today != _moodDay) {
-      _moodDay = today;
-      _mood = _moodToday(today);
-    }
+    final today = widget.today;
+    final mood = today == null
+        ? ref.watch(moodControllerProvider.select((m) => m.mood))
+        : moodOn(today, ref.watch(holidaySettingsProvider));
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       locale: const Locale('ru'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      theme: AppTheme.build(Brightness.light, _mood),
-      darkTheme: AppTheme.build(Brightness.dark, _mood),
+      theme: AppTheme.build(Brightness.light, mood),
+      darkTheme: AppTheme.build(Brightness.dark, mood),
       themeMode: ref.watch(themeModeProvider),
       themeAnimationDuration: AppTheme.transition,
       routerConfig: _router,

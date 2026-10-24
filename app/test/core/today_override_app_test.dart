@@ -132,11 +132,13 @@ void main() {
       ),
     ]);
     expect(
-      lines('app', Level.INFO),
+      lines('mood', Level.INFO),
       contains(
         endsWith(
-          'INFO  [app] mood=halloween today=2026-10-31 '
-          '(holiday settings: defaults)',
+          'INFO  [mood] mood recalculated trigger=startup date=2026-10-31 '
+          'mood=halloween reason=holiday holiday=halloween stage=day '
+          'daysUntilDay=0 settings=HolidaySettings(enabled: true, '
+          'disabled: [], birthday: none)',
         ),
       ),
     );
