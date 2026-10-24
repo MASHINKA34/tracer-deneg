@@ -16,6 +16,7 @@ import '../../ui/components/month_card.dart';
 import '../../ui/components/snackbar.dart';
 import '../../ui/theme/app_theme.dart';
 import '../expense/expense_snackbar_layer.dart';
+import '../holidays/mood_controller.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
 import 'month_header.dart';
@@ -238,6 +239,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     final requested = ref.watch(monthControllerProvider);
     final shown = ref.watch(shownMonthProvider);
     final sheetDay = ref.watch(openDaySheetProvider);
+    final moodToday = ref.watch(moodControllerProvider);
     final data = shown.hasError ? null : shown.value;
     final bottom = MediaQuery.paddingOf(context).bottom;
 
@@ -250,7 +252,7 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         month: month,
         today: today,
         dayTotals: data?.dayTotals ?? const {},
-        mood: Mood.ofSeason(seasonOf(month.month)),
+        mood: monthCardMood(month, moodToday),
         holidayMarks: monthMarkEmojis(month),
         selectedDay: sheetDay != null && month.contains(sheetDay)
             ? sheetDay.day
