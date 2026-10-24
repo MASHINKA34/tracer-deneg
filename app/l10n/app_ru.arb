@@ -1674,5 +1674,175 @@
   "deleteAccountFailed": "Не получилось удалить аккаунт. Попробуй ещё раз",
   "@deleteAccountFailed": { "description": "Удалить аккаунт: снекбар, если запрос сломался на телефоне (не ответ сервера и не сеть) — ничего не удалено" },
   "accountDeletedSnackbar": "Аккаунт удалён",
-  "@accountDeletedSnackbar": { "description": "Экран входа после удаления аккаунта: снекбар, данные телефона уже стёрты" }
+  "@accountDeletedSnackbar": { "description": "Экран входа после удаления аккаунта: снекбар, данные телефона уже стёрты" },
+
+  "holidayBannerNewyearCountdownTitle": "До Нового года {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerNewyearCountdownTitle": {
+    "description": "Плашка праздника (31:4031, 00-spec §7.6.4): Новый год, до «дня» — заголовок Отсчёта, days — дней до 1 января",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerNewyearCountdownSubtitle": "Не забудь записать подарки 🎁",
+  "@holidayBannerNewyearCountdownSubtitle": { "description": "Плашка праздника: Новый год, до «дня» — подпись" },
+  "holidayBannerNewyearGreetingTitle": "С Новым годом!",
+  "@holidayBannerNewyearGreetingTitle": { "description": "Плашка праздника: Новый год, 1–8 января — заголовок Поздравления" },
+  "holidayBannerNewyearGreetingSubtitle": "Пусть копится легко 🎄",
+  "@holidayBannerNewyearGreetingSubtitle": { "description": "Плашка праздника: Новый год, 1–8 января — подпись" },
+
+  "holidayBannerValentineCountdownTitle": "До Дня влюблённых {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerValentineCountdownTitle": {
+    "description": "Плашка праздника (31:4679): 14 февраля, до «дня» — заголовок, days — дней до 14 февраля",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerValentineCountdownSubtitle": "Самое время для открыток",
+  "@holidayBannerValentineCountdownSubtitle": { "description": "Плашка праздника: 14 февраля, до «дня» — подпись" },
+  "holidayBannerValentineGreetingTitle": "С Днём святого Валентина!",
+  "@holidayBannerValentineGreetingTitle": { "description": "Плашка праздника: 14 февраля, в «день» — заголовок" },
+  "holidayBannerValentineGreetingSubtitle": "Любви и тёплых трат 💌",
+  "@holidayBannerValentineGreetingSubtitle": { "description": "Плашка праздника: 14 февраля, в «день» — подпись" },
+
+  "holidayBannerDefenderCountdownTitle": "До 23 Февраля {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerDefenderCountdownTitle": {
+    "description": "Плашка праздника: 23 Февраля, до «дня» — заголовок, days — дней до 23 февраля",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerDefenderCountdownSubtitle": "Время выбрать подарки",
+  "@holidayBannerDefenderCountdownSubtitle": { "description": "Плашка праздника: 23 Февраля, до «дня» — подпись" },
+  "holidayBannerDefenderGreetingTitle": "С Днём защитника Отечества!",
+  "@holidayBannerDefenderGreetingTitle": { "description": "Плашка праздника (31:5228): 23 Февраля, в «день» — заголовок" },
+  "holidayBannerDefenderGreetingSubtitle": "Хорошего праздника",
+  "@holidayBannerDefenderGreetingSubtitle": { "description": "Плашка праздника: 23 Февраля, в «день» — подпись" },
+
+  "holidayBannerMaslenitsaCountdownTitle": "Масленица! Ещё {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}} блинов",
+  "@holidayBannerMaslenitsaCountdownTitle": {
+    "description": "Плашка праздника (31:5754): Масленица, Пн–Сб — заголовок, days — дней до Прощёного воскресенья",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerMaslenitsaCountdownSubtitle": "Прощёное воскресенье — {date}",
+  "@holidayBannerMaslenitsaCountdownSubtitle": {
+    "description": "Плашка праздника: Масленица, Пн–Сб — подпись с датой Прощёного воскресенья",
+    "placeholders": {
+      "date": { "type": "String", "example": "22 февраля" }
+    }
+  },
+  "holidayBannerMaslenitsaGreetingTitle": "Прощёное воскресенье",
+  "@holidayBannerMaslenitsaGreetingTitle": { "description": "Плашка праздника: Масленица, в Прощёное воскресенье — заголовок" },
+  "holidayBannerMaslenitsaGreetingSubtitle": "С Масленицей! 🥞",
+  "@holidayBannerMaslenitsaGreetingSubtitle": { "description": "Плашка праздника: Масленица, в Прощёное воскресенье — подпись" },
+
+  "holidayBannerWomenCountdownTitle": "До 8 Марта {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerWomenCountdownTitle": {
+    "description": "Плашка праздника (32:6137): 8 Марта, до «дня» — заголовок, days — дней до 8 марта",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerWomenCountdownSubtitle": "Пора подумать о цветах",
+  "@holidayBannerWomenCountdownSubtitle": { "description": "Плашка праздника: 8 Марта, до «дня» — подпись" },
+  "holidayBannerWomenGreetingTitle": "С 8 Марта!",
+  "@holidayBannerWomenGreetingTitle": { "description": "Плашка праздника: 8 Марта, в «день» — заголовок" },
+  "holidayBannerWomenGreetingSubtitle": "Весеннего настроения 🌷",
+  "@holidayBannerWomenGreetingSubtitle": { "description": "Плашка праздника: 8 Марта, в «день» — подпись" },
+
+  "holidayBannerLabourDayTitle": "С Праздником Весны и Труда!",
+  "@holidayBannerLabourDayTitle": { "description": "Плашка праздника: Неделя труда, 1 мая — заголовок" },
+  "holidayBannerLabourDaySubtitle": "Неделя труда началась 🔨",
+  "@holidayBannerLabourDaySubtitle": { "description": "Плашка праздника: Неделя труда, 1 мая — подпись" },
+  "holidayBannerLabourWeekTitle": "Неделя труда — {days, plural, =0{последний день} one{ещё {days} день} few{ещё {days} дня} many{ещё {days} дней} other{ещё {days} дня}}",
+  "@holidayBannerLabourWeekTitle": {
+    "description": "Плашка праздника (32:6770): Неделя труда, 2–7 мая — заголовок, days — дней до 7 мая (7 мая — 0, «последний день»)",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerLabourWeekSubtitle": "С Праздником Весны и Труда!",
+  "@holidayBannerLabourWeekSubtitle": { "description": "Плашка праздника: Неделя труда, 2–7 мая — подпись" },
+
+  "holidayBannerVictoryCountdownTitle": "Завтра — День Победы",
+  "@holidayBannerVictoryCountdownTitle": { "description": "Плашка праздника (32:7463): 9 мая, 8 мая — заголовок" },
+  "holidayBannerVictoryGreetingTitle": "С Днём Победы!",
+  "@holidayBannerVictoryGreetingTitle": { "description": "Плашка праздника: 9 мая, в «день» — заголовок" },
+  "holidayBannerVictorySubtitle": "Помним и гордимся",
+  "@holidayBannerVictorySubtitle": { "description": "Плашка праздника: 9 мая — подпись и 8, и 9 мая" },
+
+  "holidayBannerChildrenCountdownTitle": "До Дня защиты детей {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerChildrenCountdownTitle": {
+    "description": "Плашка праздника: 1 июня, до «дня» — заголовок, days — дней до 1 июня",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerChildrenCountdownSubtitle": "Скоро лето ☀️",
+  "@holidayBannerChildrenCountdownSubtitle": { "description": "Плашка праздника: 1 июня, до «дня» — подпись" },
+  "holidayBannerChildrenGreetingTitle": "С Днём защиты детей!",
+  "@holidayBannerChildrenGreetingTitle": { "description": "Плашка праздника (32:8270): 1 июня, в «день» — заголовок" },
+  "holidayBannerChildrenGreetingSubtitle": "Лето началось ☀️",
+  "@holidayBannerChildrenGreetingSubtitle": { "description": "Плашка праздника: 1 июня, в «день» — подпись" },
+
+  "holidayBannerKnowledgeCountdownTitle": "До 1 сентября {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerKnowledgeCountdownTitle": {
+    "description": "Плашка праздника: 1 сентября, до «дня» — заголовок, days — дней до 1 сентября",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerKnowledgeCountdownSubtitle": "Готовимся к учёбе 📚",
+  "@holidayBannerKnowledgeCountdownSubtitle": { "description": "Плашка праздника: 1 сентября, до «дня» — подпись" },
+  "holidayBannerKnowledgeGreetingTitle": "С Днём знаний!",
+  "@holidayBannerKnowledgeGreetingTitle": { "description": "Плашка праздника (33:8273): 1 сентября, в «день» — заголовок" },
+  "holidayBannerKnowledgeGreetingSubtitle": "Удачного учебного года",
+  "@holidayBannerKnowledgeGreetingSubtitle": { "description": "Плашка праздника: 1 сентября, в «день» — подпись" },
+
+  "holidayBannerHalloweenCountdownTitle": "До Хеллоуина {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerHalloweenCountdownTitle": {
+    "description": "Плашка праздника (33:8908 / 33:9336): Хеллоуин, до «дня» — заголовок, days — дней до 31 октября",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerHalloweenCountdownSubtitleLight": "Запасайся конфетами 🍬",
+  "@holidayBannerHalloweenCountdownSubtitleLight": { "description": "Плашка праздника: Хеллоуин, до «дня», светлая тема (милый) — подпись" },
+  "holidayBannerHalloweenCountdownSubtitleDark": "Ночь всё ближе… 🕸️",
+  "@holidayBannerHalloweenCountdownSubtitleDark": { "description": "Плашка праздника: Хеллоуин, до «дня», тёмная тема (жуткий) — подпись" },
+  "holidayBannerHalloweenGreetingTitle": "С Хеллоуином!",
+  "@holidayBannerHalloweenGreetingTitle": { "description": "Плашка праздника: Хеллоуин, 31 октября — заголовок" },
+  "holidayBannerHalloweenGreetingSubtitleLight": "Сладость или гадость? 🍬",
+  "@holidayBannerHalloweenGreetingSubtitleLight": { "description": "Плашка праздника: Хеллоуин, 31 октября, светлая тема — подпись" },
+  "holidayBannerHalloweenGreetingSubtitleDark": "Не выключай свет… 🕯️",
+  "@holidayBannerHalloweenGreetingSubtitleDark": { "description": "Плашка праздника: Хеллоуин, 31 октября, тёмная тема — подпись" },
+
+  "holidayBannerBirthdayCountdownTitle": "До твоего дня рождения {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@holidayBannerBirthdayCountdownTitle": {
+    "description": "Плашка праздника (33:9781): свой день рождения, 6 дней до — заголовок, days — дней до дня рождения",
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
+  "holidayBannerBirthdayCountdownSubtitle": "{name}, готовься к поздравлениям",
+  "@holidayBannerBirthdayCountdownSubtitle": {
+    "description": "Плашка праздника: свой день рождения, до «дня» — подпись с именем аккаунта (без склонения)",
+    "placeholders": {
+      "name": { "type": "String", "example": "Аня" }
+    }
+  },
+  "holidayBannerBirthdayCountdownSubtitleNoName": "Готовься к поздравлениям",
+  "@holidayBannerBirthdayCountdownSubtitleNoName": { "description": "Плашка праздника: свой день рождения, до «дня» — подпись, если имени аккаунта на телефоне нет" },
+  "holidayBannerBirthdayGreetingTitle": "С днём рождения, {name}!",
+  "@holidayBannerBirthdayGreetingTitle": {
+    "description": "Плашка праздника: свой день рождения, в «день» — заголовок с именем аккаунта",
+    "placeholders": {
+      "name": { "type": "String", "example": "Аня" }
+    }
+  },
+  "holidayBannerBirthdayGreetingTitleNoName": "С днём рождения!",
+  "@holidayBannerBirthdayGreetingTitleNoName": { "description": "Плашка праздника: свой день рождения, в «день» — заголовок, если имени аккаунта на телефоне нет" },
+  "holidayBannerBirthdayGreetingSubtitle": "Пусть миллион копится сам 🎂",
+  "@holidayBannerBirthdayGreetingSubtitle": { "description": "Плашка праздника: свой день рождения, в «день» — подпись" }
 }
