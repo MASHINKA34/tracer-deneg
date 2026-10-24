@@ -253,12 +253,10 @@ final class SyncWebSocket {
     final channel = _channel;
     final age = _ageMs();
     final phase = _phase;
-    if (channel != null) {
-      _closeQuietly(channel, WsCloseCode.normal, closeReason);
-    }
     _detach();
     _phase = WsPhase.off;
     if (channel != null) {
+      _closeQuietly(channel, WsCloseCode.normal, closeReason);
       _log.info(
         'ws closed: $why after ${age ?? '-'}ms → '
         'code=${WsCloseCode.normal} reason=$closeReason',
@@ -544,13 +542,13 @@ final class SyncWebSocket {
       );
       return;
     }
+    _pingSentAt = _clock();
     try {
       channel.sink.add(_pingMessage);
     } catch (e, st) {
       _lost(channel, 'ping not sent: ${describeError(e)}', e, st);
       return;
     }
-    _pingSentAt = _clock();
     _log.fine(
       'ws ping sent after ${wsPingInterval.inSeconds}s, waiting for pong',
     );
@@ -564,8 +562,8 @@ final class SyncWebSocket {
     StackTrace? stack,
   ]) {
     final age = _age();
-    _closeQuietly(channel, WsCloseCode.noPong, WsCloseReason.noPong);
     _detach();
+    _closeQuietly(channel, WsCloseCode.noPong, WsCloseReason.noPong);
     _dropped = true;
     _forgetFailuresIfStable(age);
     _retryLater(

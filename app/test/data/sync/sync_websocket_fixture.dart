@@ -16,7 +16,9 @@ final class FakeWebSocketChannel implements WebSocketChannel {
   FakeWebSocketChannel(this.headers);
 
   final Map<String, String> headers;
-  final StreamController<Object?> _incoming = StreamController<Object?>();
+  final StreamController<Object?> _incoming = StreamController<Object?>(
+    sync: true,
+  );
   final List<Object?> sent = [];
   late final FakeWebSocketSink _sink = FakeWebSocketSink(this);
 
@@ -96,7 +98,11 @@ final class FakeWebSocketSink implements WebSocketSink {
   void add(Object? data) {
     if (closed) throw StateError('Cannot add event after closing');
     _channel.sent.add(data);
-    if (_channel.autoPong && data == '{"type":"ping"}') _channel.pong();
+    if (_channel.autoPong && data == '{"type":"ping"}') {
+      scheduleMicrotask(() {
+        if (!_channel._incoming.isClosed) _channel.pong();
+      });
+    }
   }
 
   @override
@@ -112,6 +118,7 @@ final class FakeWebSocketSink implements WebSocketSink {
       _channel.clientCloseCode = closeCode;
       _channel.clientCloseReason = closeReason;
       if (!_done.isCompleted) _done.complete();
+      if (!_channel._incoming.isClosed) unawaited(_channel._incoming.close());
     }
     return _done.future;
   }
