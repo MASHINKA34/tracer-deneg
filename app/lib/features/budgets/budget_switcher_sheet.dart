@@ -246,7 +246,16 @@ class BudgetSheet extends ConsumerWidget {
     ref.listen(memberProfilesProvider, _logProfiles);
     final budgets = ref.watch(switcherBudgetsProvider);
     final list = budgets.value;
-    final profiles = ref.watch(memberProfilesProvider).value ?? const {};
+    final user = ref.watch(sessionProvider).user;
+    final profiles = {
+      if (user != null)
+        user.userId: MemberProfile(
+          userId: user.userId,
+          displayName: user.displayName,
+          avatarColor: CategoryColor.blue,
+        ),
+      ...?ref.watch(memberProfilesProvider).value,
+    };
     final month = YearMonth.of(ref.watch(clockProvider).today());
     return Flexible(
       child: SingleChildScrollView(

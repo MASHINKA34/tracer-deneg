@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/app.dart';
+import 'package:milionchik/core/clock.dart';
 import 'package:milionchik/core/router.dart';
+import 'package:milionchik/data/providers.dart';
+import 'package:milionchik/data/session/session.dart';
+import 'package:milionchik/data/session/session_providers.dart';
+import 'package:milionchik/data/session/session_state.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
 import 'package:milionchik/data/repositories/recurring_repository.dart';
 import 'package:milionchik/data/current_user.dart';
@@ -16,6 +22,7 @@ import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/profile/profile_budgets.dart';
 import 'package:milionchik/features/recurring/recurring_screen.dart';
 import 'package:milionchik/features/stats/stats_screen.dart';
+import 'package:milionchik/l10n/app_localizations.dart';
 import 'package:milionchik/ui/components/avatar.dart';
 import 'package:milionchik/ui/components/chip.dart';
 import 'package:milionchik/ui/components/month_card.dart';
@@ -274,4 +281,57 @@ void main() {
       );
     });
   }
+
+  testUnmounting('свой профиль сервер не присылает: у своего аватара буква из '
+      'имени вошедшего', (tester) async {
+    final db = openTestDatabase();
+    final fixture = (await tester.runAsync(() async {
+      final fixture = await SwitcherFixture.mockup(db);
+      await db.customStatement(
+        "DELETE FROM member_profiles WHERE user_id = 'user-server-masha'",
+      );
+      return fixture;
+    }))!;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          clockProvider.overrideWithValue(Clock(now: () => testNow)),
+          sessionProvider.overrideWithBuild(
+            (ref, _) => const SessionActive(
+              SessionUser(
+                userId: 'user-server-masha',
+                login: 'masha',
+                displayName: 'Маша',
+              ),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          locale: const Locale('ru'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                BudgetSheet(current: fixture.personalId, onChoice: (_) {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      [
+        for (final a in tester.widgetList<AppAvatar>(
+          find.descendant(of: _row(familyId), matching: find.byType(AppAvatar)),
+        ))
+          a.letter,
+      ],
+      ['А', 'Д', 'М'],
+    );
+  });
 }
