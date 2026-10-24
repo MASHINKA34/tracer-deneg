@@ -47,12 +47,14 @@ final class NewExpenseState {
     required this.date,
     this.comment = '',
     this.saving = false,
+    this.budgetId,
   });
 
   final KeypadInput input;
   final LocalDate date;
   final String comment;
   final bool saving;
+  final String? budgetId;
 
   NewExpenseState copyWith({
     KeypadInput? input,
@@ -64,6 +66,15 @@ final class NewExpenseState {
     date: date ?? this.date,
     comment: comment ?? this.comment,
     saving: saving ?? this.saving,
+    budgetId: budgetId,
+  );
+
+  NewExpenseState withBudget(String? budgetId) => NewExpenseState(
+    input: input,
+    date: date,
+    comment: comment,
+    saving: saving,
+    budgetId: budgetId,
   );
 }
 
@@ -136,6 +147,29 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
     return true;
   }
 
+  bool setBudget(String budgetId, {required String? selected}) {
+    final from = state.budgetId ?? selected;
+    if (budgetId == from) {
+      _log.fine('new expense budget budgetId=$budgetId unchanged');
+      return false;
+    }
+    state = state.withBudget(budgetId == selected ? null : budgetId);
+    _log.fine(
+      'new expense budget ${from ?? '-'} → $budgetId by=budget sheet '
+      '(selected budget stays ${selected ?? '-'})',
+    );
+    return true;
+  }
+
+  void budgetGone(String budgetId) {
+    if (state.budgetId != budgetId) return;
+    state = state.withBudget(null);
+    _log.warning(
+      'new expense budget budgetId=$budgetId is gone (removed while the '
+      'screen was open) → back to the selected budget',
+    );
+  }
+
   bool digit(int digit) => _apply('digit $digit', state.input.digit(digit));
 
   bool comma() => _apply('comma', state.input.comma());
@@ -201,7 +235,8 @@ final class NewExpenseController extends Notifier<NewExpenseState> {
     final sw = Stopwatch()..start();
     String? budgetId;
     try {
-      budgetId = await ref.read(selectedBudgetIdProvider.future);
+      budgetId =
+          current.budgetId ?? await ref.read(selectedBudgetIdProvider.future);
       if (budgetId == null) {
         _log.warning(
           'expense save category=${category.id} date=${current.date} '

@@ -26,6 +26,7 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/budget_switcher_sheet.dart';
 import '../month/day_sheet.dart' show spokenAmount;
 import 'category_grid.dart';
 import 'expense_comment_sheet.dart';
@@ -185,9 +186,28 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
     _controller.setDate(chosen, by: 'date sheet');
   }
 
+  Future<void> _pickBudget() async {
+    final chosen = ref.read(newExpenseControllerProvider(widget.date)).budgetId;
+    final selected = ref.read(selectedBudgetIdProvider).value;
+    final current = chosen ?? selected;
+    _log.fine('budget chip tap budgetId=${current ?? '-'} → budget sheet');
+    final choice = await showBudgetSheet(
+      context,
+      current: current,
+      purpose: 'new expense',
+      actions: false,
+    );
+    if (!mounted || choice is! BudgetPicked) return;
+    _controller.setBudget(
+      choice.budgetId,
+      selected: ref.read(selectedBudgetIdProvider).value,
+    );
+  }
+
   Future<void> _editComment() async {
-    final current = ref.read(newExpenseControllerProvider(widget.date)).comment;
-    final budgetId = ref.read(selectedBudgetIdProvider).value;
+    final state = ref.read(newExpenseControllerProvider(widget.date));
+    final current = state.comment;
+    final budgetId = state.budgetId ?? ref.read(selectedBudgetIdProvider).value;
     _log.fine('comment chip tap length=${textLength(current)} → comment sheet');
     final result = await showExpenseCommentSheet(
       context,
@@ -315,13 +335,18 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
     final colors = context.colors;
     final state = ref.watch(newExpenseControllerProvider(widget.date));
     final today = ref.watch(clockProvider).today();
-    final budgetId = ref.watch(selectedBudgetIdProvider).value;
+    final chosen = state.budgetId;
+    final budgetId = chosen ?? ref.watch(selectedBudgetIdProvider).value;
     Budget? budget;
     if (budgetId != null) {
-      ref.listen(
-        budgetProvider(budgetId),
-        (previous, next) => _logBudget(budgetId, next),
-      );
+      ref.listen(budgetProvider(budgetId), (previous, next) {
+        _logBudget(budgetId, next);
+        if (chosen != null &&
+            next is AsyncData<Budget?> &&
+            next.value == null) {
+          _controller.budgetGone(chosen);
+        }
+      });
       budget = ref.watch(budgetProvider(budgetId)).value;
       ref.listen(
         categoriesProvider(budgetId),
@@ -352,6 +377,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                     : budget.kind == BudgetKind.personal
                     ? l10n.newExpensePersonalBudget
                     : budget.name,
+                onBudgetTap: _pickBudget,
                 onClose: _close,
               ),
             ),
@@ -451,11 +477,13 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.budgetEmoji,
     required this.budgetLabel,
+    required this.onBudgetTap,
     required this.onClose,
   });
 
   final String? budgetEmoji;
   final String? budgetLabel;
+  final VoidCallback onBudgetTap;
   final VoidCallback onClose;
 
   static const double _closeWidth = 52;
@@ -491,7 +519,11 @@ class _TopBar extends StatelessWidget {
                       maxWidth:
                           (constraints.maxWidth - _closeWidth - _endGap) / 2,
                     ),
-                    child: AppChip(emoji: budgetEmoji, label: label),
+                    child: AppChip(
+                      emoji: budgetEmoji,
+                      label: label,
+                      onTap: onBudgetTap,
+                    ),
                   ),
                 const SizedBox(width: _endGap),
               ],

@@ -10,7 +10,25 @@ import '../../data/repositories/repository_errors.dart';
 
 final _log = Logger('expense');
 
-enum ExpenseField { amount, category, date, comment }
+enum ExpenseField { amount, category, date, comment, budget }
+
+enum ExpenseMove { moved, unchanged, failed }
+
+Category? categoryForMove(Category? current, List<Category> target) {
+  Category? other;
+  for (final category in target) {
+    if (category.isSystem) other ??= category;
+  }
+  if (current != null && !current.isSystem) {
+    final name = normalizeSearchText(current.name);
+    for (final category in target) {
+      if (!category.isSystem && normalizeSearchText(category.name) == name) {
+        return category;
+      }
+    }
+  }
+  return other;
+}
 
 final class ExpenseEdits {
   const ExpenseEdits({
@@ -19,6 +37,7 @@ final class ExpenseEdits {
     this.spentOn,
     this.comment,
     this.saving = false,
+    this.budgetId,
   });
 
   final Money? amount;
@@ -26,6 +45,7 @@ final class ExpenseEdits {
   final LocalDate? spentOn;
   final String? comment;
   final bool saving;
+  final String? budgetId;
 
   Money amountOf(Expense expense) => amount ?? expense.amount;
 
@@ -35,12 +55,15 @@ final class ExpenseEdits {
 
   String commentOf(Expense expense) => comment ?? expense.comment;
 
+  String budgetOf(Expense expense) => budgetId ?? expense.budgetId;
+
   List<ExpenseField> changedFields(Expense expense) => [
     if (amount != null && amount != expense.amount) ExpenseField.amount,
     if (categoryId != null && categoryId != expense.categoryId)
       ExpenseField.category,
     if (spentOn != null && spentOn != expense.spentOn) ExpenseField.date,
     if (comment != null && comment != expense.comment) ExpenseField.comment,
+    if (budgetId != null && budgetId != expense.budgetId) ExpenseField.budget,
   ];
 
   ExpenseEdits copyWith({
@@ -49,12 +72,14 @@ final class ExpenseEdits {
     LocalDate? spentOn,
     String? comment,
     bool? saving,
+    String? budgetId,
   }) => ExpenseEdits(
     amount: amount ?? this.amount,
     categoryId: categoryId ?? this.categoryId,
     spentOn: spentOn ?? this.spentOn,
     comment: comment ?? this.comment,
     saving: saving ?? this.saving,
+    budgetId: budgetId ?? this.budgetId,
   );
 }
 
@@ -68,8 +93,82 @@ final class EditExpenseController extends Notifier<ExpenseEdits> {
 
   final String expenseId;
 
+  String? _categoryBeforeMove;
+
   @override
   ExpenseEdits build() => const ExpenseEdits();
+
+  Future<ExpenseMove> moveTo(Expense expense, String budgetId) async {
+    final edits = state;
+    final from = edits.budgetOf(expense);
+    if (budgetId == from) {
+      _log.fine('expense edit id=$expenseId budget $budgetId unchanged');
+      return ExpenseMove.unchanged;
+    }
+    if (budgetId == expense.budgetId) {
+      final category = _categoryBeforeMove;
+      state = ExpenseEdits(
+        amount: edits.amount,
+        categoryId: category,
+        spentOn: edits.spentOn,
+        comment: edits.comment,
+        saving: edits.saving,
+      );
+      _log.fine(
+        'expense edit id=$expenseId budget $from → $budgetId: back to the '
+        'saved budget, category ${category ?? 'saved'} restored',
+      );
+      return ExpenseMove.moved;
+    }
+    final sw = Stopwatch()..start();
+    final currentId = edits.categoryOf(expense);
+    try {
+      final categories = ref.read(categoriesRepositoryProvider);
+      final source = await categories.watchByBudget(from).first;
+      final target = await categories.watchByBudget(budgetId).first;
+      final current = source.where((c) => c.id == currentId).firstOrNull;
+      final match = categoryForMove(current, target);
+      if (match == null) {
+        _log.warning(
+          'expense edit id=$expenseId move $from → $budgetId failed after '
+          '${sw.elapsedMilliseconds}ms: target budget has no categories, '
+          'not even «Другое» → budget unchanged',
+        );
+        return ExpenseMove.failed;
+      }
+      if (!ref.mounted) {
+        _log.fine(
+          'expense edit id=$expenseId move $from → $budgetId dropped: the '
+          'screen is closed',
+        );
+        return ExpenseMove.failed;
+      }
+      if (from == expense.budgetId) _categoryBeforeMove = edits.categoryId;
+      state = state.copyWith(budgetId: budgetId, categoryId: match.id);
+      final how = match.isSystem && current?.isSystem != true
+          ? 'no category with this name there → «Другое»'
+          : 'same category name';
+      _log.fine(
+        'expense edit id=$expenseId budget $from → $budgetId category '
+        '$currentId → ${match.id} ($how) in ${sw.elapsedMilliseconds}ms',
+      );
+      return ExpenseMove.moved;
+    } catch (e, st) {
+      var cause = e;
+      while (cause is ProviderException) {
+        cause = cause.exception;
+      }
+      final redacted = redactDbError(cause);
+      _log.severe(
+        'expense edit id=$expenseId move $from → $budgetId failed after '
+        '${sw.elapsedMilliseconds}ms, budget unchanged: '
+        '${describeError(redacted)}',
+        redacted,
+        st,
+      );
+      return ExpenseMove.failed;
+    }
+  }
 
   bool setAmount(Money amount) {
     final error = validateAmount(amount);
@@ -164,6 +263,9 @@ final class EditExpenseController extends Notifier<ExpenseEdits> {
           .read(expensesRepositoryProvider)
           .update(
             expenseId,
+            budgetId: changed.contains(ExpenseField.budget)
+                ? edits.budgetId
+                : null,
             amount: changed.contains(ExpenseField.amount) ? edits.amount : null,
             categoryId: changed.contains(ExpenseField.category)
                 ? edits.categoryId
@@ -175,12 +277,15 @@ final class EditExpenseController extends Notifier<ExpenseEdits> {
           );
       _log.info(
         'expense updated id=$expenseId budgetId=${updated.budgetId} '
-        'fields=$names in ${sw.elapsedMilliseconds}ms',
+        'fields=$names'
+        '${changed.contains(ExpenseField.budget) ? ' movedFrom=${original.budgetId}' : ''} '
+        'in ${sw.elapsedMilliseconds}ms',
       );
       _log.fine(
         'expense updated id=$expenseId amountKopecks=${updated.amount.kopecks} '
         'category=${updated.categoryId} date=${updated.spentOn}',
       );
+      _categoryBeforeMove = null;
       if (ref.mounted) state = const ExpenseEdits();
       return EditExpenseSave.saved;
     } on RepositoryException catch (e, st) {

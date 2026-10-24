@@ -12,8 +12,8 @@ Rect _rect(WidgetTester tester, Finder finder) => tester.getRect(finder);
 
 void main() {
   testWidgets('360 × 800, статус-бар 32, шрифт 1.0: поля, подписи и кнопки '
-      'на местах 43:4368; области нажатия категории, даты и комментария не '
-      'меньше 48 и не заходят друг на друга', (tester) async {
+      'на местах 43:4368; области нажатия категории, даты, комментария и '
+      'бюджета не меньше 48 и не заходят друг на друга', (tester) async {
     await loadTestFonts();
     final h = await EditHarness.start(tester, topInset: 32);
     await h.openById(h.pyaterochka.id);
@@ -47,23 +47,23 @@ void main() {
 
     expect(
       _rect(tester, h.row('Категория')),
-      const Rect.fromLTRB(16, 224, 344, 286),
+      const Rect.fromLTRB(16, 224, 344, 276),
     );
     expect(
       _rect(tester, h.row('Дата')),
-      const Rect.fromLTRB(16, 286, 344, 334),
+      const Rect.fromLTRB(16, 276, 344, 324),
     );
     expect(
       _rect(tester, h.row('Комментарий')),
-      const Rect.fromLTRB(16, 334, 344, 382),
+      const Rect.fromLTRB(16, 324, 344, 372),
     );
     expect(
       _rect(tester, h.row('Бюджет')),
-      const Rect.fromLTRB(16, 382, 344, 420),
+      const Rect.fromLTRB(16, 372, 344, 420),
     );
     expect(
       tester.getSemantics(h.row('Бюджет')).flagsCollection.isButton,
-      isFalse,
+      isTrue,
     );
 
     final save = _rect(tester, h.saveButton);
@@ -108,6 +108,7 @@ void main() {
           expect(rows[i].bottom, lessThanOrEqualTo(rows[i + 1].top));
           expect(rows[i].width, width - 32);
         }
+        expect(rows[3].height, greaterThanOrEqualTo(48));
         final back = _rect(tester, h.inEdit(find.bySemanticsLabel('Назад')));
         final trash = _rect(
           tester,

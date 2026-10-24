@@ -22,6 +22,7 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/budget_switcher_sheet.dart';
 import '../month/day_sheet.dart' show expenseCategory, spokenAmount;
 import 'category_grid.dart';
 import 'edit_expense_controller.dart';
@@ -252,10 +253,32 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final result = await showExpenseCommentSheet(
       context,
       initial: current,
-      budgetId: expense.budgetId,
+      budgetId: ref.read(editExpenseControllerProvider(_id)).budgetOf(expense),
     );
     if (!mounted || result == null) return;
     _controller.setComment(result);
+  }
+
+  Future<void> _editBudget(Expense expense) async {
+    final current = ref
+        .read(editExpenseControllerProvider(_id))
+        .budgetOf(expense);
+    _log.fine(
+      'expense edit id=$_id budget tap budgetId=$current → budget sheet',
+    );
+    final choice = await showBudgetSheet(
+      context,
+      current: current,
+      purpose: 'expense edit',
+      actions: false,
+    );
+    if (!mounted || choice is! BudgetPicked) return;
+    final moved = await _controller.moveTo(expense, choice.budgetId);
+    if (!mounted || moved != ExpenseMove.failed) return;
+    showAppSnackbar(
+      context,
+      text: AppLocalizations.of(context).expenseMoveFailed,
+    );
   }
 
   Future<void> _save(Expense expense) async {
@@ -298,6 +321,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
   Category? _categoryOf(
     Expense expense,
+    String budgetId,
     String categoryId,
     AsyncValue<List<Category>> categories,
   ) {
@@ -311,7 +335,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       _warnedCategory = categoryId;
       _log.warning(
         'expense edit id=$_id category=$categoryId not found in '
-        'budgetId=${expense.budgetId} → shown as '
+        'budgetId=$budgetId → shown as '
         '${category == null ? 'no category' : 'system category ${category.id}'}',
       );
     }
@@ -386,7 +410,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final colors = context.colors;
     final edits = ref.watch(editExpenseControllerProvider(_id));
     final today = ref.watch(clockProvider).today();
-    final budgetId = expense.budgetId;
+    final budgetId = edits.budgetOf(expense);
     ref.listen(
       categoriesProvider(budgetId),
       (previous, next) => _logCategories(budgetId, next),
@@ -401,6 +425,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         : categoriesValue.value ?? const <Category>[];
     final category = _categoryOf(
       expense,
+      budgetId,
       edits.categoryOf(expense),
       categoriesValue,
     );
@@ -434,7 +459,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     label: l10n.expenseEditCategory,
                     value: category?.name ?? '',
                     badge: category,
-                    padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
+                    padding: const EdgeInsets.fromLTRB(14, 12, 12, 0),
                     onTap: () => _editCategory(categories),
                   ),
                   _FieldRow(
@@ -444,13 +469,13 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                       edits.dateOf(expense),
                       today,
                     ),
-                    padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                    padding: const EdgeInsets.fromLTRB(14, 24, 12, 4),
                     onTap: () => _editDate(expense),
                   ),
                   _FieldRow(
                     label: l10n.expenseEditComment,
                     value: comment,
-                    padding: const EdgeInsets.fromLTRB(14, 10, 12, 18),
+                    padding: const EdgeInsets.fromLTRB(14, 20, 12, 8),
                     onTap: () => _editComment(expense),
                   ),
                   _FieldRow(
@@ -458,7 +483,8 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     value: budget == null
                         ? ''
                         : '${budget.emoji} ${_budgetName(l10n, budget)}',
-                    padding: const EdgeInsets.fromLTRB(14, 6, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(14, 16, 12, 12),
+                    onTap: () => _editBudget(expense),
                   ),
                 ],
               ),
