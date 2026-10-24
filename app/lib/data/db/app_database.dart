@@ -15,6 +15,8 @@ final _log = Logger('db');
 
 const String databaseFileName = 'milionchik.sqlite';
 
+const int databaseBusyTimeoutMs = 5000;
+
 @DriftDatabase(
   tables: [
     Budgets,
@@ -65,6 +67,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _beforeOpen(OpeningDetails details) async {
     _opening = details;
+    await customStatement('PRAGMA busy_timeout = $databaseBusyTimeoutMs');
     _log.fine(
       'database before open version=${details.versionNow} '
       'previous=${details.versionBefore ?? '-'} created=${details.wasCreated}',
@@ -103,6 +106,16 @@ Future<AppDatabase> openAppDatabase({
       'created=${opened._opening?.wasCreated} '
       'sqlite=${sqlite.read<String>('version')} '
       'in ${sw.elapsedMilliseconds}ms',
+    );
+    final busy = await opened.customSelect('PRAGMA busy_timeout').getSingle();
+    final journal = await opened
+        .customSelect('PRAGMA journal_mode')
+        .getSingle();
+    _log.fine(
+      'database connection busyTimeout=${busy.data.values.first}ms '
+      'journal=${journal.data.values.first}: the app and a background task '
+      'open separate connections, a write waits for the other one instead of '
+      'failing as locked',
     );
     return opened;
   } catch (e, st) {
