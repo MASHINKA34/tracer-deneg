@@ -113,6 +113,7 @@ void main() {
       'POST /api/v1/auth/refresh',
       'POST /api/v1/auth/login',
       'GET /api/v1/sync/pull',
+      'GET /api/v1/me',
     ]);
     expect(server.pulls[otherAccess], [0]);
     final state = h.container.read(sessionProvider);

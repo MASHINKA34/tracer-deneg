@@ -10,6 +10,7 @@ import '../../core/isolate_lock.dart';
 import '../api/api_exception.dart';
 import '../api/sync_api.dart';
 import '../db/redact_db_error.dart';
+import '../holiday_settings.dart';
 import '../providers.dart';
 import '../recurring_service.dart';
 import '../repositories/outbox_queue.dart';
@@ -1005,7 +1006,15 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
         .read(budgetRemovedNoticeProvider.notifier)
         .post(budgetId: budget.budgetId, name: budget.name, kind: kind),
     watchLastSyncAt: () => ref.read(syncStateQueriesProvider).watchLastSyncAt(),
-    afterPull: (_) => ref.read(recurringServiceProvider).afterSync(),
+    afterPull: (pull) async {
+      try {
+        await ref.read(recurringServiceProvider).afterSync();
+      } finally {
+        await ref
+            .read(accountHolidaySettingsProvider.notifier)
+            .refreshAfterPull(pull.reason);
+      }
+    },
     beforeRun: jobLock == null
         ? null
         : backgroundJobGate(jobLock, () => ref.read(appDatabaseProvider)),

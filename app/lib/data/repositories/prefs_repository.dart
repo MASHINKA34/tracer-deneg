@@ -13,6 +13,7 @@ abstract final class PrefKeys {
   static const String signedInBefore = 'signedInBefore';
   static const String themeMode = 'themeMode';
   static const String selectedBudgetId = 'selectedBudgetId';
+  static const String holidaySettings = 'holidaySettings';
 
   static const Set<String> phoneSettings = {
     themeMode,

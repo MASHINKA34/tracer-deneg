@@ -207,7 +207,7 @@ void main() {
     );
     expect(
       [for (final c in server.calls.skip(before)) c.split('/').last],
-      ['push', 'pull'],
+      ['push', 'pull', 'me'],
     );
     expect(inPopover(find.text('Синхронизировано')), findsOneWidget);
     expect(

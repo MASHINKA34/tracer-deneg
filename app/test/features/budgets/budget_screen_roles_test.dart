@@ -33,7 +33,7 @@ Future<void> _confirm(ProfileHarness h, String label) =>
 
 List<FakeCall> _actions(ProfileHarness h) => [
   for (final call in h.adapter.calls)
-    if (!call.path.endsWith('/sync/pull')) call,
+    if (!call.path.endsWith('/sync/pull') && !call.path.endsWith('/me')) call,
 ];
 
 void main() {

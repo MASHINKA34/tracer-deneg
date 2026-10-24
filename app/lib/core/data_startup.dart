@@ -11,6 +11,7 @@ import '../data/current_user.dart';
 import '../data/db/app_database.dart';
 import '../data/db/redact_db_error.dart';
 import '../data/dev_seed.dart';
+import '../data/holiday_settings.dart';
 import '../data/providers.dart';
 import '../data/repositories/prefs_repository.dart';
 import '../data/session/secure_values.dart';
@@ -55,6 +56,7 @@ final class DataReady extends DataStartup {
     this.todayOverride,
     this.session,
     this.themeMode = ThemeMode.system,
+    this.holidaySettings,
   });
 
   final AppDatabase db;
@@ -62,6 +64,7 @@ final class DataReady extends DataStartup {
   final LocalDate? todayOverride;
   final Session? session;
   final ThemeMode themeMode;
+  final CachedHolidaySettings? holidaySettings;
 
   bool get devSeedDemo =>
       seed.status == DevSeedStatus.seeded ||
@@ -130,12 +133,17 @@ Future<DataStartup> startData({
     todayOverride = await loadTodayOverride(DriftPrefsRepository(db));
   }
   final themeMode = await loadThemeMode(DriftPrefsRepository(db));
+  final holidaySettings = await loadHolidaySettings(
+    DriftPrefsRepository(db),
+    userId: session?.user.userId,
+  );
   return DataReady(
     db,
     result,
     todayOverride: todayOverride,
     session: session,
     themeMode: themeMode,
+    holidaySettings: holidaySettings,
   );
 }
 
@@ -229,6 +237,7 @@ Widget appRoot(
     :final todayOverride,
     :final session,
     :final themeMode,
+    :final holidaySettings,
   ) =>
     ProviderScope(
       overrides: [
@@ -241,6 +250,8 @@ Widget appRoot(
           ),
         if (kDebugMode && todayOverride != null)
           todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
+        if (holidaySettings != null)
+          startupHolidaySettingsProvider.overrideWithValue(holidaySettings),
         if (reporting != null)
           errorReportingProvider.overrideWithValue(reporting),
         if (background) ...[

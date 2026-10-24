@@ -87,7 +87,11 @@ void main() {
         .read(pullControllerProvider.notifier)
         .run(PullReason.manual);
 
-    expect(server.order, ['POST /api/v1/sync/push', 'GET /api/v1/sync/pull']);
+    expect(server.order, [
+      'POST /api/v1/sync/push',
+      'GET /api/v1/sync/pull',
+      'GET /api/v1/me',
+    ]);
     expect(await DriftOutboxQueue(db).count(), 0);
     expect(server.countOf(SyncEntity.expense), 1);
     expect(pulled!.reason, PullReason.manual);
