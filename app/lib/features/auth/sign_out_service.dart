@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import '../../data/repositories/account_data_cleaner.dart';
 import '../../data/session/session_providers.dart';
 import '../../data/sync/pull_controller.dart';
+import '../../data/sync/sync_engine.dart';
 import '../../data/sync/sync_service.dart';
 
 final _log = Logger('auth');
@@ -107,6 +108,7 @@ class SignOutService {
       'userId=${userId ?? '-'}$lost',
     );
     await _waitForPull();
+    await _ref.read(syncEngineProvider).hold('sign-out');
 
     final AccountDataRemoval removal;
     try {
@@ -122,6 +124,7 @@ class SignOutService {
         error,
         st,
       );
+      _ref.read(syncEngineProvider).release('sign-out stopped, data kept');
       return SignOutFailed(error);
     }
 

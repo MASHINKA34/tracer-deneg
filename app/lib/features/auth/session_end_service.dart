@@ -10,6 +10,7 @@ import '../../data/session/session.dart';
 import '../../data/session/session_providers.dart';
 import '../../data/session/session_state.dart';
 import '../../data/sync/pull_controller.dart';
+import '../../data/sync/sync_engine.dart';
 
 final _log = Logger('auth');
 
@@ -146,6 +147,7 @@ class SessionEndService {
       'userId=$previousId → clearing previous account data like sign-out',
     );
     await _waitForPull(action);
+    await _ref.read(syncEngineProvider).hold('account-switch');
     final removal = await _ref
         .read(accountDataCleanerProvider)
         .clearAccountData('account-switch');

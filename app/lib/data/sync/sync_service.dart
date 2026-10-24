@@ -5,8 +5,8 @@ import 'package:shared/shared.dart';
 import '../api/api_exception.dart';
 import '../api/sync_api.dart';
 import '../db/redact_db_error.dart';
-import '../providers.dart';
 import '../repositories/outbox_queue.dart';
+import 'sync_engine.dart';
 
 final _log = Logger('sync');
 
@@ -264,9 +264,6 @@ String _codes(List<SyncRejection> rejected) {
 }
 
 final syncServiceProvider = Provider<SyncService>(
-  (ref) => PushOnceSyncService(
-    api: ref.watch(syncApiProvider),
-    outbox: ref.watch(outboxQueueProvider),
-  ),
+  (ref) => ref.watch(syncEngineProvider),
   name: 'syncService',
 );

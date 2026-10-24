@@ -8,6 +8,7 @@ import '../../core/clock.dart';
 import '../../data/api/api_error_text.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/api/api_providers.dart';
+import '../../data/sync/sync_engine.dart';
 import '../../l10n/app_localizations.dart';
 import '../components/button.dart';
 import '../components/chip.dart';
@@ -401,6 +402,7 @@ class _Actions extends StatelessWidget {
             },
           ),
           const _ApiHealthButton(),
+          const _SyncCycleButton(),
         ],
       ),
     );
@@ -446,5 +448,37 @@ class _ApiHealthButton extends ConsumerWidget {
     size: AppButtonSize.m,
     type: AppButtonType.soft,
     onPressed: () => _check(context, ref),
+  );
+}
+
+class _SyncCycleButton extends ConsumerWidget {
+  const _SyncCycleButton();
+
+  Future<void> _sync(BuildContext context, WidgetRef ref) async {
+    _log.info('catalog sync tap → sync engine cycle reason=manual');
+    final result = await ref.read(syncEngineProvider).sync(SyncReason.manual);
+    _log.info('catalog sync finished $result');
+    if (!context.mounted) return;
+    showAppSnackbar(
+      context,
+      text: switch (result) {
+        SyncCycleDone(:final push, :final pull) =>
+          'Синхронизировано: отправлено ${push.applied}, '
+              'отклонено ${push.rejected.length}, '
+              'получено ${pull.counts.total}',
+        SyncCycleFailed(:final error, :final retryIn) =>
+          '${error is ApiException ? apiErrorText(AppLocalizations.of(context), error) : error.runtimeType}'
+              '${retryIn == null ? '' : ', повтор через ${retryIn.inSeconds} с'}',
+        SyncCycleSkipped(:final why) => 'Синхронизация пропущена: $why',
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AppButton(
+    label: 'Синхронизировать',
+    size: AppButtonSize.m,
+    type: AppButtonType.soft,
+    onPressed: () => _sync(context, ref),
   );
 }

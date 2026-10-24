@@ -11,6 +11,7 @@ import '../providers.dart';
 import '../session/session_providers.dart';
 import '../session/session_state.dart';
 import 'pull_service.dart';
+import 'sync_engine.dart';
 
 final _log = Logger('sync');
 
@@ -164,8 +165,15 @@ final class PullController extends Notifier<PullStatus> {
     );
     try {
       final result = await ref
-          .read(pullServiceProvider)
-          .pull(reason, attempt: attempt);
+          .read(syncEngineProvider)
+          .pullNow(reason, attempt: attempt);
+      if (result == null) {
+        _setState(const PullIdle());
+        _log.fine(
+          'pull status → idle: sync engine skipped pull reason=${reason.name}',
+        );
+        return null;
+      }
       _failures = 0;
       _setState(PullIdle(last: result));
       _log.fine('pull status → idle after ${result.pages} page(s)');
