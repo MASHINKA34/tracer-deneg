@@ -14,6 +14,7 @@ import 'core/logging/app_logging.dart';
 import 'core/logging/crash_test.dart';
 import 'core/logging/device_info.dart';
 import 'core/logging/error_handlers.dart';
+import 'core/logging/error_reporting.dart';
 import 'core/logging/error_reports.dart';
 import 'core/orientation_policy.dart';
 import 'data/api/api_config.dart';
@@ -104,13 +105,26 @@ Future<void> main() async {
   OrientationPolicy().start();
 
   final data = await startData();
+  final reporting = ErrorReporting(
+    queue: reports,
+    device: ReportDevice(
+      appVersion: version,
+      device: device,
+      buildMode: buildMode,
+      logLevel: logging.levelName,
+    ),
+    logFiles: () => [
+      ?logging.previousLogFile,
+      ?logging.logFile,
+    ],
+  );
 
   // 5. Первый кадр.
   binding.addPostFrameCallback((_) {
     _log.info('first frame in ${startup.elapsedMilliseconds}ms');
   });
   _log.fine('runApp after ${startup.elapsedMilliseconds}ms');
-  runApp(appRoot(data));
+  runApp(appRoot(data, reporting: reporting));
 
   // 6. Шрифты на месте (в фоне, не задерживает первый кадр).
   unawaited(checkFontAssets(rootBundle));

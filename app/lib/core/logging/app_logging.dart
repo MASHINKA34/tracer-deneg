@@ -69,6 +69,8 @@ class AppLogging {
   /// Текущий файл лога или `null`, пока он не подключён.
   File? get logFile => _file?.currentFile;
 
+  File? get previousLogFile => _file?.previousFile;
+
   /// Открывает кольцевой файл в [logsDir] и дописывает в него строки,
   /// накопленные с начала запуска.
   File attachFile(Directory logsDir, {int maxBytes = 1024 * 1024}) {

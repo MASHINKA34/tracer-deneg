@@ -1,15 +1,33 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 
+import '../../data/db/redact_db_error.dart';
+
 final _log = Logger('errors');
+
+Object reportSafeError(Object error) {
+  var cause = error;
+  while (cause is ProviderException) {
+    cause = cause.exception;
+  }
+  return redactDbError(cause);
+}
+
+final class QueuedErrorReport {
+  const QueuedErrorReport({required this.line, required this.raw});
+
+  final int line;
+  final String raw;
+}
 
 /// Очередь отчётов об ошибках для `/client-errors` (00-spec §8, §13).
 ///
-/// Пока только пишется в `logs/pending_reports.jsonl` — по строке JSON
-/// на ошибку; отправка на сервер появится на этапе 10. Без личных данных:
+/// Пишется в `logs/pending_reports.jsonl` — по строке JSON на ошибку;
+/// `ErrorReportSender` отправляет и удаляет строку после 202. Без личных данных:
 /// тип и текст ошибки, стек, версия приложения и устройство.
 class ErrorReportQueue {
   ErrorReportQueue({this.maxFileBytes = 512 * 1024});
@@ -37,12 +55,12 @@ class ErrorReportQueue {
   }
 
   /// Ставит отчёт в очередь. [kind]: `crash` (необработанная ошибка),
-  /// `error` (ошибка фреймворка), позже `user_report`.
+  /// `error` (ошибка фреймворка); `user_report` уходит сразу, без очереди.
   void add(String kind, Object error, StackTrace? stack) {
     final report = <String, Object?>{
       'kind': kind,
       'occurredAt': DateTime.now().toUtc().toIso8601String(),
-      'message': describeError(error),
+      'message': describeError(reportSafeError(error)),
       'stack': stack?.toString(),
       ...context,
     };
@@ -50,6 +68,78 @@ class ErrorReportQueue {
       _pending.add(report);
     } else {
       _write(report);
+    }
+  }
+
+  List<QueuedErrorReport> readQueued() {
+    final file = _file;
+    if (file == null) {
+      _log.fine(
+        'error report queue not attached → nothing to read '
+        '(in memory ${_pending.length})',
+      );
+      return const [];
+    }
+    try {
+      if (!file.existsSync()) {
+        _log.fine('error report queue ${file.path} absent → empty');
+        return const [];
+      }
+      final lines = file.readAsLinesSync();
+      final reports = [
+        for (var i = 0; i < lines.length; i++)
+          if (lines[i].trim().isNotEmpty)
+            QueuedErrorReport(line: i + 1, raw: lines[i]),
+      ];
+      _log.fine(
+        'error report queue ${file.path} read reports=${reports.length} '
+        'lines=${lines.length}',
+      );
+      return reports;
+    } catch (e, st) {
+      _log.warning(
+        'error report queue read failed ${file.path}: ${describeError(e)} '
+        '→ nothing sent this time',
+        e,
+        st,
+      );
+      return const [];
+    }
+  }
+
+  bool remove(QueuedErrorReport report) {
+    final file = _file;
+    if (file == null) return false;
+    try {
+      final lines = file.existsSync() ? file.readAsLinesSync() : <String>[];
+      final index = lines.indexOf(report.raw);
+      if (index < 0) {
+        _log.warning(
+          'error report line ${report.line} not found in ${file.path} '
+          '(lines=${lines.length}) → nothing removed',
+        );
+        return false;
+      }
+      lines.removeAt(index);
+      final left = lines.where((l) => l.trim().isNotEmpty).toList();
+      if (left.isEmpty) {
+        file.deleteSync();
+      } else {
+        file.writeAsStringSync('${left.join('\n')}\n', flush: true);
+      }
+      _log.fine(
+        'error report line ${report.line} removed from ${file.path} '
+        'left=${left.length}',
+      );
+      return true;
+    } catch (e, st) {
+      _log.warning(
+        'error report remove failed ${file.path} line=${report.line}: '
+        '${describeError(e)} → sending stopped to avoid duplicates',
+        e,
+        st,
+      );
+      return false;
     }
   }
 

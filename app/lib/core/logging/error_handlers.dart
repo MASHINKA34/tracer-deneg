@@ -18,11 +18,12 @@ void installErrorHandlers(ErrorReportQueue reports) {
   final previousOnError = FlutterError.onError;
   FlutterError.onError = (details) {
     final context = details.context?.toDescription();
+    final error = reportSafeError(details.exception);
     _log.severe(
       'Flutter error${details.library == null ? '' : ' in ${details.library}'}'
       '${context == null ? '' : ' ($context)'}: '
-      '${describeError(details.exception)}',
-      details.exception,
+      '${describeError(error)}',
+      error,
       details.stack,
     );
     reports.add('error', details.exception, details.stack);
@@ -31,7 +32,8 @@ void installErrorHandlers(ErrorReportQueue reports) {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    _log.severe('uncaught error: ${describeError(error)}', error, stack);
+    final safe = reportSafeError(error);
+    _log.severe('uncaught error: ${describeError(safe)}', safe, stack);
     reports.add('crash', error, stack);
     return true;
   };

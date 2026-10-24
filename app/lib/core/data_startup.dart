@@ -22,6 +22,8 @@ import '../features/profile/theme_mode.dart';
 import '../features/startup/database_error_app.dart';
 import 'auth_gate.dart';
 import 'clock.dart';
+import 'logging/error_report_triggers.dart';
+import 'logging/error_reporting.dart';
 import 'logging/provider_logger.dart';
 import 'recurring_triggers.dart';
 
@@ -214,7 +216,7 @@ void _logSeed(DevSeedResult result, int ms) {
   }
 }
 
-Widget appRoot(DataStartup data) => switch (data) {
+Widget appRoot(DataStartup data, {ErrorReporting? reporting}) => switch (data) {
   DataReady(
     :final db,
     :final todayOverride,
@@ -232,9 +234,13 @@ Widget appRoot(DataStartup data) => switch (data) {
           ),
         if (kDebugMode && todayOverride != null)
           todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
+        if (reporting != null)
+          errorReportingProvider.overrideWithValue(reporting),
       ],
       observers: const [ProviderLogger()],
-      child: const RecurringTriggersScope(child: MilionchikApp()),
+      child: const RecurringTriggersScope(
+        child: ErrorReportTriggersScope(child: MilionchikApp()),
+      ),
     ),
   DataUnavailable() => const DatabaseErrorApp(),
 };
