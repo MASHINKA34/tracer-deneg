@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:drift/drift.dart' show TableUpdate;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -33,6 +34,7 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   late final SyncTriggers _triggers = ref.read(syncTriggersProvider);
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<List<ConnectivityResult>>? _network;
+  StreamSubscription<Set<TableUpdate>>? _outbox;
 
   @override
   void initState() {
@@ -48,10 +50,21 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
         change: '${previous?.name ?? '-'}→${next.name}',
       ),
     );
+    try {
+      _outbox = ref
+          .read(outboxWritesProvider)
+          .listen(
+            (_) => _triggers.outboxWritten(),
+            onError: (Object e, StackTrace st) =>
+                _streamFailed('outbox writes', e, st),
+          );
+    } catch (e, st) {
+      _streamFailed('outbox writes', e, st);
+    }
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _log.fine(
       'sync triggers scope mounted lifecycle=${lifecycle?.name ?? '-'} '
-      '→ network status check, then watch',
+      'outboxWatch=${_outbox != null} → network status check, then watch',
     );
     _triggers.start(
       signedIn: ref.read(sessionProvider) is SessionActive,
@@ -106,7 +119,9 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    final outbox = _outbox;
     final network = _network;
+    if (outbox != null) unawaited(outbox.cancel());
     if (network != null) unawaited(network.cancel());
     _triggers.stop('triggers scope unmounted');
     super.dispose();

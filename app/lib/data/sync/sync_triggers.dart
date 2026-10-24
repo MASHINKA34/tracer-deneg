@@ -1,14 +1,19 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:drift/drift.dart'
+    show TableUpdate, TableUpdateQuery, UpdateKind;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/network_status.dart';
+import '../providers.dart';
 import 'sync_engine.dart';
 
 final _log = Logger('sync');
+
+const Duration outboxSyncDelay = Duration(milliseconds: 1500);
 
 const Duration periodicSyncInterval = Duration(seconds: 60);
 
@@ -39,6 +44,8 @@ final class SyncTriggers {
   bool _foreground = true;
   bool? _online;
   Timer? _periodic;
+  Timer? _outboxDelay;
+  int _outboxWrites = 0;
 
   bool get started => _started;
 
@@ -48,13 +55,18 @@ final class SyncTriggers {
 
   bool get periodicScheduled => _periodic != null;
 
+  bool get outboxDelayScheduled => _outboxDelay != null;
+
+  int get outboxWritesWaiting => _outboxWrites;
+
   void start({required bool signedIn, required bool foreground}) {
     if (_disposed) return;
     _started = true;
     _signedIn = signedIn;
     _foreground = foreground;
     _log.info(
-      'sync triggers on: startup, resume, network, periodic every '
+      'sync triggers on: startup, resume, network, outbox writes '
+      '(delay ${outboxSyncDelay.inMilliseconds}ms), periodic every '
       '${periodicSyncInterval.inSeconds}s in foreground, pull down, '
       'websocket; session=${signedIn ? 'active' : 'none'} '
       'foreground=$foreground',
@@ -74,9 +86,11 @@ final class SyncTriggers {
     if (!_started) return;
     _started = false;
     final periodic = _cancelPeriodic();
+    final writes = _dropOutboxDelay();
     _log.fine(
       'sync triggers off: $why → periodic timer '
-      '${periodic ? 'cancelled' : 'not running'}',
+      '${periodic ? 'cancelled' : 'not running'}, outbox delay '
+      '${writes > 0 ? 'dropped ($writes write(s) stay in the queue)' : 'none'}',
     );
   }
 
@@ -97,9 +111,11 @@ final class SyncTriggers {
     }
     if (!active) {
       final periodic = _cancelPeriodic();
+      final writes = _dropOutboxDelay();
       _log.fine(
         'sync triggers: session $change → no syncs until sign-in, periodic '
-        'timer ${periodic ? 'stopped' : 'not running'}',
+        'timer ${periodic ? 'stopped' : 'not running'}, outbox delay '
+        '${writes > 0 ? 'dropped ($writes write(s) stay in the queue)' : 'none'}',
       );
       return;
     }
@@ -180,11 +196,53 @@ final class SyncTriggers {
     _fire(SyncReason.network, 'network appeared types=$types');
   }
 
+  void outboxWritten() {
+    if (_disposed || !_started) return;
+    if (!_signedIn) {
+      _log.fine('sync triggers: outbox write, no active session → no sync');
+      return;
+    }
+    final previous = _outboxDelay;
+    previous?.cancel();
+    _outboxWrites++;
+    _outboxDelay = _timer(outboxSyncDelay, _outboxDelayElapsed);
+    if (previous == null) {
+      _log.fine(
+        'sync triggers: outbox write → sync reason=outbox in '
+        '${outboxSyncDelay.inMilliseconds}ms unless more writes come',
+      );
+    } else {
+      _log.fine(
+        'sync triggers: outbox write #$_outboxWrites before the delay '
+        'elapsed → delay restarted, sync in '
+        '${outboxSyncDelay.inMilliseconds}ms',
+      );
+    }
+  }
+
   Future<SyncCycleResult> pulledDown() =>
       _request(SyncReason.manual, 'pulled down on the main screen');
 
   Future<SyncCycleResult> websocketChanged() =>
       _request(SyncReason.websocket, 'server sent changed over the websocket');
+
+  void _outboxDelayElapsed() {
+    _outboxDelay = null;
+    final writes = _outboxWrites;
+    _outboxWrites = 0;
+    if (_disposed || !_started || !_signedIn) return;
+    if (writes > 1) {
+      _log.fine(
+        'sync triggers: outbox delay elapsed, $writes writes merged into one '
+        'cycle',
+      );
+    }
+    _fire(
+      SyncReason.outbox,
+      '$writes outbox write(s), none in the last '
+      '${outboxSyncDelay.inMilliseconds}ms',
+    );
+  }
 
   void _armPeriodic(String why) {
     _periodic?.cancel();
@@ -220,8 +278,26 @@ final class SyncTriggers {
     return true;
   }
 
+  int _dropOutboxDelay() {
+    final timer = _outboxDelay;
+    final writes = _outboxWrites;
+    timer?.cancel();
+    _outboxDelay = null;
+    _outboxWrites = 0;
+    return timer == null ? 0 : writes;
+  }
+
   Future<SyncCycleResult> _request(SyncReason reason, String why) {
     _log.fine('sync trigger reason=${reason.name}: $why');
+    if (reason != SyncReason.outbox) {
+      final writes = _dropOutboxDelay();
+      if (writes > 0) {
+        _log.fine(
+          'sync trigger reason=${reason.name} takes $writes pending outbox '
+          'write(s) into its cycle → outbox delay cancelled',
+        );
+      }
+    }
     return _sync(reason);
   }
 
@@ -263,3 +339,10 @@ final syncTriggersProvider = Provider<SyncTriggers>((ref) {
   ref.onDispose(triggers.dispose);
   return triggers;
 }, name: 'syncTriggers');
+
+final outboxWritesProvider = Provider<Stream<Set<TableUpdate>>>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.tableUpdates(
+    TableUpdateQuery.onTable(db.outbox, limitUpdateKind: UpdateKind.insert),
+  );
+}, name: 'outboxWrites');
