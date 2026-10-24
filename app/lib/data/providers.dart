@@ -8,6 +8,7 @@ import '../core/clock.dart';
 import 'budget_selection.dart';
 import 'current_user.dart';
 import 'db/app_database.dart';
+import 'db/redact_db_error.dart';
 import 'queries/category_queries.dart';
 import 'queries/month_queries.dart';
 import 'queries/recurring_queries.dart';
@@ -306,28 +307,99 @@ final memberProfilesProvider =
       retry: _noRetry,
     );
 
-final budgetSelectionProvider = Provider<BudgetSelection>(
-  (ref) => BudgetSelection(ref.watch(prefsRepositoryProvider)),
+final budgetSelectionProvider = AsyncNotifierProvider<BudgetSelection, String?>(
+  BudgetSelection.new,
   name: 'budgetSelection',
+  retry: _noRetry,
 );
+
+final class BudgetSelection extends AsyncNotifier<String?> {
+  @override
+  Future<String?> build() async {
+    final userId = ref.watch(sessionProvider.select((s) => s.userId));
+    final prefs = ref.watch(prefsRepositoryProvider);
+    final sw = Stopwatch()..start();
+    try {
+      return await prefs.getString(PrefKeys.selectedBudgetId);
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.warning(
+        'stored choice read failed for userId=${userId ?? '-'} after '
+        '${sw.elapsedMilliseconds}ms → personal budget is shown: '
+        '${describeError(error)}',
+        error,
+        st,
+      );
+      return null;
+    }
+  }
+
+  Future<void> select(
+    String budgetId, {
+    required String? from,
+    required String by,
+  }) async {
+    final sw = Stopwatch()..start();
+    try {
+      await ref
+          .read(prefsRepositoryProvider)
+          .setString(PrefKeys.selectedBudgetId, budgetId);
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.severe(
+        'selected budget change failed budgetId=$budgetId '
+        'from=${from ?? '-'} by=$by after ${sw.elapsedMilliseconds}ms, '
+        'the previous budget stays open: ${describeError(error)}',
+        error,
+        st,
+      );
+      rethrow;
+    }
+    if (ref.mounted) state = AsyncData(budgetId);
+    _log.info(
+      'selected budget changed budgetId=$budgetId from=${from ?? '-'} '
+      'by=$by in ${sw.elapsedMilliseconds}ms',
+    );
+  }
+
+  Future<void> forgetGone(String budgetId) async {
+    if (state.value != budgetId) return;
+    state = const AsyncData(null);
+    try {
+      await ref.read(prefsRepositoryProvider).remove(PrefKeys.selectedBudgetId);
+      _log.fine('stored choice budgetId=$budgetId cleared: the budget is gone');
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.warning(
+        'stored choice budgetId=$budgetId not cleared: '
+        '${describeError(error)} → personal budget is shown, the stale '
+        'choice is ignored again after restart',
+        error,
+        st,
+      );
+    }
+  }
+}
 
 final selectedBudgetIdProvider = StreamProvider<String?>(
   (ref) {
     final ownerId = ref.watch(sessionProvider.select((s) => s.userId));
-    final selection = ref.watch(budgetSelectionProvider);
-    String? forgetting;
+    final stored = StreamController<String?>();
+    ref.onDispose(stored.close);
+    ref.listen<AsyncValue<String?>>(budgetSelectionProvider, (_, next) {
+      if (next.hasValue) stored.add(next.value);
+    }, fireImmediately: true);
     return combineLatest(
-          ref
-              .watch(prefsRepositoryProvider)
-              .watchString(PrefKeys.selectedBudgetId),
+          stored.stream,
           ref.watch(budgetsRepositoryProvider).watchAll(),
           (stored, budgets) => _selectedChoice(budgets, ownerId, stored),
         )
         .map((choice) {
           final gone = choice.gone;
-          if (gone != null && gone != forgetting) {
-            forgetting = gone;
-            unawaited(selection.forgetGone(gone));
+          if (gone != null) {
+            unawaited(
+              ref.read(budgetSelectionProvider.notifier).forgetGone(gone),
+            );
           }
           return choice;
         })
