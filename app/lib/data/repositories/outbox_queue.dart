@@ -6,6 +6,7 @@ import 'package:shared/shared.dart';
 
 import '../db/app_database.dart';
 import '../db/redact_db_error.dart';
+import '../queries/query_runner.dart';
 
 final _log = Logger('repo');
 
@@ -228,7 +229,14 @@ final class DriftOutboxQueue implements OutboxQueue {
   Future<int> count() => _db.outbox.count().getSingle();
 
   @override
-  Stream<int> watchCount() => _db.outbox.count().watchSingle();
+  Stream<int> watchCount() =>
+      QueryRunner(_db, slowThreshold: slowQueryThreshold).watch(
+        'outbox-count',
+        'all',
+        tables: {_db.outbox},
+        run: count,
+        rows: (_) => 1,
+      );
 
   @override
   Future<void> reportSize(String reason) async {

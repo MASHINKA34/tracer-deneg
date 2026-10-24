@@ -226,6 +226,9 @@ final class SyncTriggers {
   Future<SyncCycleResult> websocketChanged() =>
       _request(SyncReason.websocket, 'server sent changed over the websocket');
 
+  Future<SyncCycleResult> retryTapped() =>
+      _request(SyncReason.manual, 'retry tapped in the sync status popover');
+
   void _outboxDelayElapsed() {
     _outboxDelay = null;
     final writes = _outboxWrites;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +13,7 @@ import '../../core/clock.dart';
 import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
-import '../../data/sync/pull_controller.dart';
+import '../../data/sync/sync_status_view.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/avatar.dart';
 import '../../ui/components/bottom_nav.dart';
@@ -20,16 +22,9 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import 'sync_status_popover.dart';
 
 final _log = Logger('month');
-
-enum HeaderSync { done, loading, failed }
-
-HeaderSync headerSyncOf(PullStatus status) => switch (status) {
-  PullFailed() => HeaderSync.failed,
-  _ when status.showsIndicator => HeaderSync.loading,
-  _ => HeaderSync.done,
-};
 
 String avatarLetterOf(String name) {
   final letters = name.trim().characters;
@@ -53,12 +48,13 @@ class MonthHeader extends ConsumerWidget {
         ? null
         : ref.watch(budgetProvider(budgetId)).value;
     final debugToday = kDebugMode ? ref.watch(todayOverrideProvider) : null;
-    ref.listen(pullControllerProvider, _logSync);
-    final sync = headerSyncOf(ref.watch(pullControllerProvider));
+    ref.listen(syncStatusViewProvider, _logSync);
+    final sync = ref.watch(syncStatusViewProvider);
 
     return MonthHeaderView(
       debugToday: debugToday,
-      sync: sync,
+      sync: sync.shown,
+      syncPending: sync.queue,
       budgetName: budget?.name,
       budgetEmoji: budget?.emoji,
       avatarLetter: budget == null ? '' : avatarLetterOf(budget.name),
@@ -79,7 +75,22 @@ class MonthHeader extends ConsumerWidget {
         );
         StatefulNavigationShell.of(context).goBranch(AppNavTab.profile.index);
       },
+      onSyncTap: () => _openSyncStatus(context, ref),
     );
+  }
+
+  static void _openSyncStatus(BuildContext context, WidgetRef ref) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      _log.warning('header sync tap: header not laid out → no popover');
+      return;
+    }
+    final header = box.localToGlobal(Offset.zero) & box.size;
+    _log.fine(
+      'header sync tap → sync status popover '
+      '${ref.read(syncStatusViewProvider)}',
+    );
+    unawaited(showSyncStatusPopover(context, header: header));
   }
 
   static void _logSelected(
@@ -101,9 +112,9 @@ class MonthHeader extends ConsumerWidget {
     }
   }
 
-  static void _logSync(PullStatus? previous, PullStatus next) {
-    final before = previous == null ? null : headerSyncOf(previous);
-    final after = headerSyncOf(next);
+  static void _logSync(SyncStatusView? previous, SyncStatusView next) {
+    final before = previous?.shown;
+    final after = next.shown;
     if (before == after) return;
     _log.fine(
       'header sync indicator ${before?.name ?? '-'} → ${after.name} '
@@ -156,8 +167,10 @@ class MonthHeaderView extends StatelessWidget {
     this.onBudgetTap,
     this.onSearchTap,
     this.onAvatarTap,
+    this.onSyncTap,
     this.debugToday,
-    this.sync = HeaderSync.done,
+    this.sync = SyncShown.done,
+    this.syncPending = 0,
   });
 
   final String? budgetName;
@@ -167,8 +180,14 @@ class MonthHeaderView extends StatelessWidget {
   final VoidCallback? onBudgetTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onAvatarTap;
+  final VoidCallback? onSyncTap;
   final LocalDate? debugToday;
-  final HeaderSync sync;
+  final SyncShown sync;
+  final int syncPending;
+
+  static const double searchInset = 20;
+
+  static const double syncInset = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -176,15 +195,23 @@ class MonthHeaderView extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final name = budgetName;
     final (String syncLabel, Widget syncIcon) = switch (sync) {
-      HeaderSync.done => (
+      SyncShown.done => (
         l10n.syncDone,
         AppIcon(AppIcons.cloudCheck, size: 20, color: colors.statusSuccess),
       ),
-      HeaderSync.loading => (
+      SyncShown.loading => (
         l10n.syncLoading,
         _SyncSpinner(color: context.mood.accentStrong),
       ),
-      HeaderSync.failed => (
+      SyncShown.sending => (
+        l10n.syncSending,
+        _SyncSpinner(color: context.mood.accentStrong),
+      ),
+      SyncShown.waiting => (
+        syncPending > 0 ? l10n.syncWaiting(syncPending) : l10n.syncWaitingEmpty,
+        AppIcon(AppIcons.cloudOff, size: 20, color: colors.textTertiary),
+      ),
+      SyncShown.error => (
         l10n.syncError,
         AppIcon(AppIcons.alertCircle, size: 20, color: colors.statusDanger),
       ),
@@ -193,10 +220,7 @@ class MonthHeaderView extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 52),
       child: Padding(
-        padding: const EdgeInsets.only(
-          left: 12,
-          right: 10 - _HeaderButton.overhang,
-        ),
+        padding: const EdgeInsets.only(left: 12),
         child: Row(
           children: [
             Expanded(
@@ -212,36 +236,30 @@ class MonthHeaderView extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(width: 6 - _HeaderButton.overhang),
             if (debugDay != null) _DebugTodayLabel(day: debugDay),
             _HeaderButton(
               label: l10n.a11ySearch,
               onTap: onSearchTap,
-              child: SizedBox.square(
-                dimension: 32,
-                child: Center(
-                  child: AppIcon(
-                    AppIcons.search,
-                    size: 22,
-                    color: colors.textPrimary,
-                  ),
+              inset: searchInset,
+              child: Center(
+                child: AppIcon(
+                  AppIcons.search,
+                  size: 22,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
-            Semantics(
-              container: true,
-              liveRegion: sync != HeaderSync.done,
+            _HeaderButton(
               label: syncLabel,
-              excludeSemantics: true,
-              child: SizedBox(
-                width: 32 - 2 * _HeaderButton.overhang,
-                height: kMinTapTarget,
-                child: Center(child: syncIcon),
-              ),
+              liveRegion: sync != SyncShown.done,
+              onTap: onSyncTap,
+              inset: syncInset,
+              child: Center(child: syncIcon),
             ),
             _HeaderButton(
               label: l10n.a11yProfile,
               onTap: onAvatarTap,
+              inset: 0,
               child: AppAvatar(
                 letter: avatarLetter,
                 size: AvatarSize.s32,
@@ -415,38 +433,52 @@ class _HeaderButton extends StatelessWidget {
   const _HeaderButton({
     required this.label,
     required this.onTap,
+    required this.inset,
     required this.child,
+    this.liveRegion = false,
   });
 
   final String label;
   final VoidCallback? onTap;
+  final double inset;
+  final bool liveRegion;
   final Widget child;
 
-  static const double overhang = 2;
+  static const double visual = 32;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       enabled: onTap != null,
+      liveRegion: liveRegion,
       label: label,
       excludeSemantics: true,
       onTap: onTap,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
-          height: kMinTapTarget,
-          padding: const EdgeInsets.symmetric(horizontal: 6 + overhang),
-          alignment: Alignment.center,
-          child: Material(
-            type: MaterialType.transparency,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onTap,
-              child: child,
-            ),
+        child: SizedBox.square(
+          dimension: kMinTapTarget,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: inset,
+                top: (kMinTapTarget - visual) / 2,
+                width: visual,
+                height: visual,
+                child: Material(
+                  type: MaterialType.transparency,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onTap,
+                    child: child,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
