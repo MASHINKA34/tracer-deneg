@@ -10,6 +10,7 @@ import 'package:shared/shared.dart';
 import '../data/session/session_providers.dart';
 import '../data/session/session_state.dart';
 import '../data/sync/sync_triggers.dart';
+import '../data/sync/sync_websocket.dart';
 import 'network_status.dart';
 
 final _log = Logger('sync');
@@ -32,6 +33,7 @@ class SyncTriggersScope extends ConsumerStatefulWidget {
 
 class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   late final SyncTriggers _triggers = ref.read(syncTriggersProvider);
+  late final SyncWebSocket _socket = ref.read(syncWebSocketProvider);
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<List<ConnectivityResult>>? _network;
   StreamSubscription<Set<TableUpdate>>? _outbox;
@@ -39,17 +41,13 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(
-      onResume: _triggers.resumed,
-      onPause: _triggers.paused,
-    );
-    ref.listenManual<SessionState>(
-      sessionProvider,
-      (previous, next) => _triggers.sessionChanged(
-        active: next is SessionActive,
-        change: '${previous?.name ?? '-'}→${next.name}',
-      ),
-    );
+    _lifecycle = AppLifecycleListener(onResume: _resumed, onPause: _paused);
+    ref.listenManual<SessionState>(sessionProvider, (previous, next) {
+      final active = next is SessionActive;
+      final change = '${previous?.name ?? '-'}→${next.name}';
+      _triggers.sessionChanged(active: active, change: change);
+      _socket.sessionChanged(active: active, change: change);
+    });
     try {
       _outbox = ref
           .read(outboxWritesProvider)
@@ -66,11 +64,26 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
       'sync triggers scope mounted lifecycle=${lifecycle?.name ?? '-'} '
       'outboxWatch=${_outbox != null} → network status check, then watch',
     );
-    _triggers.start(
-      signedIn: ref.read(sessionProvider) is SessionActive,
-      foreground: inForeground(lifecycle),
-    );
+    final signedIn = ref.read(sessionProvider) is SessionActive;
+    final foreground = inForeground(lifecycle);
+    _triggers.start(signedIn: signedIn, foreground: foreground);
+    _socket.start(signedIn: signedIn, foreground: foreground);
     unawaited(_watchNetwork());
+  }
+
+  void _resumed() {
+    _triggers.resumed();
+    _socket.resumed();
+  }
+
+  void _paused() {
+    _triggers.paused();
+    _socket.paused();
+  }
+
+  void _networkChanged(List<ConnectivityResult> results) {
+    _triggers.networkChanged(results);
+    _socket.networkChanged(results);
   }
 
   Future<void> _watchNetwork() async {
@@ -93,12 +106,12 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
       'sync triggers: network status checked in ${sw.elapsedMilliseconds}ms '
       'online=${isOnline(initial)} → watching changes',
     );
-    _triggers.networkChanged(initial);
+    _networkChanged(initial);
     try {
       _network = ref
           .read(networkChangesProvider)
           .listen(
-            _triggers.networkChanged,
+            _networkChanged,
             onError: (Object e, StackTrace st) =>
                 _streamFailed('network status', e, st),
           );
@@ -124,6 +137,7 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
     if (outbox != null) unawaited(outbox.cancel());
     if (network != null) unawaited(network.cancel());
     _triggers.stop('triggers scope unmounted');
+    _socket.stop('triggers scope unmounted');
     super.dispose();
   }
 
