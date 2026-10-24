@@ -146,7 +146,6 @@ void main() {
   for (final (target, stub) in [
     ('Праздники', 'holidays'),
     ('Напоминания', 'reminders'),
-    ('Создать общий бюджет', 'createBudget'),
     ('Войти по коду приглашения', 'joinBudget'),
     ('Семья', 'budget'),
   ]) {

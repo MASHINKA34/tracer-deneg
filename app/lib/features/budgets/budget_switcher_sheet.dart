@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
 import '../../data/session/session_providers.dart';
@@ -170,7 +174,10 @@ Future<void> openBudgetSwitcher(BuildContext context, WidgetRef ref) async {
           _snackbar(context, l10n.budgetSwitcherFailed);
         }
       }
-    case CreateSharedBudget() || JoinBudgetByCode():
+    case CreateSharedBudget():
+      _log.fine('budget switcher: $choice → ${AppRoutes.newBudget}');
+      unawaited(context.push<void>(AppRoutes.newBudget));
+    case JoinBudgetByCode():
       _log.fine('budget switcher: $choice is not available yet → snackbar');
       _snackbar(context, l10n.budgetSwitcherSoon);
   }

@@ -258,7 +258,6 @@ void main() {
   });
 
   for (final (label, choice) in const [
-    ('Создать общий бюджет', 'create shared budget'),
     ('Войти по коду приглашения', 'join by invite code'),
   ]) {
     testUnmounting('«$label»: шторка закрыта, снекбар «Появится в следующем '

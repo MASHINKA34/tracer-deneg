@@ -20,13 +20,16 @@ String? lastEmojiOf(String text) {
   return validateEmoji(last) == null ? last : null;
 }
 
-Future<String?> showCategoryEmojiSheet(BuildContext context) async {
+Future<String?> showCategoryEmojiSheet(
+  BuildContext context, {
+  String? hint,
+}) async {
   final sw = Stopwatch()..start();
   final root = Navigator.of(context, rootNavigator: true);
   _log.fine('emoji sheet opened: text field with the system keyboard');
   final result = await showAppSheet<String>(
     root.context,
-    builder: (context) => [const CategoryEmojiSheet()],
+    builder: (context) => [CategoryEmojiSheet(hint: hint)],
   );
   if (result == null) {
     _log.fine(
@@ -40,7 +43,9 @@ Future<String?> showCategoryEmojiSheet(BuildContext context) async {
 }
 
 class CategoryEmojiSheet extends StatefulWidget {
-  const CategoryEmojiSheet({super.key});
+  const CategoryEmojiSheet({super.key, this.hint});
+
+  final String? hint;
 
   @override
   State<CategoryEmojiSheet> createState() => _CategoryEmojiSheetState();
@@ -117,7 +122,7 @@ class _CategoryEmojiSheetState extends State<CategoryEmojiSheet> {
               ),
               const SizedBox(height: 12),
               Text(
-                l10n.categoryEmojiSheetHint,
+                widget.hint ?? l10n.categoryEmojiSheetHint,
                 style: AppText.caption.copyWith(color: colors.textTertiary),
               ),
             ],

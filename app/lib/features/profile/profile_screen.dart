@@ -286,6 +286,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       selectedId: selectedId,
                       profiles: profiles.value ?? const {},
                       onStub: _stub,
+                      onCreate: () =>
+                          _push('create budget', AppRoutes.newBudget),
                     ),
                     const SizedBox(height: 12),
                     ProfileSectionHead(title: l10n.profileSettings),
@@ -396,11 +398,13 @@ class _Budgets extends ConsumerWidget {
     required this.selectedId,
     required this.profiles,
     required this.onStub,
+    required this.onCreate,
   });
 
   final String? selectedId;
   final Map<String, MemberProfile> profiles;
   final void Function(ProfileStub stub, {String details}) onStub;
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -446,7 +450,7 @@ class _Budgets extends ConsumerWidget {
               title: l10n.profileCreateBudget,
               titleColor: mood.accentStrong,
               subtitle: l10n.profileCreateBudgetHint,
-              onTap: () => onStub(ProfileStub.createBudget),
+              onTap: onCreate,
             ),
             ProfileBudgetRow(
               leading: ProfileIconBox(
