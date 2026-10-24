@@ -257,7 +257,10 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         today: today,
         dayTotals: data?.dayTotals ?? const {},
         mood: monthCardMood(month, moodToday),
-        holidayMarks: monthMarkEmojis(month),
+        holidayMarks: monthMarkEmojis(
+          month,
+          birthday: moodToday.settings.birthday,
+        ),
         selectedDay: sheetDay != null && month.contains(sheetDay)
             ? sheetDay.day
             : null,
