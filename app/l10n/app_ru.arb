@@ -701,6 +701,20 @@
   "@pullFailed": { "description": "Снекбар: загрузка данных с сервера (pull) не удалась, данные на телефоне остались" },
   "pullRetry": "Повторить",
   "@pullRetry": { "description": "Снекбар «Не удалось загрузить»: действие, запускает загрузку ещё раз" },
+  "budgetRemovedExcluded": "Тебя исключили из бюджета «{budget}»",
+  "@budgetRemovedExcluded": {
+    "description": "Снекбар после синхронизации: открытый общий бюджет пропал из removedBudgetIds, создатель не ты — исключили; данные бюджета стёрты, показан личный (00-spec §10)",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
+  "budgetRemovedDeleted": "Бюджет «{budget}» удалён",
+  "@budgetRemovedDeleted": {
+    "description": "Снекбар после синхронизации: открытый бюджет пропал из removedBudgetIds, создатель ты — бюджет удалён; данные стёрты, показан личный (00-spec §10)",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
 
   "monthAverage": "В среднем",
   "@monthAverage": { "description": "Футер карточки месяца: подпись среднего в день" },

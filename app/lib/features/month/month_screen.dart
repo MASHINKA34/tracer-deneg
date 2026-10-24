@@ -8,6 +8,7 @@ import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
 import '../../data/api/api_exception.dart';
+import '../../data/sync/budget_removed_notice.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/pull_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -47,7 +48,9 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
       'today=${ref.read(clockProvider).today()}',
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _onPull(null, ref.read(pullControllerProvider));
+      if (!mounted) return;
+      _onPull(null, ref.read(pullControllerProvider));
+      _onBudgetRemoved(null, ref.read(budgetRemovedNoticeProvider));
     });
   }
 
@@ -80,6 +83,37 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
         });
       default:
     }
+  }
+
+  void _onBudgetRemoved(
+    BudgetRemovedNotice? previous,
+    BudgetRemovedNotice? next,
+  ) {
+    if (next == null ||
+        !ref.read(budgetRemovedNoticeProvider.notifier).claim(next.id)) {
+      return;
+    }
+    _log.info(
+      'budget removed notice #${next.id} budgetId=${next.budgetId} '
+      'kind=${next.kind.name} → snackbar, personal budget shown',
+    );
+    Future.microtask(() {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showAppSnackbar(
+        context,
+        text: switch (next.kind) {
+          BudgetRemovalKind.excluded => l10n.budgetRemovedExcluded(next.name),
+          BudgetRemovalKind.deleted => l10n.budgetRemovedDeleted(next.name),
+        },
+        margin: const EdgeInsets.fromLTRB(
+          expenseSnackbarSide,
+          0,
+          expenseSnackbarSide,
+          expenseSnackbarAboveAnchor,
+        ),
+      );
+    });
   }
 
   void _showPullFailed() {
@@ -197,6 +231,10 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     final today = ref.watch(clockProvider).today();
     ref.listen(monthControllerProvider, _logTodayBlock);
     ref.listen(pullControllerProvider, _onPull);
+    ref.listen<BudgetRemovedNotice?>(
+      budgetRemovedNoticeProvider,
+      _onBudgetRemoved,
+    );
     final requested = ref.watch(monthControllerProvider);
     final shown = ref.watch(shownMonthProvider);
     final sheetDay = ref.watch(openDaySheetProvider);
