@@ -56,7 +56,8 @@ void main() {
           'phase=waitingNetwork',
         ),
         contains('sync status shown waiting → waiting queue=3→4'),
-        contains('sync status shown waiting → sending queue=4→4'),
+        contains('sync status shown waiting → sending queue=4→1'),
+        contains('sync status shown sending → sending queue=1→0'),
         contains('sync status shown sending → done queue=0→0 phase=idle'),
       ]),
     );

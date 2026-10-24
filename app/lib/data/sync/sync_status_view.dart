@@ -38,12 +38,17 @@ SyncShown shownSyncOf(
   SyncEngineState engine,
   PullStatus pull, {
   SyncShown? previous,
+  int previousQueue = 0,
 }) {
   if (pull.showsIndicator) return SyncShown.loading;
   return switch (engine.phase) {
     SyncPhase.idle => SyncShown.done,
     SyncPhase.waitingNetwork => SyncShown.waiting,
     SyncPhase.error => SyncShown.error,
+    SyncPhase.sending
+        when previous == SyncShown.waiting &&
+            engine.queueSize >= previousQueue =>
+      SyncShown.waiting,
     SyncPhase.sending
         when engine.queueSize > 0 ||
             previous == SyncShown.sending ||
@@ -106,7 +111,12 @@ final class SyncStatusController extends Notifier<SyncStatusView> {
 
   SyncStatusView _viewOf(SyncEngineState engine, PullStatus pull) =>
       SyncStatusView(
-        shown: shownSyncOf(engine, pull, previous: _view?.shown),
+        shown: shownSyncOf(
+          engine,
+          pull,
+          previous: _view?.shown,
+          previousQueue: _view?.queue ?? 0,
+        ),
         queue: engine.queueSize,
         lastSyncAt: engine.lastSyncAt,
       );

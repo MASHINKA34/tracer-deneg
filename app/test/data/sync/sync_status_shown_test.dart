@@ -63,15 +63,47 @@ void main() {
       shownSyncOf(sending, _idle, previous: SyncShown.loading),
       SyncShown.done,
     );
-    for (final previous in const [
-      SyncShown.error,
-      SyncShown.waiting,
-      SyncShown.sending,
-    ]) {
+    for (final previous in const [SyncShown.error, SyncShown.sending]) {
       expect(
         shownSyncOf(sending, _idle, previous: previous),
         SyncShown.sending,
         reason: 'previous=$previous',
+      );
+    }
+  });
+
+  test('«Ждёт сети»: повторные попытки без сети не мигают «Отправляем…»; '
+      'очередь уменьшилась - отправка видна', () {
+    for (final queue in const [3, 4]) {
+      expect(
+        shownSyncOf(
+          _engine(SyncPhase.sending, queue: queue),
+          _idle,
+          previous: SyncShown.waiting,
+          previousQueue: 3,
+        ),
+        SyncShown.waiting,
+        reason: 'queue=$queue',
+      );
+    }
+    expect(
+      shownSyncOf(
+        _engine(SyncPhase.sending),
+        _idle,
+        previous: SyncShown.waiting,
+      ),
+      SyncShown.waiting,
+    );
+    for (final queue in const [2, 0]) {
+      expect(
+        shownSyncOf(
+          _engine(SyncPhase.sending, queue: queue),
+          _idle,
+          previous: SyncShown.waiting,
+          previousQueue: 3,
+        ),
+        SyncShown.sending,
+        reason: 'queue=$queue',
       );
     }
   });
