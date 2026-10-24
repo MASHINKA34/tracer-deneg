@@ -22,6 +22,7 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
+import '../budgets/budget_switcher_sheet.dart';
 import 'sync_status_popover.dart';
 
 final _log = Logger('month');
@@ -60,10 +61,10 @@ class MonthHeader extends ConsumerWidget {
       avatarLetter: budget == null ? '' : avatarLetterOf(budget.name),
       onBudgetTap: budget == null
           ? null
-          : () => _log.fine(
-              'header budget tap budgetId=${budget.id}: no action, '
-              'budget switcher is not available yet',
-            ),
+          : () {
+              _log.fine('header budget tap budgetId=${budget.id} → switcher');
+              unawaited(openBudgetSwitcher(context, ref));
+            },
       onSearchTap: () {
         _log.fine('header search tap → ${AppRoutes.search}');
         context.pushNamed(AppRoutes.searchName);

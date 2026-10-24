@@ -8,9 +8,19 @@ import '../tokens/tokens.g.dart';
 /// сверху, тень sheet, ручка 36 × 4 `border/strong`. Отступы 10 сверху,
 /// 16 по бокам, 28 снизу (+ системная панель), между блоками 16.
 class AppSheet extends StatelessWidget {
-  const AppSheet({super.key, required this.children});
+  const AppSheet({
+    super.key,
+    required this.children,
+    this.padding = defaultPadding,
+    this.spacing = defaultSpacing,
+  });
+
+  static const EdgeInsets defaultPadding = EdgeInsets.fromLTRB(16, 10, 16, 28);
+  static const double defaultSpacing = 16;
 
   final List<Widget> children;
+  final EdgeInsets padding;
+  final double spacing;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +35,7 @@ class AppSheet extends StatelessWidget {
         boxShadow: ShadowTokens.sheet,
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 10, 16, 28 + bottomInset),
+        padding: padding.copyWith(bottom: padding.bottom + bottomInset),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -40,10 +50,7 @@ class AppSheet extends StatelessWidget {
                 ),
               ),
             ),
-            for (final child in children) ...[
-              const SizedBox(height: 16),
-              child,
-            ],
+            for (final child in children) ...[SizedBox(height: spacing), child],
           ],
         ),
       ),
@@ -56,6 +63,8 @@ class AppSheet extends StatelessWidget {
 Future<T?> showAppSheet<T>(
   BuildContext context, {
   required List<Widget> Function(BuildContext context) builder,
+  EdgeInsets? padding,
+  double? spacing,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -65,6 +74,10 @@ Future<T?> showAppSheet<T>(
     elevation: 0,
     barrierColor: context.colors.scrim,
     constraints: const BoxConstraints(maxWidth: maxContentWidth),
-    builder: (context) => AppSheet(children: builder(context)),
+    builder: (context) => AppSheet(
+      padding: padding ?? AppSheet.defaultPadding,
+      spacing: spacing ?? AppSheet.defaultSpacing,
+      children: builder(context),
+    ),
   );
 }

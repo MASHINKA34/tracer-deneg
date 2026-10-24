@@ -219,10 +219,12 @@ class ProfileMemberAvatars extends StatelessWidget {
     super.key,
     required this.members,
     required this.profiles,
+    this.ring,
   });
 
   final List<BudgetMember> members;
   final Map<String, MemberProfile> profiles;
+  final Color? ring;
 
   static const double _size = 24;
   static const double _step = 16;
@@ -232,7 +234,7 @@ class ProfileMemberAvatars extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = members.take(profileAvatarsShown).toList();
     if (shown.isEmpty) return const SizedBox.shrink();
-    final surface = context.colors.bgSurface;
+    final surface = ring ?? context.colors.bgSurface;
     return ExcludeSemantics(
       child: SizedBox(
         width: _size + _step * (shown.length - 1),

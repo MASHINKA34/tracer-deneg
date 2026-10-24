@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/core/router.dart';
+import 'package:milionchik/features/budgets/budget_switcher_sheet.dart';
 import 'package:milionchik/features/month/month_header.dart';
 import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/profile/profile_screen.dart';
@@ -158,7 +159,7 @@ void main() {
     expect(find.byType(MonthHeaderView), findsOneWidget);
   });
 
-  testWidgets('тап по названию бюджета пока ничего не открывает, нажатие в '
+  testWidgets('тап по названию бюджета открывает шторку бюджетов, нажатие в '
       'debug-логе month', (tester) async {
     final db = openTestDatabase();
     final personal = await testBudgets(db).createLocalPersonal();
@@ -168,13 +169,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(BudgetSheet), findsOneWidget);
     expect(h.activeTab, AppNavTab.month);
     expect(
       _monthDebug(h),
-      contains(
-        'header budget tap budgetId=${personal.id}: no action, budget '
-        'switcher is not available yet',
-      ),
+      contains('header budget tap budgetId=${personal.id} → switcher'),
     );
   });
 

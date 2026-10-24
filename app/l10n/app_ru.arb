@@ -766,6 +766,37 @@
       "budget": { "type": "String", "example": "Семья" }
     }
   },
+  "budgetSwitcherTitle": "Бюджеты",
+  "@budgetSwitcherTitle": { "description": "Переключатель бюджетов (шторка 45:4903): заголовок; та же шторка — выбор бюджета траты в «Новой трате» и в правке траты" },
+  "budgetSwitcherOnlyYou": "Только ты",
+  "@budgetSwitcherOnlyYou": { "description": "Переключатель бюджетов (45:4903): первая часть подписи под личным бюджетом" },
+  "budgetSwitcherMembers": "{count, plural, one{{count} участник} few{{count} участника} many{{count} участников} other{{count} участника}}",
+  "@budgetSwitcherMembers": {
+    "description": "Переключатель бюджетов (45:4903): первая часть подписи под общим бюджетом — число участников",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "budgetSwitcherSpent": "{amount} в {month}",
+  "@budgetSwitcherSpent": {
+    "description": "Переключатель бюджетов (45:4903): вторая часть подписи — траты бюджета за текущий месяц; month — месяц в предложном падеже (monthPrepositional)",
+    "placeholders": {
+      "amount": { "type": "String", "example": "18 300 ₽" },
+      "month": { "type": "String", "example": "октябре" }
+    }
+  },
+  "budgetSwitcherCreate": "Создать общий бюджет",
+  "@budgetSwitcherCreate": { "description": "Переключатель бюджетов (45:4903): строка под списком бюджетов" },
+  "budgetSwitcherJoin": "Войти по коду приглашения",
+  "@budgetSwitcherJoin": { "description": "Переключатель бюджетов (45:4903): строка под списком бюджетов" },
+  "budgetSwitcherSoon": "Появится в следующем обновлении",
+  "@budgetSwitcherSoon": { "description": "Переключатель бюджетов: снекбар на «Создать общий бюджет» и «Войти по коду приглашения», пока этих экранов нет" },
+  "budgetSwitcherLoadFailed": "Не получилось загрузить бюджеты",
+  "@budgetSwitcherLoadFailed": { "description": "Переключатель бюджетов: вместо списка, если список бюджетов не прочитался с телефона" },
+  "budgetSwitcherFailed": "Не получилось переключить бюджет. Попробуй ещё раз",
+  "@budgetSwitcherFailed": { "description": "Переключатель бюджетов: снекбар, если выбор не сохранился на телефоне — открыт прежний бюджет" },
+  "expenseMoveFailed": "Не получилось перенести трату. Попробуй ещё раз",
+  "@expenseMoveFailed": { "description": "Трата · редактирование: снекбар, если категории нового бюджета не прочитались — бюджет траты не меняется" },
 
   "monthAverage": "В среднем",
   "@monthAverage": { "description": "Футер карточки месяца: подпись среднего в день" },
@@ -907,7 +938,7 @@
   "expenseEditComment": "Комментарий",
   "@expenseEditComment": { "description": "Трата · редактирование: строка комментария, тап открывает шторку комментария (43:4962)" },
   "expenseEditBudget": "Бюджет",
-  "@expenseEditBudget": { "description": "Трата · редактирование: строка бюджета траты (перенос в другой бюджет появится позже)" },
+  "@expenseEditBudget": { "description": "Трата · редактирование: строка бюджета траты, тап открывает шторку бюджетов (перенос в другой бюджет)" },
   "expenseEditSyncHint": "Изменения уходят на сервер сразу или когда появится сеть.",
   "@expenseEditSyncHint": { "description": "Трата · редактирование (43:4368): подпись под полями" },
   "expenseEditSave": "Сохранить",
