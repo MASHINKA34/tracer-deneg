@@ -146,7 +146,6 @@ void main() {
   for (final (target, stub) in [
     ('Праздники', 'holidays'),
     ('Напоминания', 'reminders'),
-    ('Войти по коду приглашения', 'joinBudget'),
     ('Семья', 'budget'),
   ]) {
     testWidgets('«$target» - заглушка: снекбар «Появится в следующем '

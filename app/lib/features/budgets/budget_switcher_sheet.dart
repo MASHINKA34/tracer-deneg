@@ -178,8 +178,8 @@ Future<void> openBudgetSwitcher(BuildContext context, WidgetRef ref) async {
       _log.fine('budget switcher: $choice → ${AppRoutes.newBudget}');
       unawaited(context.push<void>(AppRoutes.newBudget));
     case JoinBudgetByCode():
-      _log.fine('budget switcher: $choice is not available yet → snackbar');
-      _snackbar(context, l10n.budgetSwitcherSoon);
+      _log.fine('budget switcher: $choice → ${AppRoutes.joinBudget}');
+      unawaited(context.push<void>(AppRoutes.joinBudget));
   }
 }
 

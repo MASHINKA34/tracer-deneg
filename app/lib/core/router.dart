@@ -11,6 +11,7 @@ import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/recovery_code_screen.dart';
 import '../features/auth/register_screen.dart';
+import '../features/budgets/join_budget_screen.dart';
 import '../features/budgets/new_budget_screen.dart';
 import '../features/categories/categories_screen.dart';
 import '../features/categories/category_editor_screen.dart';
@@ -57,6 +58,7 @@ abstract final class AppRoutes {
   static const String forgotPassword = '/auth/forgot';
   static const String recoveryCode = '/auth/code';
   static const String newBudget = '/budgets/new';
+  static const String joinBudget = '/budgets/join';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
@@ -75,6 +77,7 @@ abstract final class AppRoutes {
   static const String recoveryReissueName = 'recoveryReissue';
   static const String deleteAccountName = 'deleteAccount';
   static const String newBudgetName = 'newBudget';
+  static const String joinBudgetName = 'joinBudget';
 
   static const String authStack = '/auth';
 
@@ -367,6 +370,12 @@ GoRouter buildRouter({
         name: AppRoutes.newBudgetName,
         parentNavigatorKey: rootKey,
         builder: (context, state) => const AppFrame(child: NewBudgetScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.joinBudget,
+        name: AppRoutes.joinBudgetName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const AppFrame(child: JoinBudgetScreen()),
       ),
       GoRoute(
         path: AppRoutes.search,

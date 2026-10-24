@@ -288,6 +288,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onStub: _stub,
                       onCreate: () =>
                           _push('create budget', AppRoutes.newBudget),
+                      onJoin: () => _push('join budget', AppRoutes.joinBudget),
                     ),
                     const SizedBox(height: 12),
                     ProfileSectionHead(title: l10n.profileSettings),
@@ -399,12 +400,14 @@ class _Budgets extends ConsumerWidget {
     required this.profiles,
     required this.onStub,
     required this.onCreate,
+    required this.onJoin,
   });
 
   final String? selectedId;
   final Map<String, MemberProfile> profiles;
   final void Function(ProfileStub stub, {String details}) onStub;
   final VoidCallback onCreate;
+  final VoidCallback onJoin;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -460,7 +463,7 @@ class _Budgets extends ConsumerWidget {
               ),
               title: l10n.profileJoinBudget,
               trailing: const ProfileChevron(),
-              onTap: () => onStub(ProfileStub.joinBudget),
+              onTap: onJoin,
             ),
           ],
         ),

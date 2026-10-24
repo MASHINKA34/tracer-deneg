@@ -257,30 +257,6 @@ void main() {
     );
   });
 
-  for (final (label, choice) in const [
-    ('Войти по коду приглашения', 'join by invite code'),
-  ]) {
-    testUnmounting('«$label»: шторка закрыта, снекбар «Появится в следующем '
-        'обновлении», открыт прежний бюджет', (tester) async {
-      final db = openTestDatabase();
-      await tester.runAsync(() => SwitcherFixture.mockup(db));
-      final h = await ShellHarness.start(tester, db: db);
-
-      await _openSwitcher(tester, 'Личный бюджет');
-      await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(BudgetSheet), findsNothing);
-      expect(find.text('Появится в следующем обновлении'), findsOneWidget);
-      expect(_inHeader(find.text('Личный бюджет')), findsOneWidget);
-      expect(await _storedChoice(h), isNull);
-      expect(
-        _budgetLogs(h, Level.FINE),
-        contains('budget switcher: $choice is not available yet → snackbar'),
-      );
-    });
-  }
-
   testUnmounting('свой профиль сервер не присылает: у своего аватара буква из '
       'имени вошедшего', (tester) async {
     final db = openTestDatabase();
