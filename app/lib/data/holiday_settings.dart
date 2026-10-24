@@ -246,8 +246,9 @@ final class AccountHolidaySettings extends Notifier<CachedHolidaySettings?> {
     }
     state = next;
     _log.info(
-      'holiday settings changed from $source: ${next.settings} '
-      '(was ${previous?.settings ?? 'defaults'})'
+      'holiday settings ${previous == null ? 'received' : 'changed'} from '
+      '$source: ${next.settings} (was '
+      '${previous?.settings ?? 'not cached, defaults'})'
       '${cachedOnPhone ? ' cached in ${sw.elapsedMilliseconds}ms' : ''}',
     );
     return true;
