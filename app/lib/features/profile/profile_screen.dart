@@ -6,6 +6,8 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/router.dart';
+import '../../data/api/api_error_text.dart';
+import '../../data/api/api_exception.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
 import '../../data/session/session_providers.dart';
@@ -21,6 +23,7 @@ import '../auth/sign_out_service.dart';
 import '../expense/expense_snackbar_layer.dart';
 import 'profile_account_card.dart';
 import 'profile_budgets.dart';
+import 'send_logs_service.dart';
 import 'sign_out_dialog.dart';
 import 'theme_mode.dart';
 
@@ -73,14 +76,7 @@ void _logUnavailable<T>(
   }
 }
 
-enum ProfileStub {
-  budget,
-  createBudget,
-  joinBudget,
-  holidays,
-  reminders,
-  sendLogs,
-}
+enum ProfileStub { budget, createBudget, joinBudget, holidays, reminders }
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -93,6 +89,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final Stopwatch _sw = Stopwatch()..start();
   bool _loggedSession = false;
   bool _signingOut = false;
+  bool _sendingLogs = false;
 
   @override
   void initState() {
@@ -174,6 +171,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context.go(AppRoutes.login);
     } finally {
       _signingOut = false;
+    }
+  }
+
+  Future<void> _sendLogs() async {
+    if (_sendingLogs) {
+      _log.fine('profile send logs tap ignored: logs are being sent');
+      return;
+    }
+    _sendingLogs = true;
+    _log.fine('profile row send logs tap → sending user report');
+    try {
+      final outcome = await ref.read(sendLogsServiceProvider).send();
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      final text = switch (outcome) {
+        LogsSent() => l10n.profileSendLogsDone,
+        SendLogsFailed(error: final ApiException e) => apiErrorText(l10n, e),
+        SendLogsFailed() => l10n.profileSendLogsFailed,
+      };
+      _log.fine(
+        'profile send logs ${outcome is LogsSent ? 'done' : 'failed'} → '
+        'snackbar',
+      );
+      _showSnackbar(text);
+    } finally {
+      _sendingLogs = false;
     }
   }
 
@@ -314,8 +337,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ListRow(
                           icon: AppIcons.message,
                           title: l10n.profileSendLogs,
-                          value: l10n.profileSoon,
-                          onTap: () => _stub(ProfileStub.sendLogs),
+                          onTap: _sendLogs,
                         ),
                         ListRow(
                           icon: AppIcons.logOut,
