@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import '../../data/api/api_error_text.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/sync/sync_service.dart';
+import '../../data/sync/sync_status_view.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/dialog.dart';
 import '../../ui/icons/app_icon.dart';
@@ -101,9 +102,22 @@ class _SignOutDialogState extends ConsumerState<SignOutDialog> {
     }
   }
 
+  void _progress(int? previous, int next) {
+    if (_phase != _Phase.syncing || next <= 0 || next == _queue) return;
+    _log.fine(
+      'sign-out dialog: sending through the sync engine, queue '
+      '$_queue → $next left',
+    );
+    setState(() => _queue = next);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    ref.listen<int>(
+      syncStatusViewProvider.select((view) => view.queue),
+      _progress,
+    );
     final signingOut = _phase == _Phase.signingOut;
     final Widget dialog;
     if (_queue == 0) {
