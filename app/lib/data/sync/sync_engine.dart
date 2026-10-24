@@ -10,6 +10,7 @@ import '../api/api_exception.dart';
 import '../api/sync_api.dart';
 import '../db/redact_db_error.dart';
 import '../providers.dart';
+import '../recurring_service.dart';
 import '../repositories/outbox_queue.dart';
 import '../session/session_providers.dart';
 import '../session/session_state.dart';
@@ -44,6 +45,8 @@ typedef BudgetRemovedListener = void Function(
   RemovedBudget budget,
   BudgetRemovalKind kind,
 );
+
+typedef AfterPull = Future<void> Function(PullResult pull);
 
 Timer _realTimer(Duration delay, void Function() callback) =>
     Timer(delay, callback);
@@ -212,6 +215,7 @@ class SyncEngine implements SyncService {
     this._selectedBudgetId,
     this._onNotice,
     this._watchLastSyncAt,
+    this._afterPull,
     this._now = DateTime.now,
     math.Random? random,
     StartTimer? startTimer,
@@ -228,6 +232,7 @@ class SyncEngine implements SyncService {
   final SelectedBudgetReader? _selectedBudgetId;
   final BudgetRemovedListener? _onNotice;
   final Stream<DateTime?> Function()? _watchLastSyncAt;
+  final AfterPull? _afterPull;
   final DateTime Function() _now;
   final math.Random _random;
   final StartTimer _startTimer;
@@ -500,6 +505,7 @@ class SyncEngine implements SyncService {
     }
     if (from != null) _reread = null;
     _failures = 0;
+    await _runAfterPull(pull, 'cycle ${reason.name}');
     final remaining = await _queueSize();
     _setState(
       _state.copyWith(
@@ -736,6 +742,7 @@ class SyncEngine implements SyncService {
         onRemoved: _budgetsRemoved,
       );
       if (from != null) _reread = null;
+      await _runAfterPull(result, 'pull ${reason.name}');
       final queue = await _queueSize();
       _setState(
         _state.copyWith(
@@ -757,6 +764,33 @@ class SyncEngine implements SyncService {
         ),
       );
       rethrow;
+    }
+  }
+
+  Future<void> _runAfterPull(PullResult pull, String what) async {
+    final hook = _afterPull;
+    if (hook == null) return;
+    final sw = Stopwatch()..start();
+    _log.fine(
+      'sync $what: pull applied pages=${pull.pages} '
+      'entities=${pull.counts.total} recurring=${pull.counts.recurring} → '
+      'recurring generator (after sync)',
+    );
+    try {
+      await hook(pull);
+      _log.fine(
+        'sync $what: recurring generator (after sync) finished in '
+        '${sw.elapsedMilliseconds}ms',
+      );
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.warning(
+        'sync $what: recurring generator (after sync) crashed after '
+        '${sw.elapsedMilliseconds}ms → pull result kept, the generator runs '
+        'again on the next trigger: ${describeError(error)}',
+        error,
+        st,
+      );
     }
   }
 
@@ -945,6 +979,7 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
         .read(budgetRemovedNoticeProvider.notifier)
         .post(budgetId: budget.budgetId, name: budget.name, kind: kind),
     watchLastSyncAt: () => ref.read(syncStateQueriesProvider).watchLastSyncAt(),
+    afterPull: (_) => ref.read(recurringServiceProvider).afterSync(),
     now: () => ref.read(clockProvider).now(),
   );
   ref.listen<SessionState>(
