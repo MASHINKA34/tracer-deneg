@@ -113,20 +113,25 @@ class SendLogsService {
       return LogTail.empty;
     }
     final files = reporting.logFiles();
-    if (files.isEmpty) {
+    final background = reporting.backgroundLogFiles();
+    if (files.isEmpty && background.isEmpty) {
       _log.warning(
         'user report: log file was not opened at start (logcat only) → '
         'sent without logs',
       );
       return LogTail.empty;
     }
+    _log.fine(
+      'user report: app log files=${files.length}, background task log '
+      'files=${background.length} → merged by time, newest kept',
+    );
     try {
-      return readLogTail(files, maxBytes: maxLogsBytes);
+      return readMergedLogTail([files, background], maxBytes: maxLogsBytes);
     } catch (e, st) {
       _log.warning(
         'user report: log tail read failed '
-        'files=${files.map((f) => f.path).join(',')}: ${describeError(e)} → '
-        'sent without logs',
+        'files=${[...files, ...background].map((f) => f.path).join(',')}: '
+        '${describeError(e)} → sent without logs',
         e,
         st,
       );

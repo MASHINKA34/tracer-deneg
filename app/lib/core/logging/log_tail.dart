@@ -74,6 +74,91 @@ LogTail readLogTail(
   return result;
 }
 
+LogTail readMergedLogTail(
+  List<List<File>> sources, {
+  int maxBytes = maxClientErrorLogsBytes,
+}) {
+  final sw = Stopwatch()..start();
+  final queues = <List<_LogRecordLines>>[];
+  var sourceBytes = 0;
+  var read = 0;
+  for (final files in sources) {
+    final records = <_LogRecordLines>[];
+    var last = DateTime.fromMicrosecondsSinceEpoch(0, isUtc: true);
+    for (final file in files) {
+      if (!file.existsSync()) {
+        _log.fine('log tail: ${file.path} absent → skipped');
+        continue;
+      }
+      final bytes = file.readAsBytesSync();
+      sourceBytes += bytes.length;
+      read++;
+      final text = utf8.decode(bytes, allowMalformed: true);
+      _LogRecordLines? current;
+      for (final line in const LineSplitter().convert(text)) {
+        final at = _recordTime(line);
+        if (at != null || current == null) {
+          if (at != null) last = at;
+          current = _LogRecordLines(last);
+          records.add(current);
+        }
+        current.lines.add(line);
+      }
+    }
+    queues.add(records);
+  }
+  final merged = <String>[];
+  final heads = List<int>.filled(queues.length, 0);
+  var total = 0;
+  for (final q in queues) {
+    total += q.length;
+  }
+  for (var n = 0; n < total; n++) {
+    var pick = -1;
+    for (var i = 0; i < queues.length; i++) {
+      if (heads[i] >= queues[i].length) continue;
+      if (pick < 0 ||
+          queues[i][heads[i]].at.isBefore(queues[pick][heads[pick]].at)) {
+        pick = i;
+      }
+    }
+    merged.addAll(queues[pick][heads[pick]].lines);
+    heads[pick]++;
+  }
+  final tail = logTailOf(
+    merged.isEmpty ? '' : '${merged.join('\n')}\n',
+    maxBytes: maxBytes,
+  );
+  final result = LogTail(
+    text: tail.text,
+    bytes: tail.bytes,
+    sourceBytes: sourceBytes,
+    files: read,
+    debugLinesSkipped: tail.debugLinesSkipped,
+    truncated: tail.truncated,
+  );
+  _log.fine(
+    'log tail merged sources=${sources.length} files=$read '
+    'records=$total sourceBytes=$sourceBytes bytes=${result.bytes} '
+    'limit=$maxBytes debugSkipped=${result.debugLinesSkipped} '
+    'truncated=${result.truncated} in ${sw.elapsedMilliseconds}ms',
+  );
+  return result;
+}
+
+final class _LogRecordLines {
+  _LogRecordLines(this.at);
+
+  final DateTime at;
+  final List<String> lines = [];
+}
+
+DateTime? _recordTime(String line) {
+  if (_recordStart.firstMatch(line) == null) return null;
+  final space = line.indexOf(' ');
+  return DateTime.tryParse(line.substring(0, space));
+}
+
 ({String text, int bytes, int debugLinesSkipped, bool truncated}) logTailOf(
   String source, {
   int maxBytes = maxClientErrorLogsBytes,

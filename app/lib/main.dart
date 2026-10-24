@@ -63,9 +63,10 @@ Future<void> main() async {
 
   // 3. Файл лога и очередь отчётов в каталоге приложения.
   var sw = Stopwatch()..start();
+  Directory? logs;
   try {
     final supportDir = await getApplicationSupportDirectory();
-    final logsDir = Directory('${supportDir.path}/logs');
+    final logsDir = logs = Directory('${supportDir.path}/logs');
     final file = logging.attachFile(logsDir);
     reports.attach(File('${logsDir.path}/pending_reports.jsonl'));
     _log.info('logging ready file=${file.path} in ${sw.elapsedMilliseconds}ms');
@@ -136,6 +137,7 @@ Future<void> main() async {
       ?logging.previousLogFile,
       ?logging.logFile,
     ],
+    backgroundLogFiles: () => backgroundLogFilesIn(logs),
   );
 
   // 5. Первый кадр.

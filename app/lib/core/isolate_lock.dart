@@ -15,6 +15,8 @@ const String sessionRefreshLockName = 'ru.milionchik.lock.session-refresh';
 
 const String backgroundJobLockName = 'ru.milionchik.lock.background-job';
 
+const String backgroundLogLockName = 'ru.milionchik.lock.background-log';
+
 const Duration _registrationPoll = Duration(milliseconds: 20);
 
 const String _waitMessage = 'wait';

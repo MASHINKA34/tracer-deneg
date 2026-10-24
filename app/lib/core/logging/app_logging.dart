@@ -14,6 +14,17 @@ const String logLevelDefine = String.fromEnvironment('LOG_LEVEL');
 /// Сколько строк держим в памяти, пока файл лога ещё не открыт.
 const int _maxPendingLines = 500;
 
+const String appLogFileName = 'app.log';
+
+const String backgroundLogFileName = 'bg.log';
+
+List<File> backgroundLogFilesIn(Directory? logsDir) => logsDir == null
+    ? const []
+    : [
+        File('${logsDir.path}/$backgroundLogFileName.1'),
+        File('${logsDir.path}/$backgroundLogFileName'),
+      ];
+
 /// Логирование приложения (00-spec §13): `package:logging`, формат из
 /// `shared`, вывод в logcat (тег `milionchik`) и в кольцевой файл
 /// `logs/app.log` (2 × 1 МБ).
@@ -73,10 +84,15 @@ class AppLogging {
 
   /// Открывает кольцевой файл в [logsDir] и дописывает в него строки,
   /// накопленные с начала запуска.
-  File attachFile(Directory logsDir, {int maxBytes = 1024 * 1024}) {
+  File attachFile(
+    Directory logsDir, {
+    int maxBytes = 1024 * 1024,
+    String fileName = appLogFileName,
+  }) {
     final sink = RingFileSink.open(
       logsDir,
       maxBytes: maxBytes,
+      fileName: fileName,
       onError: (message, error, stack) {
         // В файл писать уже нельзя — только logcat.
         _logcat?.write(
@@ -91,6 +107,7 @@ class AppLogging {
         '… $_droppedPending earlier lines were not written to file '
         '(buffer limit $_maxPendingLines)',
       );
+      _droppedPending = 0;
     }
     for (final line in _pending) {
       sink.writeLine(line);
@@ -98,6 +115,14 @@ class AppLogging {
     _pending.clear();
     _file = sink;
     return sink.currentFile;
+  }
+
+  File? detachFile() {
+    final file = _file;
+    if (file == null) return null;
+    _file = null;
+    file.close();
+    return file.currentFile;
   }
 
   void _onRecord(LogRecord record) {

@@ -35,16 +35,20 @@ final class ReportDevice {
       'app=$appVersion build=$buildMode log=$logLevel';
 }
 
+List<File> _noLogFiles() => const [];
+
 final class ErrorReporting {
   const ErrorReporting({
     required this.queue,
     required this.device,
     required this.logFiles,
+    this.backgroundLogFiles = _noLogFiles,
   });
 
   final ErrorReportQueue queue;
   final ReportDevice device;
   final List<File> Function() logFiles;
+  final List<File> Function() backgroundLogFiles;
 }
 
 final errorReportingProvider = Provider<ErrorReporting?>(
