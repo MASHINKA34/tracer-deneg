@@ -118,6 +118,7 @@ final class RemovedBudget {
     required this.kind,
     required this.ownerId,
     required this.wasSelected,
+    this.deleted = false,
   });
 
   final String budgetId;
@@ -125,11 +126,12 @@ final class RemovedBudget {
   final BudgetKind kind;
   final String ownerId;
   final bool wasSelected;
+  final bool deleted;
 
   @override
   String toString() =>
       'RemovedBudget($budgetId ${kind.name} owner=$ownerId '
-      'selected=$wasSelected)';
+      'selected=$wasSelected deleted=$deleted)';
 }
 
 typedef SelectedBudgetReader = Future<String?> Function();
@@ -571,7 +573,11 @@ class PullService {
     }
     var removed = const <RemovedBudget>[];
     if (page.removedBudgetIds.isNotEmpty) {
-      removed = await _removedInfo(page.removedBudgetIds, selected);
+      removed = await _removedInfo(
+        page.removedBudgetIds,
+        selected,
+        deleted: page.deletedBudgetIds.toSet(),
+      );
       await _budgets.removeBudgetData(page.removedBudgetIds);
     }
     await _saveState(
@@ -586,8 +592,9 @@ class PullService {
 
   Future<List<RemovedBudget>> _removedInfo(
     List<String> ids,
-    String? selected,
-  ) async {
+    String? selected, {
+    required Set<String> deleted,
+  }) async {
     final rows = await (_db.select(
       _db.budgets,
     )..where((b) => b.id.isIn(ids))).get();
@@ -599,6 +606,7 @@ class PullService {
           kind: row.kind,
           ownerId: row.ownerId,
           wasSelected: row.id == selected,
+          deleted: deleted.contains(row.id),
         ),
     ];
   }

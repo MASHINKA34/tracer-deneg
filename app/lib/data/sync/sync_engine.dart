@@ -851,7 +851,7 @@ class SyncEngine implements SyncService {
   void _budgetsRemoved(List<RemovedBudget> removed) {
     final userId = _signedInUserId();
     for (final budget in removed) {
-      final kind = budget.ownerId == userId
+      final kind = budget.deleted || budget.ownerId == userId
           ? BudgetRemovalKind.deleted
           : BudgetRemovalKind.excluded;
       if (!budget.wasSelected) {

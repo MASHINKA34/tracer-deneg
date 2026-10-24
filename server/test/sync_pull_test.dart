@@ -16,6 +16,7 @@ const _responseKeys = {
   'expenses',
   'recurring',
   'removedBudgetIds',
+  'deletedBudgetIds',
   'cursor',
   'hasMore',
 };

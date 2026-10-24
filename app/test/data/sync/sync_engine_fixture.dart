@@ -103,6 +103,7 @@ final class EngineServer {
   final Map<(SyncEntity, String), StoredRecord> records = {};
   final Set<String> memberOf = {};
   final Map<String, int> removed = {};
+  final Set<String> deleted = {};
   final Map<String, SyncPushResponse> batches = {};
   final List<String> pushBatchIds = [];
   final List<int> pullCursors = [];
@@ -137,6 +138,11 @@ final class EngineServer {
   void exclude(String budgetId) {
     memberOf.remove(budgetId);
     removed[budgetId] = ++seq;
+  }
+
+  void deleteBudget(String budgetId) {
+    exclude(budgetId);
+    deleted.add(budgetId);
   }
 
   Future<FakeReply> handle(FakeCall call) async {
@@ -254,6 +260,10 @@ final class EngineServer {
         expenses: of<Expense>(),
         recurring: of<RecurringRule>(),
         removedBudgetIds: [for (final (id, _) in removedNow) id],
+        deletedBudgetIds: [
+          for (final (id, _) in removedNow)
+            if (deleted.contains(id)) id,
+        ],
         cursor: last,
         hasMore: more,
       ).toJson(),

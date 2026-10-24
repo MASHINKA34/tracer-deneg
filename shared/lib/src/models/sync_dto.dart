@@ -252,6 +252,7 @@ final class SyncPullResponse {
     List<Expense> expenses = const [],
     List<RecurringRule> recurring = const [],
     List<String> removedBudgetIds = const [],
+    List<String> deletedBudgetIds = const [],
     required this.cursor,
     required this.hasMore,
   }) : budgets = List.unmodifiable(budgets),
@@ -260,7 +261,8 @@ final class SyncPullResponse {
        categories = List.unmodifiable(categories),
        expenses = List.unmodifiable(expenses),
        recurring = List.unmodifiable(recurring),
-       removedBudgetIds = List.unmodifiable(removedBudgetIds);
+       removedBudgetIds = List.unmodifiable(removedBudgetIds),
+       deletedBudgetIds = List.unmodifiable(deletedBudgetIds);
 
   factory SyncPullResponse.fromJson(Object? json) {
     final r = JsonReader.of(json, 'SyncPullResponse');
@@ -272,6 +274,9 @@ final class SyncPullResponse {
       expenses: r.objects('expenses', Expense.fromJson),
       recurring: r.objects('recurring', RecurringRule.fromJson),
       removedBudgetIds: r.strings('removedBudgetIds'),
+      deletedBudgetIds: r.json['deletedBudgetIds'] == null
+          ? const []
+          : r.strings('deletedBudgetIds'),
       cursor: r.integer('cursor'),
       hasMore: r.boolean('hasMore'),
     );
@@ -286,6 +291,7 @@ final class SyncPullResponse {
 
   /// Бюджеты, где пользователь больше не участник (исключён или удалены).
   final List<String> removedBudgetIds;
+  final List<String> deletedBudgetIds;
   final int cursor;
   final bool hasMore;
 
@@ -307,6 +313,7 @@ final class SyncPullResponse {
     'expenses': [for (final x in expenses) x.toJson()],
     'recurring': [for (final x in recurring) x.toJson()],
     'removedBudgetIds': removedBudgetIds,
+    'deletedBudgetIds': deletedBudgetIds,
     'cursor': cursor,
     'hasMore': hasMore,
   };

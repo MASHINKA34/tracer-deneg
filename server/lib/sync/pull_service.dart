@@ -87,11 +87,14 @@ const String _removedSql =
     r'CASE WHEN m.left_at IS NOT NULL AND m.seq > $2::bigint '
     r'AND m.seq <= $3::bigint THEN m.seq END, '
     r'CASE WHEN b.deleted_at IS NOT NULL AND b.seq > $2::bigint '
-    r'AND b.seq <= $3::bigint THEN b.seq END) AS seq '
+    r'AND b.seq <= $3::bigint THEN b.seq END) AS seq, '
+    'b.deleted_at IS NOT NULL AS deleted '
     'FROM budget_members m JOIN budgets b ON b.id = m.budget_id '
     r'WHERE m.user_id = $1::uuid '
     'AND (m.left_at IS NOT NULL OR b.deleted_at IS NOT NULL)) '
-    'SELECT id, seq FROM removed WHERE $_range';
+    'SELECT id, seq, deleted FROM removed WHERE $_range';
+
+typedef _Removed = ({String id, bool deleted});
 
 const String _lockNotAvailable = '55P03';
 
@@ -261,7 +264,7 @@ class PullService {
         'pull removed budgets',
         _removedSql,
         _Kind.removed,
-        (row) => row[0]! as String,
+        (row) => (id: row[0]! as String, deleted: row[2]! as bool),
         1,
       ),
     ];
@@ -304,6 +307,7 @@ SyncPullResponse _response(List<_Item> items, int cursor, bool hasMore) {
     for (final item in items)
       if (item.kind == kind) item.value as T,
   ];
+  final removed = of<_Removed>(_Kind.removed);
   return SyncPullResponse(
     budgets: of<Budget>(_Kind.budget),
     members: of<BudgetMember>(_Kind.member),
@@ -311,7 +315,11 @@ SyncPullResponse _response(List<_Item> items, int cursor, bool hasMore) {
     categories: of<Category>(_Kind.category),
     expenses: of<Expense>(_Kind.expense),
     recurring: of<RecurringRule>(_Kind.recurring),
-    removedBudgetIds: of<String>(_Kind.removed),
+    removedBudgetIds: [for (final r in removed) r.id],
+    deletedBudgetIds: [
+      for (final r in removed)
+        if (r.deleted) r.id,
+    ],
     cursor: items.isEmpty ? cursor : items.last.seq,
     hasMore: hasMore,
   );
