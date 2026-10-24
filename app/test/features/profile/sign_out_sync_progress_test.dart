@@ -107,6 +107,10 @@ void main() {
     expect(h.container.read(sessionProvider), isA<SessionAbsent>());
     expect(
       h.linesOf('auth', Level.INFO),
+      contains(contains('sign-out started choice=sync queue=250 ')),
+    );
+    expect(
+      h.linesOf('auth', Level.INFO),
       contains(
         matches(
           r'sign-out sync ok applied=250 rejected=0 in \d+ms → '

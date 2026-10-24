@@ -34,6 +34,7 @@ class SignOutDialog extends ConsumerStatefulWidget {
 
 class _SignOutDialogState extends ConsumerState<SignOutDialog> {
   late int _queue = widget.queueSize;
+  int? _left;
   _Phase _phase = _Phase.idle;
   String? _error;
   SignOutChoice? _choice;
@@ -66,6 +67,7 @@ class _SignOutDialogState extends ConsumerState<SignOutDialog> {
       case SyncNowFailed(:final remaining, :final error):
         setState(() {
           _phase = _Phase.idle;
+          _left = null;
           if (remaining > 0) _queue = remaining;
           _error = l10n.signOutSyncFailed(switch (error) {
             null => l10n.signOutSyncIncomplete,
@@ -103,12 +105,13 @@ class _SignOutDialogState extends ConsumerState<SignOutDialog> {
   }
 
   void _progress(int? previous, int next) {
-    if (_phase != _Phase.syncing || next <= 0 || next == _queue) return;
+    final shown = _left ?? _queue;
+    if (_phase != _Phase.syncing || next <= 0 || next == shown) return;
     _log.fine(
       'sign-out dialog: sending through the sync engine, queue '
-      '$_queue → $next left',
+      '$shown → $next left',
     );
-    setState(() => _queue = next);
+    setState(() => _left = next);
   }
 
   @override
@@ -136,7 +139,7 @@ class _SignOutDialogState extends ConsumerState<SignOutDialog> {
       final viaSync = _choice == SignOutChoice.sync;
       dialog = AppDialog(
         icon: AppIcons.cloudOff,
-        title: l10n.signOutUnsyncedTitle(_queue),
+        title: l10n.signOutUnsyncedTitle(_left ?? _queue),
         message: _error ?? l10n.signOutUnsyncedMessage,
         primary: AppDialogAction(
           syncing
