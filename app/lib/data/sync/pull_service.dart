@@ -17,7 +17,19 @@ final _log = Logger('sync');
 
 const int _lastErrorLength = 300;
 
-enum PullReason { login, register, recover, manual, retry }
+enum PullReason {
+  login,
+  register,
+  recover,
+  manual,
+  retry,
+  startup,
+  resume,
+  network,
+  outbox,
+  periodic,
+  websocket,
+}
 
 final class PullCounts {
   const PullCounts({

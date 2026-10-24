@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../api/api_exception.dart';
 import '../api/sync_api.dart';
 import '../db/redact_db_error.dart';
 import '../providers.dart';
@@ -12,6 +13,7 @@ import '../session/session_providers.dart';
 import '../session/session_state.dart';
 import 'pull_service.dart';
 import 'sync_engine.dart';
+import 'sync_triggers.dart';
 
 final _log = Logger('sync');
 
@@ -164,9 +166,11 @@ final class PullController extends Notifier<PullStatus> {
       'attempt=$attempt',
     );
     try {
-      final result = await ref
-          .read(syncEngineProvider)
-          .pullNow(reason, attempt: attempt);
+      final result = reason == PullReason.manual
+          ? await _fullCycle()
+          : await ref
+                .read(syncEngineProvider)
+                .pullNow(reason, attempt: attempt);
       if (result == null) {
         _setState(const PullIdle());
         _log.fine(
@@ -210,6 +214,38 @@ final class PullController extends Notifier<PullStatus> {
         ),
       );
       return null;
+    }
+  }
+
+  Future<PullResult?> _fullCycle() async {
+    _log.fine(
+      'pull reason=manual → full sync cycle (push, then pull) in the sync '
+      'engine',
+    );
+    final cycle = await ref.read(syncTriggersProvider).pulledDown();
+    switch (cycle) {
+      case SyncCycleDone(:final pull):
+        return pull;
+      case SyncCycleSkipped(:final why):
+        _log.fine('pull reason=manual: sync engine skipped the cycle: $why');
+        return null;
+      case SyncCycleFailed(:final pullFailure?):
+        throw pullFailure;
+      case SyncCycleFailed(:final stage, :final error, :final attempt):
+        _log.fine(
+          'pull reason=manual not started: sync cycle failed at '
+          'stage=${stage.name} → shown as a failed pull',
+        );
+        throw PullFailure(
+          reason: PullReason.manual,
+          stage: PullStage.prepare,
+          page: 1,
+          cursor: -1,
+          pagesApplied: 0,
+          attempt: attempt,
+          error: error,
+          requestId: error is ApiException ? error.requestId : null,
+        );
     }
   }
 

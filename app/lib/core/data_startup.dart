@@ -26,6 +26,7 @@ import 'logging/error_report_triggers.dart';
 import 'logging/error_reporting.dart';
 import 'logging/provider_logger.dart';
 import 'recurring_triggers.dart';
+import 'sync_triggers_scope.dart';
 
 final _log = Logger('app');
 
@@ -239,7 +240,9 @@ Widget appRoot(DataStartup data, {ErrorReporting? reporting}) => switch (data) {
       ],
       observers: const [ProviderLogger()],
       child: const RecurringTriggersScope(
-        child: ErrorReportTriggersScope(child: MilionchikApp()),
+        child: ErrorReportTriggersScope(
+          child: SyncTriggersScope(child: MilionchikApp()),
+        ),
       ),
     ),
   DataUnavailable() => const DatabaseErrorApp(),

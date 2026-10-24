@@ -8,3 +8,9 @@ final networkChangesProvider = Provider<Stream<List<ConnectivityResult>>>(
   (ref) => Connectivity().onConnectivityChanged,
   name: 'networkChanges',
 );
+
+final networkCheckProvider =
+    Provider<Future<List<ConnectivityResult>> Function()>(
+      (ref) => Connectivity().checkConnectivity,
+      name: 'networkCheck',
+    );

@@ -41,6 +41,21 @@ final class ExpiredSessionServer {
   FakeReply handle(FakeCall call) {
     order.add('${call.method} ${call.path}');
     final path = call.path;
+    if (path.endsWith('/sync/push')) {
+      final bearer = call.header('Authorization');
+      if (bearer == 'Bearer ${ProfileHarness.tokens.accessToken}') {
+        return FakeReply.error(401, 'unauthorized');
+      }
+      final request = SyncPushRequest.fromJson(call.json);
+      return FakeReply.json(
+        200,
+        SyncPushResponse(
+          applied: [for (final c in request.changes) c.id],
+          rejected: const [],
+          cursor: 0,
+        ).toJson(),
+      );
+    }
     if (path.endsWith('/sync/pull')) {
       final bearer = call.header('Authorization');
       if (bearer == 'Bearer ${ProfileHarness.tokens.accessToken}') {

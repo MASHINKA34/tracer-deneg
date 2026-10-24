@@ -29,7 +29,7 @@ void main() {
     await pullDownOnMonth(h);
 
     expect(server.order, [
-      'GET /api/v1/sync/pull',
+      'POST /api/v1/sync/push',
       'POST /api/v1/auth/refresh',
     ]);
     expect(find.byType(LoginScreen), findsOneWidget);

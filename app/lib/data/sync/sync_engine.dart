@@ -48,7 +48,16 @@ typedef BudgetRemovedListener = void Function(
 Timer _realTimer(Duration delay, void Function() callback) =>
     Timer(delay, callback);
 
-enum SyncReason { manual, retry }
+enum SyncReason {
+  manual,
+  retry,
+  startup,
+  resume,
+  network,
+  outbox,
+  periodic,
+  websocket,
+}
 
 enum SyncPhase { idle, sending, waitingNetwork, error }
 
@@ -148,6 +157,7 @@ final class SyncCycleFailed extends SyncCycleResult {
     required this.attempt,
     this.retryIn,
     this.push,
+    this.pullFailure,
   });
 
   final SyncStage stage;
@@ -155,6 +165,7 @@ final class SyncCycleFailed extends SyncCycleResult {
   final int attempt;
   final Duration? retryIn;
   final PushOutcome? push;
+  final PullFailure? pullFailure;
 
   @override
   String toString() =>
@@ -468,6 +479,7 @@ class SyncEngine implements SyncService {
         requestId: f.requestId,
         detail: 'page=${f.page} cursor=${f.cursor}',
         push: push,
+        pullFailure: f,
       );
     } catch (e, st) {
       final error = redactDbError(e);
@@ -528,6 +540,7 @@ class SyncEngine implements SyncService {
     String? requestId,
     String detail = '',
     PushOutcome? push,
+    PullFailure? pullFailure,
   }) async {
     final failure = _classify(error);
     final remaining = await _queueSize();
@@ -583,6 +596,7 @@ class SyncEngine implements SyncService {
       attempt: attempt,
       retryIn: retryIn,
       push: push,
+      pullFailure: pullFailure,
     );
   }
 
@@ -886,6 +900,12 @@ class SyncEngine implements SyncService {
 PullReason _pullReasonOf(SyncReason reason) => switch (reason) {
   SyncReason.manual => PullReason.manual,
   SyncReason.retry => PullReason.retry,
+  SyncReason.startup => PullReason.startup,
+  SyncReason.resume => PullReason.resume,
+  SyncReason.network => PullReason.network,
+  SyncReason.outbox => PullReason.outbox,
+  SyncReason.periodic => PullReason.periodic,
+  SyncReason.websocket => PullReason.websocket,
 };
 
 _Failure _classify(Object error) => switch (error) {

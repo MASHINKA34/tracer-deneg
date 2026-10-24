@@ -109,7 +109,7 @@ void main() {
       PrefKeys.signedInBefore: 'true',
     });
     expect(server.order, [
-      'GET /api/v1/sync/pull',
+      'POST /api/v1/sync/push',
       'POST /api/v1/auth/refresh',
       'POST /api/v1/auth/login',
       'GET /api/v1/sync/pull',
