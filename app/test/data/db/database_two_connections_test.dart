@@ -58,8 +58,8 @@ void main() {
       logs.linesOf('db', Level.FINE),
       contains(
         contains(
-          'database connection busyTimeout=5000ms journal=delete: the app '
-          'and a background task open separate connections',
+          'database connection busyTimeout=5000ms journal=delete set before '
+          'the first query',
         ),
       ),
     );

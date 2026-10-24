@@ -67,7 +67,6 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _beforeOpen(OpeningDetails details) async {
     _opening = details;
-    await customStatement('PRAGMA busy_timeout = $databaseBusyTimeoutMs');
     _log.fine(
       'database before open version=${details.versionNow} '
       'previous=${details.versionBefore ?? '-'} created=${details.wasCreated}',
@@ -95,12 +94,15 @@ Future<AppDatabase> openAppDatabase({
         native: DriftNativeOptions(
           databasePath: () async => path,
           tempDirectoryPath: tempDirectory,
+          setup: (raw) =>
+              raw.execute('PRAGMA busy_timeout = $databaseBusyTimeoutMs'),
         ),
       ),
     );
     final sqlite = await opened
         .customSelect('SELECT sqlite_version() AS version')
         .getSingle();
+    final openMs = sw.elapsedMilliseconds;
     _log.info(
       'database opened path=$path schema=${opened.schemaVersion} '
       'created=${opened._opening?.wasCreated} '
@@ -113,8 +115,9 @@ Future<AppDatabase> openAppDatabase({
         .getSingle();
     _log.fine(
       'database connection busyTimeout=${busy.data.values.first}ms '
-      'journal=${journal.data.values.first}: the app and a background task '
-      'open separate connections, a write waits for the other one instead of '
+      'journal=${journal.data.values.first} set before the first query, open '
+      'took ${openMs}ms: the app and a background task open separate '
+      'connections, opening and writing wait for the other one instead of '
       'failing as locked',
     );
     return opened;
