@@ -31,6 +31,7 @@ enum PullReason {
   websocket,
   background,
   budgetCreated,
+  budgetJoined,
 }
 
 final class PullCounts {

@@ -10,6 +10,25 @@ final _log = Logger('budgets');
 
 const String budgetsPath = '/budgets';
 
+const String joinBudgetPath = '/invites/join';
+
+final class JoinedBudgetReply {
+  const JoinedBudgetReply({
+    required this.budget,
+    required this.statusCode,
+    required this.requestId,
+  });
+
+  final Budget budget;
+  final int statusCode;
+  final String requestId;
+
+  @override
+  String toString() =>
+      'JoinedBudgetReply(budgetId=${budget.id} kind=${budget.kind.name} '
+      'status=$statusCode rid=$requestId)';
+}
+
 final class CreatedBudgetReply {
   const CreatedBudgetReply({
     required this.budget,
@@ -69,6 +88,32 @@ class BudgetsApi {
         requestId: response.requestId,
         statusCode: response.statusCode,
         reason: 'create budget: ${e.message}',
+      );
+    }
+  }
+
+  Future<JoinedBudgetReply> join({required String code}) async {
+    final response = await _client.post(joinBudgetPath, body: {'code': code});
+    try {
+      final reader = JsonReader.of(response.data, 'JoinBudgetResponse');
+      final budget = Budget.fromJson(reader.json['budget']);
+      return JoinedBudgetReply(
+        budget: budget,
+        statusCode: response.statusCode,
+        requestId: response.requestId,
+      );
+    } on FormatException catch (e) {
+      _log.warning(
+        'POST $joinBudgetPath ${response.statusCode} code=${maskInviteCode(code)} '
+        'answered without {budget} → bad response: ${e.message} '
+        'rid=${response.requestId}',
+      );
+      throw ApiBadResponse(
+        method: 'POST',
+        path: '${_client.config.baseUrl.path}$joinBudgetPath',
+        requestId: response.requestId,
+        statusCode: response.statusCode,
+        reason: 'join budget: ${e.message}',
       );
     }
   }
