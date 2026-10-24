@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/isolate_lock.dart';
 import '../session/session_providers.dart';
 import 'api_client.dart';
 import 'api_config.dart';
@@ -19,6 +20,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final client = ApiClient(
     config: ref.watch(apiConfigProvider),
     tokens: ref.watch(tokenStoreProvider),
+    refreshLock: ref.watch(isolateCoordinationProvider)?.sessionRefresh,
   );
   listenSessionExpired(ref, client);
   ref.onDispose(client.close);

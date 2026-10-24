@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import '../../core/isolate_lock.dart';
 import 'api_exception.dart';
 import 'api_log_interceptor.dart';
 import 'request_id_interceptor.dart';
@@ -61,12 +62,14 @@ class AuthInterceptor extends Interceptor {
     required this._dio,
     required this._newRequestId,
     required this._onSessionExpired,
+    this._refreshLock,
   });
 
   final TokenStore _tokens;
   final Dio _dio;
   final String Function() _newRequestId;
   final void Function(SessionExpired event) _onSessionExpired;
+  final IsolateLock? _refreshLock;
 
   Future<_RefreshOutcome>? _refreshing;
   String? _endedRefreshToken;
@@ -236,12 +239,42 @@ class AuthInterceptor extends Interceptor {
       );
       return pending;
     }
-    final started = _refreshInSlot(options);
+    final started = _refreshAcrossIsolates(options);
     _refreshing = started;
     try {
       return await started;
     } finally {
       if (identical(_refreshing, started)) _refreshing = null;
+    }
+  }
+
+  Future<_RefreshOutcome> _refreshAcrossIsolates(RequestOptions options) async {
+    final lock = _refreshLock;
+    if (lock == null) return _refreshInSlot(options);
+    final rid = requestIdOfOptions(options);
+    final IsolateLease lease;
+    try {
+      lease = await lock.acquire('session refresh rid=$rid');
+    } catch (e, st) {
+      _log.warning(
+        'session refresh lock not taken: ${describeError(e)} → refreshing '
+        'without it rid=$rid',
+        e,
+        st,
+      );
+      return _refreshInSlot(options);
+    }
+    try {
+      final other = lease.waitedFor;
+      if (other != null) {
+        _log.info(
+          'session refresh waited ${lease.waited.inMilliseconds}ms for '
+          '$other → reading tokens it may have saved rid=$rid',
+        );
+      }
+      return await _refreshInSlot(options);
+    } finally {
+      lease.release();
     }
   }
 

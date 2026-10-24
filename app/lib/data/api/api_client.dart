@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/logging.dart';
 
+import '../../core/isolate_lock.dart';
 import 'api_config.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
@@ -46,6 +47,7 @@ class ApiClient {
     required TokenStore tokens,
     HttpClientAdapter? adapter,
     String Function()? newRequestId,
+    IsolateLock? refreshLock,
   }) : _newRequestId = newRequestId ?? generateRequestId,
        _dio = Dio(
          BaseOptions(
@@ -62,6 +64,7 @@ class ApiClient {
       dio: _dio,
       newRequestId: _newRequestId,
       onSessionExpired: _reportSessionExpired,
+      refreshLock: refreshLock,
     );
     _dio.interceptors.addAll([
       RequestIdInterceptor(generate: _newRequestId),
