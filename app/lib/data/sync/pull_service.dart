@@ -29,6 +29,7 @@ enum PullReason {
   outbox,
   periodic,
   websocket,
+  background,
 }
 
 final class PullCounts {

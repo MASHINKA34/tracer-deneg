@@ -9,6 +9,7 @@ import 'package:shared/shared.dart';
 
 import '../data/session/session_providers.dart';
 import '../data/session/session_state.dart';
+import '../data/sync/background_sync.dart';
 import '../data/sync/sync_triggers.dart';
 import '../data/sync/sync_websocket.dart';
 import 'network_status.dart';
@@ -34,6 +35,7 @@ class SyncTriggersScope extends ConsumerStatefulWidget {
 class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   late final SyncTriggers _triggers = ref.read(syncTriggersProvider);
   late final SyncWebSocket _socket = ref.read(syncWebSocketProvider);
+  late final BackgroundSync? _background = ref.read(backgroundSyncProvider);
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<List<ConnectivityResult>>? _network;
   StreamSubscription<Set<TableUpdate>>? _outbox;
@@ -47,15 +49,17 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
       final change = '${previous?.name ?? '-'}→${next.name}';
       _triggers.sessionChanged(active: active, change: change);
       _socket.sessionChanged(active: active, change: change);
+      _background?.sessionChanged(active: active, change: change);
     });
     try {
-      _outbox = ref
-          .read(outboxWritesProvider)
-          .listen(
-            (_) => _triggers.outboxWritten(),
-            onError: (Object e, StackTrace st) =>
-                _streamFailed('outbox writes', e, st),
-          );
+      _outbox = ref.read(outboxWritesProvider).listen(
+        (_) {
+          _triggers.outboxWritten();
+          _background?.outboxWritten();
+        },
+        onError: (Object e, StackTrace st) =>
+            _streamFailed('outbox writes', e, st),
+      );
     } catch (e, st) {
       _streamFailed('outbox writes', e, st);
     }
@@ -66,6 +70,7 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
     );
     final signedIn = ref.read(sessionProvider) is SessionActive;
     final foreground = inForeground(lifecycle);
+    _background?.start(signedIn: signedIn, foreground: foreground);
     _triggers.start(signedIn: signedIn, foreground: foreground);
     _socket.start(signedIn: signedIn, foreground: foreground);
     unawaited(_watchNetwork());
@@ -74,11 +79,13 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
   void _resumed() {
     _triggers.resumed();
     _socket.resumed();
+    _background?.resumed();
   }
 
   void _paused() {
     _triggers.paused();
     _socket.paused();
+    _background?.paused();
   }
 
   void _networkChanged(List<ConnectivityResult> results) {
@@ -138,6 +145,7 @@ class _SyncTriggersScopeState extends ConsumerState<SyncTriggersScope> {
     if (network != null) unawaited(network.cancel());
     _triggers.stop('triggers scope unmounted');
     _socket.stop('triggers scope unmounted');
+    _background?.stop('triggers scope unmounted');
     super.dispose();
   }
 

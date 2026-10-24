@@ -18,10 +18,12 @@ import '../data/session/session.dart';
 import '../data/session/session_providers.dart';
 import '../data/session/session_state.dart';
 import '../data/session/session_store.dart';
+import '../data/sync/background_sync.dart';
 import '../features/profile/theme_mode.dart';
 import '../features/startup/database_error_app.dart';
 import 'auth_gate.dart';
 import 'clock.dart';
+import 'isolate_lock.dart';
 import 'logging/error_report_triggers.dart';
 import 'logging/error_reporting.dart';
 import 'logging/provider_logger.dart';
@@ -217,7 +219,11 @@ void _logSeed(DevSeedResult result, int ms) {
   }
 }
 
-Widget appRoot(DataStartup data, {ErrorReporting? reporting}) => switch (data) {
+Widget appRoot(
+  DataStartup data, {
+  ErrorReporting? reporting,
+  bool background = false,
+}) => switch (data) {
   DataReady(
     :final db,
     :final todayOverride,
@@ -237,6 +243,12 @@ Widget appRoot(DataStartup data, {ErrorReporting? reporting}) => switch (data) {
           todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
         if (reporting != null)
           errorReportingProvider.overrideWithValue(reporting),
+        if (background) ...[
+          isolateCoordinationProvider.overrideWithValue(
+            IsolateCoordination.app(),
+          ),
+          backgroundSyncProvider.overrideWith(BackgroundSync.forApp),
+        ],
       ],
       observers: const [ProviderLogger()],
       child: const RecurringTriggersScope(

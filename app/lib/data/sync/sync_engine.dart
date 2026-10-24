@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/clock.dart';
+import '../../core/isolate_lock.dart';
 import '../api/api_exception.dart';
 import '../api/sync_api.dart';
 import '../db/redact_db_error.dart';
@@ -14,6 +15,7 @@ import '../recurring_service.dart';
 import '../repositories/outbox_queue.dart';
 import '../session/session_providers.dart';
 import '../session/session_state.dart';
+import 'background_sync.dart';
 import 'budget_removed_notice.dart';
 import 'pull_controller.dart';
 import 'pull_service.dart';
@@ -48,6 +50,8 @@ typedef BudgetRemovedListener = void Function(
 
 typedef AfterPull = Future<void> Function(PullResult pull);
 
+typedef SyncRunGate = Future<void> Function(String what);
+
 Timer _realTimer(Duration delay, void Function() callback) =>
     Timer(delay, callback);
 
@@ -60,6 +64,7 @@ enum SyncReason {
   outbox,
   periodic,
   websocket,
+  background,
 }
 
 enum SyncPhase { idle, sending, waitingNetwork, error }
@@ -216,6 +221,7 @@ class SyncEngine implements SyncService {
     this._onNotice,
     this._watchLastSyncAt,
     this._afterPull,
+    this._beforeRun,
     this._now = DateTime.now,
     math.Random? random,
     StartTimer? startTimer,
@@ -233,6 +239,7 @@ class SyncEngine implements SyncService {
   final BudgetRemovedListener? _onNotice;
   final Stream<DateTime?> Function()? _watchLastSyncAt;
   final AfterPull? _afterPull;
+  final SyncRunGate? _beforeRun;
   final DateTime Function() _now;
   final math.Random _random;
   final StartTimer _startTimer;
@@ -331,6 +338,7 @@ class SyncEngine implements SyncService {
       'until the engine is idle',
     );
     await _tail;
+    await _passGate('hold by $why');
     _setState(_state.copyWith(retryAt: null));
     _log.info(
       'sync held by $why: engine idle after ${sw.elapsedMilliseconds}ms, '
@@ -384,6 +392,7 @@ class SyncEngine implements SyncService {
 
   Future<T> _exclusive<T>(String what, Future<T> Function() body) {
     final run = _tail.then((_) async {
+      await _passGate(what);
       _running = what;
       try {
         return await body();
@@ -393,6 +402,21 @@ class SyncEngine implements SyncService {
     });
     _tail = run.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return run;
+  }
+
+  Future<void> _passGate(String what) async {
+    final gate = _beforeRun;
+    if (gate == null) return;
+    try {
+      await gate(what);
+    } catch (e, st) {
+      _log.warning(
+        'sync $what: background job check failed → running without '
+        'waiting for it: ${describeError(e)}',
+        e,
+        st,
+      );
+    }
   }
 
   String? _blocked({bool needsSession = true}) {
@@ -940,6 +964,7 @@ PullReason _pullReasonOf(SyncReason reason) => switch (reason) {
   SyncReason.outbox => PullReason.outbox,
   SyncReason.periodic => PullReason.periodic,
   SyncReason.websocket => PullReason.websocket,
+  SyncReason.background => PullReason.background,
 };
 
 _Failure _classify(Object error) => switch (error) {
@@ -966,6 +991,7 @@ String _short(String text) => text.length > _lastErrorLength
     : text;
 
 final syncEngineProvider = Provider<SyncEngine>((ref) {
+  final jobLock = ref.read(isolateCoordinationProvider)?.backgroundJob;
   final engine = SyncEngine(
     api: () => ref.read(syncApiProvider),
     outbox: () => ref.read(outboxQueueProvider),
@@ -980,6 +1006,9 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
         .post(budgetId: budget.budgetId, name: budget.name, kind: kind),
     watchLastSyncAt: () => ref.read(syncStateQueriesProvider).watchLastSyncAt(),
     afterPull: (_) => ref.read(recurringServiceProvider).afterSync(),
+    beforeRun: jobLock == null
+        ? null
+        : backgroundJobGate(jobLock, () => ref.read(appDatabaseProvider)),
     now: () => ref.read(clockProvider).now(),
   );
   ref.listen<SessionState>(
