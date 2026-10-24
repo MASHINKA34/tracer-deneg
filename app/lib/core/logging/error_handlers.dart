@@ -18,13 +18,13 @@ void installErrorHandlers(ErrorReportQueue reports) {
   final previousOnError = FlutterError.onError;
   FlutterError.onError = (details) {
     final context = details.context?.toDescription();
-    final error = reportSafeError(details.exception);
+    final safe = reportSafeError(details.exception, details.stack);
     _log.severe(
       'Flutter error${details.library == null ? '' : ' in ${details.library}'}'
       '${context == null ? '' : ' ($context)'}: '
-      '${describeError(error)}',
-      error,
-      details.stack,
+      '${describeError(safe.error)}${safe.origin}',
+      safe.error,
+      safe.stack,
     );
     reports.add('error', details.exception, details.stack);
     // В debug ещё и стандартный вывод Flutter в консоль `flutter run`.
@@ -32,8 +32,12 @@ void installErrorHandlers(ErrorReportQueue reports) {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    final safe = reportSafeError(error);
-    _log.severe('uncaught error: ${describeError(safe)}', safe, stack);
+    final safe = reportSafeError(error, stack);
+    _log.severe(
+      'uncaught error: ${describeError(safe.error)}${safe.origin}',
+      safe.error,
+      safe.stack,
+    );
     reports.add('crash', error, stack);
     return true;
   };

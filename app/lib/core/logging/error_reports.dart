@@ -9,12 +9,50 @@ import '../../data/db/redact_db_error.dart';
 
 final _log = Logger('errors');
 
-Object reportSafeError(Object error) {
+const String providerRethrownMarker = 'rethrown by ProviderException at:';
+
+final class ReportSafeError {
+  const ReportSafeError({
+    required this.error,
+    required this.stack,
+    required this.providerDepth,
+  });
+
+  final Object error;
+  final StackTrace? stack;
+  final int providerDepth;
+
+  bool get fromProvider => providerDepth > 0;
+
+  String get origin => fromProvider ? ' (thrown in a provider)' : '';
+}
+
+ReportSafeError reportSafeError(Object error, [StackTrace? stack]) {
   var cause = error;
+  final stacks = <StackTrace?>[stack];
   while (cause is ProviderException) {
+    stacks.add(cause.stackTrace);
     cause = cause.exception;
   }
-  return redactDbError(cause);
+  final depth = stacks.length - 1;
+  if (depth == 0) {
+    return ReportSafeError(
+      error: redactDbError(cause),
+      stack: stack,
+      providerDepth: 0,
+    );
+  }
+  final parts = <String>[];
+  for (final part in stacks.reversed) {
+    final text = part?.toString().trimRight() ?? '';
+    if (parts.isNotEmpty) parts.add(providerRethrownMarker);
+    parts.add(text.isEmpty ? '<no stack>' : text);
+  }
+  return ReportSafeError(
+    error: redactDbError(cause),
+    stack: StackTrace.fromString(parts.join('\n')),
+    providerDepth: depth,
+  );
 }
 
 final class QueuedErrorReport {
@@ -57,11 +95,12 @@ class ErrorReportQueue {
   /// Ставит отчёт в очередь. [kind]: `crash` (необработанная ошибка),
   /// `error` (ошибка фреймворка); `user_report` уходит сразу, без очереди.
   void add(String kind, Object error, StackTrace? stack) {
+    final safe = reportSafeError(error, stack);
     final report = <String, Object?>{
       'kind': kind,
       'occurredAt': DateTime.now().toUtc().toIso8601String(),
-      'message': describeError(reportSafeError(error)),
-      'stack': stack?.toString(),
+      'message': describeError(safe.error),
+      'stack': safe.stack?.toString(),
       ...context,
     };
     if (_file == null) {
