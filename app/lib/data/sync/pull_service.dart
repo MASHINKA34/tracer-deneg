@@ -96,6 +96,33 @@ final class PullCounts {
       'removed=$removed';
 }
 
+final class RemovedBudget {
+  const RemovedBudget({
+    required this.budgetId,
+    required this.name,
+    required this.kind,
+    required this.ownerId,
+    required this.wasSelected,
+  });
+
+  final String budgetId;
+  final String name;
+  final BudgetKind kind;
+  final String ownerId;
+  final bool wasSelected;
+
+  @override
+  String toString() =>
+      'RemovedBudget($budgetId ${kind.name} owner=$ownerId '
+      'selected=$wasSelected)';
+}
+
+typedef SelectedBudgetReader = Future<String?> Function();
+
+typedef BudgetsRemovedHandler = void Function(List<RemovedBudget> removed);
+
+typedef RejectedEntity = ({SyncEntity entity, String id});
+
 final class PullResult {
   const PullResult({
     required this.reason,
@@ -105,6 +132,9 @@ final class PullResult {
     required this.cursorAfter,
     required this.syncedAt,
     required this.elapsed,
+    this.applyElapsed = Duration.zero,
+    this.kept = 0,
+    this.removedBudgets = const [],
   });
 
   final PullReason reason;
@@ -114,6 +144,9 @@ final class PullResult {
   final int cursorAfter;
   final DateTime syncedAt;
   final Duration elapsed;
+  final Duration applyElapsed;
+  final int kept;
+  final List<RemovedBudget> removedBudgets;
 
   @override
   String toString() =>
@@ -198,11 +231,27 @@ class PullService {
   final Now _now;
   final int pageSize;
 
-  Future<PullResult> pull(PullReason reason, {int attempt = 1}) async {
+  Future<PullResult> pull(
+    PullReason reason, {
+    int attempt = 1,
+    int? from,
+    SelectedBudgetReader? selectedBudget,
+    BudgetsRemovedHandler? onRemoved,
+  }) async {
     final sw = Stopwatch()..start();
     final int before;
+    var stored = 0;
     try {
-      before = await _readCursor();
+      stored = await _readCursor();
+      if (from != null && from < stored) {
+        _log.info(
+          'pull reason=${reason.name} re-reads from cursor=$from instead of '
+          'stored cursor=$stored: rejected changes come back from the server',
+        );
+        before = from;
+      } else {
+        before = stored;
+      }
     } catch (e, st) {
       throw await _failed(
         sw,
@@ -223,6 +272,9 @@ class PullService {
     var cursor = before;
     var pages = 0;
     var counts = const PullCounts();
+    var kept = 0;
+    var applyElapsed = Duration.zero;
+    final removedBudgets = <RemovedBudget>[];
     while (true) {
       final number = pages + 1;
       final PullPage page;
@@ -257,10 +309,19 @@ class PullService {
           requestId: page.requestId,
         );
       }
+      final selected = response.removedBudgetIds.isEmpty
+          ? null
+          : await _selectedBefore(selectedBudget, reason, number);
       final applied = Stopwatch()..start();
       final syncedAt = response.hasMore ? null : normalizeInstant(_now());
+      final _Applied outcome;
       try {
-        await _apply(response, syncedAt: syncedAt);
+        outcome = await _apply(
+          response,
+          syncedAt: syncedAt,
+          selected: selected,
+          floor: syncedAt == null ? 0 : stored,
+        );
       } catch (e, st) {
         throw await _failed(
           sw,
@@ -278,13 +339,28 @@ class PullService {
       final pageCounts = PullCounts.of(response);
       pages = number;
       counts += pageCounts;
+      kept += outcome.kept.total;
+      applyElapsed += applied.elapsed;
       _log.fine(
         'pull page $number applied in one transaction '
         'entities=${pageCounts.total} $pageCounts '
         'cursor=$cursor→${response.cursor} hasMore=${response.hasMore} '
         'in ${applied.elapsedMilliseconds}ms rid=${page.requestId}',
       );
-      cursor = response.cursor;
+      if (outcome.kept.total > 0) {
+        _log.info(
+          'pull page $number: local unsynced changes win over the server '
+          'version (newer edit or pending delete) ${outcome.kept} '
+          'rid=${page.requestId}',
+        );
+      }
+      if (outcome.removed.isNotEmpty) {
+        removedBudgets.addAll(outcome.removed);
+        _budgetsRemoved(onRemoved, outcome.removed, reason, number);
+      }
+      cursor = syncedAt != null && response.cursor < stored
+          ? stored
+          : response.cursor;
       if (syncedAt != null) {
         final result = PullResult(
           reason: reason,
@@ -294,6 +370,9 @@ class PullService {
           cursorAfter: cursor,
           syncedAt: syncedAt,
           elapsed: sw.elapsed,
+          applyElapsed: applyElapsed,
+          kept: kept,
+          removedBudgets: List.unmodifiable(removedBudgets),
         );
         _log.info(
           'pull done reason=${reason.name} pages=$pages '
@@ -319,12 +398,119 @@ class PullService {
     return row.cursor;
   }
 
-  Future<void> _apply(
+  Future<int?> rereadCursor(Iterable<RejectedEntity> rejected) async {
+    final byEntity = <SyncEntity, Set<String>>{};
+    for (final r in rejected) {
+      (byEntity[r.entity] ??= <String>{}).add(r.id);
+    }
+    int? lowest;
+    var unknown = 0;
+    for (final MapEntry(key: entity, value: ids) in byEntity.entries) {
+      final seqs = await _serverSeqs(entity, ids.toList());
+      unknown += ids.length - seqs.length;
+      for (final seq in seqs.values) {
+        if (lowest == null || seq < lowest) lowest = seq;
+      }
+    }
+    final from = lowest == null ? null : (lowest > 0 ? lowest - 1 : 0);
+    _log.fine(
+      'rejected changes re-read plan entities=${rejected.length} '
+      'neverPulled=$unknown from=${from ?? '-'}',
+    );
+    return from;
+  }
+
+  Future<Map<String, int>> _serverSeqs(
+    SyncEntity entity,
+    List<String> ids,
+  ) async {
+    final (
+      TableInfo<Table, Object?> table,
+      Expression<String> id,
+      Expression<int> seq,
+    ) = switch (entity) {
+      SyncEntity.budget => (_db.budgets, _db.budgets.id, _db.budgets.serverSeq),
+      SyncEntity.category => (
+        _db.categories,
+        _db.categories.id,
+        _db.categories.serverSeq,
+      ),
+      SyncEntity.recurring => (
+        _db.recurringRules,
+        _db.recurringRules.id,
+        _db.recurringRules.serverSeq,
+      ),
+      SyncEntity.expense => (
+        _db.expenses,
+        _db.expenses.id,
+        _db.expenses.serverSeq,
+      ),
+    };
+    final query = _db.selectOnly(table)
+      ..addColumns([id, seq])
+      ..where(id.isIn(ids) & seq.isNotNull());
+    return {for (final row in await query.get()) row.read(id)!: row.read(seq)!};
+  }
+
+  Future<String?> _selectedBefore(
+    SelectedBudgetReader? read,
+    PullReason reason,
+    int page,
+  ) async {
+    if (read == null) return null;
+    try {
+      return await read();
+    } catch (e, st) {
+      final error = redactDbError(e);
+      _log.warning(
+        'pull reason=${reason.name} page=$page: selected budget not read '
+        'before removing budgets → treated as not selected: '
+        '${describeError(error)}',
+        error,
+        st,
+      );
+      return null;
+    }
+  }
+
+  void _budgetsRemoved(
+    BudgetsRemovedHandler? handler,
+    List<RemovedBudget> removed,
+    PullReason reason,
+    int page,
+  ) {
+    if (handler == null) return;
+    try {
+      handler(removed);
+    } catch (e, st) {
+      _log.severe(
+        'pull reason=${reason.name} page=$page: budgets removed '
+        '[${[for (final r in removed) r.budgetId].join(',')}], but the '
+        'notice handler failed: ${describeError(e)}',
+        e,
+        st,
+      );
+    }
+  }
+
+  Future<_Applied> _apply(
     SyncPullResponse page, {
     DateTime? syncedAt,
+    String? selected,
+    int floor = 0,
   }) => _db.transaction(() async {
+    var kept = const _Kept();
     if (page.budgets.isNotEmpty) {
-      await _budgets.applyFromServer(page.budgets);
+      final guarded = await _guard(
+        SyncEntity.budget,
+        page.budgets,
+        _localBudgets,
+        (b, deletedAt) => b.copyWith(deletedAt: deletedAt),
+      );
+      kept += guarded.kept;
+      if (guarded.apply.isNotEmpty) {
+        await _budgets.applyFromServer(guarded.apply);
+      }
     }
     if (page.members.isNotEmpty) {
       await _members.applyMembersFromServer(page.members);
@@ -333,25 +519,163 @@ class PullService {
       await _members.applyProfilesFromServer(page.profiles);
     }
     if (page.categories.isNotEmpty) {
-      await _categories.applyFromServer(page.categories);
+      final guarded = await _guard(
+        SyncEntity.category,
+        page.categories,
+        _localCategories,
+        (c, deletedAt) => c.copyWith(deletedAt: deletedAt),
+      );
+      kept += guarded.kept;
+      if (guarded.apply.isNotEmpty) {
+        await _categories.applyFromServer(guarded.apply);
+      }
     }
     if (page.recurring.isNotEmpty) {
-      await _recurring.applyFromServer(page.recurring);
+      final guarded = await _guard(
+        SyncEntity.recurring,
+        page.recurring,
+        _localRecurring,
+        (r, deletedAt) => r.copyWith(deletedAt: deletedAt),
+      );
+      kept += guarded.kept;
+      if (guarded.apply.isNotEmpty) {
+        await _recurring.applyFromServer(guarded.apply);
+      }
     }
     if (page.expenses.isNotEmpty) {
-      await _expenses.applyFromServer(page.expenses);
+      final guarded = await _guard(
+        SyncEntity.expense,
+        page.expenses,
+        _localExpenses,
+        (e, deletedAt) => e.copyWith(deletedAt: deletedAt),
+      );
+      kept += guarded.kept;
+      if (guarded.apply.isNotEmpty) {
+        await _expenses.applyFromServer(guarded.apply);
+      }
     }
+    var removed = const <RemovedBudget>[];
     if (page.removedBudgetIds.isNotEmpty) {
+      removed = await _removedInfo(page.removedBudgetIds, selected);
       await _budgets.removeBudgetData(page.removedBudgetIds);
     }
     await _saveState(
       SyncStatesCompanion(
-        cursor: Value(page.cursor),
+        cursor: Value(page.cursor < floor ? floor : page.cursor),
         lastSyncAt: syncedAt == null ? const Value.absent() : Value(syncedAt),
         lastError: syncedAt == null ? const Value.absent() : const Value(null),
       ),
     );
+    return _Applied(kept: kept, removed: removed);
   });
+
+  Future<List<RemovedBudget>> _removedInfo(
+    List<String> ids,
+    String? selected,
+  ) async {
+    final rows = await (_db.select(
+      _db.budgets,
+    )..where((b) => b.id.isIn(ids))).get();
+    return [
+      for (final row in rows)
+        RemovedBudget(
+          budgetId: row.id,
+          name: row.name,
+          kind: row.kind,
+          ownerId: row.ownerId,
+          wasSelected: row.id == selected,
+        ),
+    ];
+  }
+
+  Future<({List<T> apply, _Kept kept})> _guard<T extends SyncRecord>(
+    SyncEntity entity,
+    List<T> incoming,
+    Future<Map<String, _LocalVersion>> Function(List<String> ids) locals,
+    T Function(T record, DateTime deletedAt) asTombstone,
+  ) async {
+    final pending = await _pendingOf(entity, [for (final r in incoming) r.id]);
+    if (pending.isEmpty) return (apply: incoming, kept: const _Kept());
+    final local = await locals(pending.keys.toList());
+    final apply = <T>[];
+    var keptCount = 0;
+    var merged = 0;
+    for (final record in incoming) {
+      final waiting = pending[record.id];
+      final mine = local[record.id];
+      if (waiting == null || mine == null || record.deletedAt != null) {
+        apply.add(record);
+        continue;
+      }
+      final localDeletedAt = mine.deletedAt;
+      if (localDeletedAt != null) {
+        final lastEdit = waiting.lastEdit;
+        if (lastEdit != null && !record.updatedAt.isAfter(lastEdit)) {
+          keptCount++;
+        } else {
+          apply.add(asTombstone(record, localDeletedAt));
+          merged++;
+        }
+      } else if (mine.updatedAt.isAfter(record.updatedAt)) {
+        keptCount++;
+      } else {
+        apply.add(record);
+      }
+    }
+    return (
+      apply: apply,
+      kept: _Kept.of(entity, kept: keptCount, merged: merged),
+    );
+  }
+
+  Future<Map<String, _Waiting>> _pendingOf(
+    SyncEntity entity,
+    List<String> ids,
+  ) async {
+    final o = _db.outbox;
+    final query = _db.selectOnly(o)
+      ..addColumns([o.entityId, o.op, o.createdAt])
+      ..where(o.entity.equalsValue(entity) & o.entityId.isIn(ids));
+    final waiting = <String, _Waiting>{};
+    for (final row in await query.get()) {
+      final id = row.read(o.entityId)!;
+      final current = waiting[id] ?? const _Waiting();
+      waiting[id] = row.readWithConverter(o.op) == SyncOp.upsert
+          ? current.edit(row.readWithConverter(o.createdAt)!)
+          : current;
+    }
+    return waiting;
+  }
+
+  Future<Map<String, _LocalVersion>> _localBudgets(List<String> ids) async => {
+    for (final r in await (_db.select(
+      _db.budgets,
+    )..where((t) => t.id.isIn(ids))).get())
+      r.id: (updatedAt: r.updatedAt, deletedAt: r.deletedAt),
+  };
+
+  Future<Map<String, _LocalVersion>> _localCategories(List<String> ids) async =>
+      {
+        for (final r in await (_db.select(
+          _db.categories,
+        )..where((t) => t.id.isIn(ids))).get())
+          r.id: (updatedAt: r.updatedAt, deletedAt: r.deletedAt),
+      };
+
+  Future<Map<String, _LocalVersion>> _localRecurring(List<String> ids) async =>
+      {
+        for (final r in await (_db.select(
+          _db.recurringRules,
+        )..where((t) => t.id.isIn(ids))).get())
+          r.id: (updatedAt: r.updatedAt, deletedAt: r.deletedAt),
+      };
+
+  Future<Map<String, _LocalVersion>> _localExpenses(List<String> ids) async => {
+    for (final r in await (_db.select(
+      _db.expenses,
+    )..where((t) => t.id.isIn(ids))).get())
+      r.id: (updatedAt: r.updatedAt, deletedAt: r.deletedAt),
+  };
 
   Future<void> _saveState(SyncStatesCompanion values) async {
     final updated = await (_db.update(
@@ -425,4 +749,65 @@ class PullService {
       );
     }
   }
+}
+
+typedef _LocalVersion = ({DateTime updatedAt, DateTime? deletedAt});
+
+final class _Waiting {
+  const _Waiting({this.lastEdit});
+
+  final DateTime? lastEdit;
+
+  _Waiting edit(DateTime at) {
+    final last = lastEdit;
+    return _Waiting(lastEdit: last == null || at.isAfter(last) ? at : last);
+  }
+}
+
+final class _Kept {
+  const _Kept({this.kept = const {}, this.merged = const {}});
+
+  factory _Kept.of(
+    SyncEntity entity, {
+    required int kept,
+    required int merged,
+  }) => _Kept(
+    kept: {if (kept > 0) entity: kept},
+    merged: {if (merged > 0) entity: merged},
+  );
+
+  final Map<SyncEntity, int> kept;
+  final Map<SyncEntity, int> merged;
+
+  int get total =>
+      kept.values.fold(0, (a, b) => a + b) +
+      merged.values.fold(0, (a, b) => a + b);
+
+  _Kept operator +(_Kept other) =>
+      _Kept(kept: _sum(kept, other.kept), merged: _sum(merged, other.merged));
+
+  static Map<SyncEntity, int> _sum(
+    Map<SyncEntity, int> a,
+    Map<SyncEntity, int> b,
+  ) => {
+    for (final entity in SyncEntity.values)
+      if ((a[entity] ?? 0) + (b[entity] ?? 0) > 0)
+        entity: (a[entity] ?? 0) + (b[entity] ?? 0),
+  };
+
+  @override
+  String toString() {
+    String part(Map<SyncEntity, int> counts) => counts.isEmpty
+        ? '-'
+        : [for (final e in counts.entries) '${e.key.name}=${e.value}']
+              .join(',');
+    return 'kept=${part(kept)} tombstonesWithServerData=${part(merged)}';
+  }
+}
+
+final class _Applied {
+  const _Applied({required this.kept, required this.removed});
+
+  final _Kept kept;
+  final List<RemovedBudget> removed;
 }
