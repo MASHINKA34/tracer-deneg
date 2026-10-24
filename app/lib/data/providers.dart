@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../core/clock.dart';
+import 'budget_selection.dart';
 import 'current_user.dart';
 import 'db/app_database.dart';
 import 'queries/category_queries.dart';
@@ -303,14 +306,32 @@ final memberProfilesProvider =
       retry: _noRetry,
     );
 
+final budgetSelectionProvider = Provider<BudgetSelection>(
+  (ref) => BudgetSelection(ref.watch(prefsRepositoryProvider)),
+  name: 'budgetSelection',
+);
+
 final selectedBudgetIdProvider = StreamProvider<String?>(
   (ref) {
     final ownerId = ref.watch(sessionProvider.select((s) => s.userId));
-    return ref
-        .watch(budgetsRepositoryProvider)
-        .watchAll()
-        .map((budgets) => _personalChoice(budgets, ownerId))
-        .distinct()
+    final selection = ref.watch(budgetSelectionProvider);
+    String? forgetting;
+    return combineLatest(
+          ref
+              .watch(prefsRepositoryProvider)
+              .watchString(PrefKeys.selectedBudgetId),
+          ref.watch(budgetsRepositoryProvider).watchAll(),
+          (stored, budgets) => _selectedChoice(budgets, ownerId, stored),
+        )
+        .map((choice) {
+          final gone = choice.gone;
+          if (gone != null && gone != forgetting) {
+            forgetting = gone;
+            unawaited(selection.forgetGone(gone));
+          }
+          return choice;
+        })
+        .distinct((a, b) => a.budgetId == b.budgetId && a.hidden == b.hidden)
         .map((choice) => _logSelected(choice, ownerId));
   },
   name: 'selectedBudgetId',
@@ -327,30 +348,69 @@ List<Budget> visibleBudgets(List<Budget> budgets, String? ownerId) => [
     if (isBudgetVisibleTo(budget, ownerId)) budget,
 ];
 
-typedef _PersonalChoice = ({String? budgetId, int hidden});
+typedef _SelectedChoice = ({
+  String? budgetId,
+  int hidden,
+  BudgetKind? chosenKind,
+  String? gone,
+});
 
-_PersonalChoice _personalChoice(List<Budget> budgets, String? ownerId) {
-  String? chosen;
+_SelectedChoice _selectedChoice(
+  List<Budget> budgets,
+  String? ownerId,
+  String? stored,
+) {
+  String? personal;
   var hidden = 0;
+  Budget? chosen;
   for (final budget in budgets) {
+    final visible = isBudgetVisibleTo(budget, ownerId);
+    if (stored != null && budget.id == stored && visible) chosen = budget;
     if (budget.kind != BudgetKind.personal) continue;
-    if (!isBudgetVisibleTo(budget, ownerId)) {
+    if (!visible) {
       hidden++;
     } else {
-      chosen ??= budget.id;
+      personal ??= budget.id;
     }
   }
-  return (budgetId: chosen, hidden: hidden);
+  if (chosen != null) {
+    return (
+      budgetId: chosen.id,
+      hidden: hidden,
+      chosenKind: chosen.kind,
+      gone: null,
+    );
+  }
+  return (
+    budgetId: personal,
+    hidden: hidden,
+    chosenKind: null,
+    gone: stored != null && budgets.isNotEmpty ? stored : null,
+  );
 }
 
-String? _logSelected(_PersonalChoice choice, String? ownerId) {
+String? _logSelected(_SelectedChoice choice, String? ownerId) {
   final budgetId = choice.budgetId;
   final hidden = choice.hidden == 0
       ? ''
       : ' hiddenPersonal=${choice.hidden} (personal budgets of another owner, '
             'e.g. made on this phone before sign-in: kept in the database, '
             'not shown)';
-  if (ownerId == null) {
+  final owner = ownerId == null ? '' : ' ownerId=$ownerId';
+  final chosenKind = choice.chosenKind;
+  final gone = choice.gone;
+  if (chosenKind != null) {
+    _log.info(
+      'selected budget budgetId=$budgetId reason=chosen '
+      'kind=${chosenKind.name}$owner$hidden',
+    );
+  } else if (gone != null) {
+    _log.info(
+      'selected budget ${budgetId == null ? 'none' : 'budgetId=$budgetId'} '
+      'reason=personal$owner: chosen budgetId=$gone is gone (removed or not '
+      'visible to this user) → stored choice cleared$hidden',
+    );
+  } else if (ownerId == null) {
     if (budgetId == null) {
       _log.info('selected budget: none, no personal budget in database yet');
     } else {

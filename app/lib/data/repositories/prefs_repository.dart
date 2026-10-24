@@ -12,6 +12,7 @@ abstract final class PrefKeys {
   static const String todayOverride = 'debugTodayOverride';
   static const String signedInBefore = 'signedInBefore';
   static const String themeMode = 'themeMode';
+  static const String selectedBudgetId = 'selectedBudgetId';
 
   static const Set<String> phoneSettings = {
     themeMode,
