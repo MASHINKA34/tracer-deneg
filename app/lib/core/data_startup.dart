@@ -20,6 +20,7 @@ import '../data/session/session_providers.dart';
 import '../data/session/session_state.dart';
 import '../data/session/session_store.dart';
 import '../data/sync/background_sync.dart';
+import '../features/holidays/holiday_banner_controller.dart';
 import '../features/profile/theme_mode.dart';
 import '../features/startup/database_error_app.dart';
 import 'auth_gate.dart';
@@ -57,6 +58,7 @@ final class DataReady extends DataStartup {
     this.session,
     this.themeMode = ThemeMode.system,
     this.holidaySettings,
+    this.hiddenHolidayBanners = const {},
   });
 
   final AppDatabase db;
@@ -65,6 +67,7 @@ final class DataReady extends DataStartup {
   final Session? session;
   final ThemeMode themeMode;
   final CachedHolidaySettings? holidaySettings;
+  final Set<String> hiddenHolidayBanners;
 
   bool get devSeedDemo =>
       seed.status == DevSeedStatus.seeded ||
@@ -137,6 +140,9 @@ Future<DataStartup> startData({
     DriftPrefsRepository(db),
     userId: session?.user.userId,
   );
+  final hiddenHolidayBanners = await loadHiddenHolidayBanners(
+    DriftPrefsRepository(db),
+  );
   return DataReady(
     db,
     result,
@@ -144,6 +150,7 @@ Future<DataStartup> startData({
     session: session,
     themeMode: themeMode,
     holidaySettings: holidaySettings,
+    hiddenHolidayBanners: hiddenHolidayBanners,
   );
 }
 
@@ -238,6 +245,7 @@ Widget appRoot(
     :final session,
     :final themeMode,
     :final holidaySettings,
+    :final hiddenHolidayBanners,
   ) =>
     ProviderScope(
       overrides: [
@@ -252,6 +260,10 @@ Widget appRoot(
           todayOverrideProvider.overrideWithBuild((ref, _) => todayOverride),
         if (holidaySettings != null)
           startupHolidaySettingsProvider.overrideWithValue(holidaySettings),
+        if (hiddenHolidayBanners.isNotEmpty)
+          startupHiddenHolidayBannersProvider.overrideWithValue(
+            hiddenHolidayBanners,
+          ),
         if (reporting != null)
           errorReportingProvider.overrideWithValue(reporting),
         if (background) ...[

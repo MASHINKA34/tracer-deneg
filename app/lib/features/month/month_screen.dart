@@ -16,6 +16,8 @@ import '../../ui/components/month_card.dart';
 import '../../ui/components/snackbar.dart';
 import '../../ui/theme/app_theme.dart';
 import '../expense/expense_snackbar_layer.dart';
+import '../holidays/holiday_banner_controller.dart';
+import '../holidays/holiday_banner_slot.dart';
 import '../holidays/mood_controller.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
@@ -245,9 +247,11 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
 
     Widget? card;
     var current = false;
+    HolidayPhase? banner;
     if (data != null || shown.hasError) {
       final month = data?.month ?? requested;
       current = month == YearMonth.of(today);
+      if (current) banner = ref.watch(holidayBannerProvider);
       card = MonthCard(
         month: month,
         today: today,
@@ -295,9 +299,13 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (banner != null) ...[
+                        HolidayBannerSlot(phase: banner),
+                        const SizedBox(height: 14),
+                      ],
                       ?card,
                       if (current) ...[
-                        const SizedBox(height: 20),
+                        SizedBox(height: banner == null ? 20 : 14),
                         TodayBlock(today: today),
                       ],
                     ],

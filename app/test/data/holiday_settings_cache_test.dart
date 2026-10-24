@@ -293,6 +293,10 @@ void main() {
           r'disabled: \[\], birthday: set\) in \d+ms$',
         ),
       ),
+      matches(
+        r'INFO  \[holidays\] hidden holiday banners: none closed yet '
+        r'\(key=hiddenHolidayBanners\) in \d+ms$',
+      ),
     ]);
   });
 
