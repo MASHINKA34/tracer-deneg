@@ -145,12 +145,14 @@ class ErrorReportSender {
           'rid=${result.requestId} in ${item.elapsedMilliseconds}ms '
           '(${i + 1}/${queued.length})',
         );
-      } on ApiException catch (e) {
+      } on ApiException catch (e, st) {
         if (isPermanentRejection(e)) {
           _log.warning(
             'error report rejected kind=${report.kind.code} '
             'rid=${e.requestId}: ${e.runtimeType} ${e.details} → dropped, '
             'the server will not accept it',
+            e,
+            st,
           );
           if (!_queue.remove(entry)) {
             failure = e;
@@ -165,6 +167,8 @@ class ErrorReportSender {
           'rid=${e.requestId}: ${e.runtimeType} ${e.details} after '
           '${item.elapsedMilliseconds}ms → kept, retry on next start or '
           'when network appears',
+          e,
+          st,
         );
         break;
       } catch (e, st) {

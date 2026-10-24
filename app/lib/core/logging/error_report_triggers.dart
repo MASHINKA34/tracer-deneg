@@ -42,6 +42,10 @@ class _ErrorReportTriggersScopeState
       _network = ref
           .read(networkChangesProvider)
           .listen(_onNetwork, onError: _onNetworkError);
+      _log.info(
+        'network status subscribed → queued error reports are also sent '
+        'when network appears',
+      );
     } catch (e, st) {
       _onNetworkError(e, st);
     }
@@ -99,7 +103,14 @@ class _ErrorReportTriggersScopeState
 
   @override
   void dispose() {
-    unawaited(_network?.cancel());
+    final network = _network;
+    if (network != null) {
+      _log.info(
+        'network status subscription cancelled (last online=${_online ?? '-'})'
+        ' → no more error report sends on network changes',
+      );
+      unawaited(network.cancel());
+    }
     super.dispose();
   }
 

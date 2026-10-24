@@ -85,11 +85,13 @@ class SendLogsService {
         requestId: sent.requestId,
         logsBytes: tail.bytes,
       );
-    } on ApiException catch (e) {
+    } on ApiException catch (e, st) {
       _log.warning(
         'user report not sent kind=${ClientErrorKind.userReport.code} '
         'logsBytes=${tail.bytes} rid=${e.requestId}: ${e.runtimeType} '
         '${e.details} after ${sw.elapsedMilliseconds}ms → error snackbar',
+        e,
+        st,
       );
       return SendLogsFailed(e);
     } catch (e, st) {

@@ -272,10 +272,16 @@ void main() {
       expect(
         h.linesOf('errors', Level.WARNING),
         contains(
-          matches(
-            r'WARN  \[errors\] user report not sent kind=user_report '
-            r'logsBytes=\d+ rid=ridprofile000001: ApiNetworkFailure connection '
-            r'.* after \d+ms → error snackbar$',
+          allOf(
+            matches(
+              RegExp(
+                r'WARN  \[errors\] user report not sent kind=user_report '
+                r'logsBytes=\d+ rid=ridprofile000001: ApiNetworkFailure '
+                r'connection .* after \d+ms → error snackbar$',
+                multiLine: true,
+              ),
+            ),
+            contains('\n  stack:\n'),
           ),
         ),
       );

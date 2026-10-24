@@ -135,22 +135,45 @@ void main() {
     await s.dispose();
   });
 
-  testWidgets('первое событие сети - только точка отсчёта, повторной '
-      'отправки нет; потеря сети - в логе', (tester) async {
+  testWidgets('первое событие сети - только точка отсчёта: отчёт в очереди '
+      'не уходит; потеря и возврат сети - отправка; подписка и отписка в '
+      'логе', (tester) async {
     final s = _Scope(tester, dir, online: true);
-    s.queue.add('crash', StateError('online'), null);
+    s.queue.add('crash', StateError('at start'), null);
 
     await s.mount();
-    await s.emit(const [ConnectivityResult.mobile]);
-    await s.emit(const [ConnectivityResult.none]);
-
     expect(s.adapter.callsTo('/client-errors'), hasLength(1));
     expect(s.queued, 0);
+
+    s.queue.add('crash', StateError('after start'), null);
+    await s.emit(const [ConnectivityResult.mobile]);
+
+    expect(s.adapter.callsTo('/client-errors'), hasLength(1));
+    expect(s.queued, 1);
+
+    await s.emit(const [ConnectivityResult.none]);
+    await s.emit(const [ConnectivityResult.mobile]);
+
+    expect(s.adapter.callsTo('/client-errors'), hasLength(2));
+    expect(s.queued, 0);
+    await s.dispose();
     expect(
       logs.linesOf('errors', Level.INFO),
-      contains(endsWith('network lost types=none → reports wait for network')),
+      containsAllInOrder([
+        endsWith(
+          'network status subscribed → queued error reports are also sent '
+          'when network appears',
+        ),
+        endsWith('network lost types=none → reports wait for network'),
+        endsWith(
+          'network appeared types=mobile → sending queued error reports',
+        ),
+        endsWith(
+          'network status subscription cancelled (last online=true) → no '
+          'more error report sends on network changes',
+        ),
+      ]),
     );
-    await s.dispose();
   });
 
   testWidgets('без очереди отчётов в scope - ни запросов, ни подписки на '

@@ -155,10 +155,16 @@ void main() {
     expect(
       logs.linesOf('errors', Level.WARNING),
       contains(
-        matches(
-          r'WARN  \[errors\] error report not sent kind=crash '
-          r'rid=ridreports000002: ApiNetworkFailure connection .* after \d+ms '
-          r'→ kept, retry on next start or when network appears$',
+        allOf(
+          matches(
+            RegExp(
+              r'WARN  \[errors\] error report not sent kind=crash '
+              r'rid=ridreports000002: ApiNetworkFailure connection .* after '
+              r'\d+ms → kept, retry on next start or when network appears$',
+              multiLine: true,
+            ),
+          ),
+          contains('\n  stack:\n'),
         ),
       ),
     );
@@ -230,10 +236,13 @@ void main() {
     expect(
       logs.linesOf('errors', Level.WARNING),
       contains(
-        endsWith(
-          'error report rejected kind=crash rid=ridreports000001: '
-          'ApiErrorResponse 400 code=bad_request → dropped, the server will '
-          'not accept it',
+        allOf(
+          contains(
+            'error report rejected kind=crash rid=ridreports000001: '
+            'ApiErrorResponse 400 code=bad_request → dropped, the server will '
+            'not accept it\n',
+          ),
+          contains('\n  stack:\n'),
         ),
       ),
     );
