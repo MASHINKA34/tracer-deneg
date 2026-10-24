@@ -64,17 +64,56 @@ typedef MonotonicClock = Duration Function();
 
 enum WsPhase { off, connecting, open, refreshing, waiting }
 
+typedef RawWebSocketConnect = Future<io.WebSocket> Function(
+  String url,
+  Map<String, String> headers,
+);
+
+Future<io.WebSocket> _ioConnect(String url, Map<String, String> headers) =>
+    io.WebSocket.connect(url, headers: headers);
+
 Future<WebSocketChannel> connectWebSocket(
   Uri url,
-  Map<String, String> headers,
-) async {
-  final channel = IOWebSocketChannel.connect(
-    url,
-    headers: headers,
-    connectTimeout: wsConnectTimeout,
+  Map<String, String> headers, {
+  RawWebSocketConnect connect = _ioConnect,
+  Duration limit = wsConnectTimeout,
+}) async {
+  final pending = connect(url.toString(), headers);
+  final io.WebSocket socket;
+  try {
+    socket = await pending.timeout(limit);
+  } on TimeoutException {
+    _closeLateSocket(pending, url, limit);
+    rethrow;
+  }
+  return IOWebSocketChannel(socket);
+}
+
+void _closeLateSocket(Future<io.WebSocket> pending, Uri url, Duration limit) {
+  unawaited(
+    pending.then<void>(
+      (late) async {
+        _log.info(
+          'ws late socket arrived after the ${limit.inMilliseconds}ms connect '
+          'timeout url=$url → closing it code=${WsCloseCode.normal} '
+          'reason=${WsCloseReason.notNeeded}',
+        );
+        try {
+          await late.close(WsCloseCode.normal, WsCloseReason.notNeeded);
+        } catch (e, st) {
+          _log.warning(
+            'ws late socket close failed url=$url: ${describeError(e)}',
+            e,
+            st,
+          );
+        }
+      },
+      onError: (Object e, StackTrace st) => _log.fine(
+        'ws connect that timed out after ${limit.inMilliseconds}ms failed '
+        'later url=$url: ${describeError(e)} → no socket to close',
+      ),
+    ),
   );
-  await channel.ready;
-  return channel;
 }
 
 Uri webSocketUrl(ApiConfig config) {
