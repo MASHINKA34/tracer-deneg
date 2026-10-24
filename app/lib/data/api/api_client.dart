@@ -57,15 +57,16 @@ class ApiClient {
          ),
        ) {
     if (adapter != null) _dio.httpClientAdapter = adapter;
+    _auth = AuthInterceptor(
+      tokens: tokens,
+      dio: _dio,
+      newRequestId: _newRequestId,
+      onSessionExpired: _reportSessionExpired,
+    );
     _dio.interceptors.addAll([
       RequestIdInterceptor(generate: _newRequestId),
       const ApiLogInterceptor(),
-      AuthInterceptor(
-        tokens: tokens,
-        dio: _dio,
-        newRequestId: _newRequestId,
-        onSessionExpired: _reportSessionExpired,
-      ),
+      _auth,
     ]);
     _log.info(
       'api client ready baseUrl=${config.baseUrlText} '
@@ -78,6 +79,7 @@ class ApiClient {
   final ApiConfig config;
   final Dio _dio;
   final String Function() _newRequestId;
+  late final AuthInterceptor _auth;
   final StreamController<SessionExpired> _sessionExpired =
       StreamController<SessionExpired>.broadcast();
 
@@ -139,6 +141,31 @@ class ApiClient {
       data: _decode(response, rid),
       requestId: rid,
     );
+  }
+
+  Future<void> refreshRejectedToken({
+    required String path,
+    required String accessToken,
+  }) async {
+    final rid = _newRequestId();
+    final options = RequestOptions(
+      method: 'GET',
+      baseUrl: config.baseUrlText,
+      path: path,
+      headers: {'Authorization': 'Bearer $accessToken'},
+      extra: {apiRequestIdKey: rid},
+    );
+    _log.info('access token rejected on $path → refreshing session rid=$rid');
+    try {
+      await _auth.refreshRejected(options);
+    } on DioException catch (e) {
+      final mapped = apiExceptionFromDio(e);
+      _log.fine(
+        'session refresh for $path ended with ${mapped.runtimeType}: '
+        '${mapped.details} rid=$rid',
+      );
+      Error.throwWithStackTrace(mapped, e.stackTrace);
+    }
   }
 
   Future<ApiHealth> health() async {

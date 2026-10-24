@@ -193,6 +193,18 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
+  Future<void> refreshRejected(RequestOptions options) async {
+    final outcome = await _refreshOnce(options);
+    switch (outcome) {
+      case _Refreshed():
+        return;
+      case _Ended(:final reason):
+        throw _sessionError(options, reason);
+      case _Failed(:final error):
+        throw error;
+    }
+  }
+
   Future<void> _retry(
     RequestOptions options,
     ErrorInterceptorHandler handler,
