@@ -11,6 +11,7 @@ import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/recovery_code_screen.dart';
 import '../features/auth/register_screen.dart';
+import '../features/budgets/budget_screen.dart';
 import '../features/budgets/join_budget_screen.dart';
 import '../features/budgets/new_budget_screen.dart';
 import '../features/categories/categories_screen.dart';
@@ -59,6 +60,7 @@ abstract final class AppRoutes {
   static const String recoveryCode = '/auth/code';
   static const String newBudget = '/budgets/new';
   static const String joinBudget = '/budgets/join';
+  static const String budget = '/budgets/:id';
 
   static const String newExpenseName = 'newExpense';
   static const String searchName = 'search';
@@ -78,6 +80,7 @@ abstract final class AppRoutes {
   static const String deleteAccountName = 'deleteAccount';
   static const String newBudgetName = 'newBudget';
   static const String joinBudgetName = 'joinBudget';
+  static const String budgetName = 'budget';
 
   static const String authStack = '/auth';
 
@@ -102,6 +105,8 @@ abstract final class AppRoutes {
 
   static String categoryOf(String id) =>
       '/categories/${Uri.encodeComponent(id)}';
+
+  static String budgetOf(String id) => '/budgets/${Uri.encodeComponent(id)}';
 
   static String recurringRuleOf(String id) =>
       '/recurring/${Uri.encodeComponent(id)}';
@@ -376,6 +381,17 @@ GoRouter buildRouter({
         name: AppRoutes.joinBudgetName,
         parentNavigatorKey: rootKey,
         builder: (context, state) => const AppFrame(child: JoinBudgetScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.budget,
+        name: AppRoutes.budgetName,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => AppFrame(
+          child: BudgetScreen(
+            budgetId: state.pathParameters['id']!,
+            inviteOnOpen: state.extra == BudgetScreenOpen.created,
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.search,

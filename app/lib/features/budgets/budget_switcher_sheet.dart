@@ -64,9 +64,10 @@ sealed class BudgetSheetChoice {
 }
 
 final class BudgetPicked extends BudgetSheetChoice {
-  const BudgetPicked(this.budgetId);
+  const BudgetPicked(this.budgetId, {this.shared = false});
 
   final String budgetId;
+  final bool shared;
 
   @override
   String toString() => 'budgetId=$budgetId';
@@ -158,6 +159,12 @@ Future<void> openBudgetSwitcher(BuildContext context, WidgetRef ref) async {
   switch (choice) {
     case null:
       return;
+    case BudgetPicked(:final budgetId, shared: true) when budgetId == current:
+      _log.fine(
+        'budget switcher: shared budgetId=$budgetId is already open → '
+        '${AppRoutes.budget}',
+      );
+      unawaited(context.push<void>(AppRoutes.budgetOf(budgetId)));
     case BudgetPicked(:final budgetId) when budgetId == current:
       _log.fine(
         'budget switcher: budgetId=$budgetId is already open, nothing changes',
@@ -309,7 +316,12 @@ class BudgetSheet extends ConsumerWidget {
                         month: month,
                         selected: budget.id == current,
                         profiles: profiles,
-                        onTap: () => onChoice(BudgetPicked(budget.id)),
+                        onTap: () => onChoice(
+                          BudgetPicked(
+                            budget.id,
+                            shared: budget.kind == BudgetKind.shared,
+                          ),
+                        ),
                       ),
                   ],
                 ),

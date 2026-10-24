@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 import 'package:milionchik/data/repositories/prefs_repository.dart';
+import 'package:milionchik/features/budgets/budget_screen.dart';
 import 'package:milionchik/features/budgets/budget_switcher_sheet.dart';
 import 'package:milionchik/features/budgets/new_budget_screen.dart';
 import 'package:milionchik/features/categories/category_emoji_sheet.dart';
-import 'package:milionchik/features/month/month_screen.dart';
 import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/ui/components/button.dart';
 import 'package:milionchik/ui/components/snackbar.dart';
@@ -90,6 +90,14 @@ final class _Server {
           hasMore: false,
         ).toJson(),
       );
+    }
+    if (call.method == 'POST' && call.path.endsWith('/invites')) {
+      return FakeReply.json(201, {
+        'code': 'MLN-7QXW',
+        'expiresAt': encodeInstant(
+          testNow.toUtc().add(const Duration(hours: 24)),
+        ),
+      });
     }
     throw StateError('unexpected ${call.method} ${call.path}');
   }
@@ -175,8 +183,8 @@ void main() {
     expect(post.json, {'id': id, 'name': _name, 'emoji': '👨‍👩‍👧'});
     expect(_pulls(h), hasLength(1));
     expect(find.byType(NewBudgetScreen), findsNothing);
-    expect(find.byType(MonthScreen), findsOneWidget);
-    expect(find.bySemanticsLabel('$_name, выбрать бюджет'), findsOneWidget);
+    expect(find.byType(BudgetScreen), findsOneWidget);
+    expect(find.text('👨‍👩‍👧 $_name'), findsOneWidget);
     expect(await _storedChoice(h), id);
     final counts = await _counts(h, id);
     expect(counts.budgets, 3);
@@ -251,7 +259,7 @@ void main() {
     final posts = _posts(h);
     expect(posts, hasLength(2));
     expect(posts.last.json['id'], first);
-    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(BudgetScreen), findsOneWidget);
     expect(await _storedChoice(h), first);
     expect(h.logs.text, isNot(contains(_name)));
   });
@@ -290,7 +298,7 @@ void main() {
 
     expect(_posts(h).map((c) => c.json['id']), [id, id]);
     expect(server.created.keys, [id]);
-    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(BudgetScreen), findsOneWidget);
     expect(await _storedChoice(h), id);
     expect((await _counts(h, id)).categories, 11);
     expect(
@@ -365,7 +373,7 @@ void main() {
     expect(h.errorUnder(_field), isNull);
     await _create(h);
     expect(_posts(h).single.json['name'], 'б' * 30);
-    expect(find.byType(MonthScreen), findsOneWidget);
+    expect(find.byType(BudgetScreen), findsOneWidget);
   });
 
   testUnmounting('по умолчанию значок 🏡; «➕» открывает «Свой эмодзи» с '

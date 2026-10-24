@@ -18,6 +18,7 @@ import '../../ui/tokens/tokens.g.dart';
 import '../categories/categories_top_bar.dart';
 import '../categories/category_emoji_sheet.dart';
 import 'budget_create_service.dart';
+import 'budget_screen.dart';
 
 final _log = Logger('budgets');
 
@@ -185,9 +186,12 @@ class _NewBudgetScreenState extends ConsumerState<NewBudgetScreen> {
         _closedBy = 'create';
         _nav.fine(
           'new budget budgetId=$budgetId created and selected → '
-          '${AppRoutes.month}',
+          '${AppRoutes.budget} with a new invite code',
         );
-        context.go(AppRoutes.month);
+        context.pushReplacement(
+          AppRoutes.budgetOf(budgetId),
+          extra: BudgetScreenOpen.created,
+        );
       case final BudgetCreateFailed failure:
         if (failure.code == ApiErrorCode.conflict) {
           final taken = _budgetId;

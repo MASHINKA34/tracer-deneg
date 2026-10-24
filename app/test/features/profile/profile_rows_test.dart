@@ -146,7 +146,7 @@ void main() {
   for (final (target, stub) in [
     ('Праздники', 'holidays'),
     ('Напоминания', 'reminders'),
-    ('Семья', 'budget'),
+    ('Личный', 'budget'),
   ]) {
     testWidgets('«$target» - заглушка: снекбар «Появится в следующем '
         'обновлении», экран не меняется', (tester) async {
@@ -183,7 +183,7 @@ void main() {
     final h = await ProfileHarness.start(tester);
     await h.openProfile();
 
-    await h.tap(find.text('Семья'));
+    await h.tap(find.text('Личный').last);
 
     final line = h
         .linesOf('profile')
@@ -191,8 +191,8 @@ void main() {
     expect(
       line,
       endsWith(
-        'profile budget tap budgetId=$profileFamilyId kind=shared: not in '
-        'the app yet → "soon" snackbar',
+        'profile budget tap budgetId=$profilePersonalId kind=personal: not '
+        'in the app yet → "soon" snackbar',
       ),
     );
     expect(h.logs.text, isNot(contains('Семья')));

@@ -754,14 +754,14 @@
   "@syncPopoverRetry": { "description": "Плашка статуса синхронизации при ошибке: кнопка, запускает синхронизацию ещё раз" },
   "budgetRemovedExcluded": "Тебя исключили из бюджета «{budget}»",
   "@budgetRemovedExcluded": {
-    "description": "Снекбар после синхронизации: открытый общий бюджет пропал из removedBudgetIds, создатель не ты — исключили; данные бюджета стёрты, показан личный (00-spec §10)",
+    "description": "Снекбар после синхронизации: открытый общий бюджет пропал из removedBudgetIds, не удалён и создатель не ты — исключили; данные стёрты, показан личный (00-spec §10)",
     "placeholders": {
       "budget": { "type": "String", "example": "Семья" }
     }
   },
   "budgetRemovedDeleted": "Бюджет «{budget}» удалён",
   "@budgetRemovedDeleted": {
-    "description": "Снекбар после синхронизации: открытый бюджет пропал из removedBudgetIds, создатель ты — бюджет удалён; данные стёрты, показан личный (00-spec §10)",
+    "description": "Снекбар после синхронизации: открытый бюджет пропал из removedBudgetIds, он в deletedBudgetIds или создатель ты — удалён; данные стёрты, показан личный (00-spec §10); и после своего удаления с экрана бюджета",
     "placeholders": {
       "budget": { "type": "String", "example": "Семья" }
     }
@@ -850,6 +850,168 @@
   "@joinBudgetNotLoaded": { "description": "Вход по коду: снекбар, если сервер принял код, а загрузка с сервера не удалась — повтор с тем же кодом безопасен" },
   "joinBudgetFailed": "Не получилось войти в бюджет. Попробуй ещё раз",
   "@joinBudgetFailed": { "description": "Вход по коду: снекбар, если запрос сломался на телефоне (не ответ сервера и не сеть)" },
+  "budgetScreenSubtitle": "Общий бюджет · {count, plural, one{{count} участник} few{{count} участника} many{{count} участников} other{{count} участника}}",
+  "@budgetScreenSubtitle": {
+    "description": "Экран общего бюджета (13:1135): подпись под названием в шапке — число участников",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "budgetScreenMenu": "Действия с бюджетом",
+  "@budgetScreenMenu": { "description": "Экран общего бюджета: TalkBack-подпись кнопки «⋮» в шапке" },
+  "budgetScreenMembers": "Участники",
+  "@budgetScreenMembers": { "description": "Экран общего бюджета (13:1135): заголовок списка участников, справа число" },
+  "budgetScreenYou": "{name} (ты)",
+  "@budgetScreenYou": {
+    "description": "Экран общего бюджета (13:1135): имя вошедшего в списке участников",
+    "placeholders": {
+      "name": { "type": "String", "example": "Аня" }
+    }
+  },
+  "budgetScreenSomeone": "Участник",
+  "@budgetScreenSomeone": { "description": "Экран общего бюджета: имя участника, профиль которого ещё не загрузился" },
+  "budgetScreenOwner": "Создатель бюджета",
+  "@budgetScreenOwner": { "description": "Экран общего бюджета (13:1135): роль под именем создателя" },
+  "budgetScreenMemberSince": "Участник · с {date}",
+  "@budgetScreenMemberSince": {
+    "description": "Экран общего бюджета (13:1135): роль под именем участника и день, когда он вошёл; date — день и месяц в родительном падеже (с годом, если не этот год)",
+    "placeholders": {
+      "date": { "type": "String", "example": "2 октября" }
+    }
+  },
+  "budgetScreenMemberHint": "Исключить из бюджета",
+  "@budgetScreenMemberHint": { "description": "Экран общего бюджета: TalkBack-подсказка долгого нажатия на участника (только у создателя)" },
+  "budgetScreenInviteTitle": "Пригласить ещё кого-то",
+  "@budgetScreenInviteTitle": { "description": "Экран общего бюджета (13:1135): заголовок блока приглашения (только у создателя)" },
+  "budgetScreenInviteText": "Отправь код. Человек введёт его в «Профиль → Войти по коду» и увидит все траты бюджета.",
+  "@budgetScreenInviteText": { "description": "Экран общего бюджета (13:1135): текст блока приглашения" },
+  "budgetScreenInviteTtl": "Код действует 24 часа",
+  "@budgetScreenInviteTtl": { "description": "Экран общего бюджета (13:1135): срок кода под кодом (00-spec §2.1: код живёт 24 часа)" },
+  "budgetScreenInviteCreate": "Пригласить",
+  "@budgetScreenInviteCreate": { "description": "Экран общего бюджета: кнопка на месте кода, когда действующего кода на телефоне нет — POST /budgets/{id}/invites" },
+  "budgetScreenInviteRenew": "Новый код",
+  "@budgetScreenInviteRenew": { "description": "Экран общего бюджета: ссылка справа от срока кода — сделать новый код (старый перестанет работать)" },
+  "budgetScreenInviteCode": "Код приглашения {code}",
+  "@budgetScreenInviteCode": {
+    "description": "Экран общего бюджета: TalkBack-подпись кода приглашения",
+    "placeholders": {
+      "code": { "type": "String", "example": "M L N, 4 8 K 2" }
+    }
+  },
+  "budgetScreenInviteCopy": "Скопировать код",
+  "@budgetScreenInviteCopy": { "description": "Экран общего бюджета: TalkBack-подпись кнопки копирования кода" },
+  "budgetScreenInviteShare": "Поделиться кодом",
+  "@budgetScreenInviteShare": { "description": "Экран общего бюджета: TalkBack-подпись кнопки «Поделиться»" },
+  "budgetScreenInviteCopied": "Код скопирован",
+  "@budgetScreenInviteCopied": { "description": "Экран общего бюджета: снекбар после копирования кода приглашения" },
+  "budgetScreenInviteCopyFailed": "Не получилось скопировать код. Попробуй ещё раз",
+  "@budgetScreenInviteCopyFailed": { "description": "Экран общего бюджета: снекбар, если код не попал в буфер обмена" },
+  "budgetScreenInviteShareFailed": "Не получилось открыть «Поделиться». Скопируй код",
+  "@budgetScreenInviteShareFailed": { "description": "Экран общего бюджета: снекбар, если системное «Поделиться» не открылось" },
+  "budgetScreenInviteShareText": "Присоединяйся к бюджету «{budget}» в Милиончике: код {code}, действует 24 часа",
+  "@budgetScreenInviteShareText": {
+    "description": "Экран общего бюджета: текст для «Поделиться» (текст из плана этапа 12, п. 4)",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" },
+      "code": { "type": "String", "example": "MLN-48K2" }
+    }
+  },
+  "budgetScreenInviteExpired": "Код истёк. Нажми «Пригласить», чтобы сделать новый",
+  "@budgetScreenInviteExpired": { "description": "Экран общего бюджета: снекбар при копировании или «Поделиться», если код уже истёк" },
+  "budgetScreenRenewTitle": "Сделать новый код?",
+  "@budgetScreenRenewTitle": { "description": "Экран общего бюджета: заголовок подтверждения нового кода" },
+  "budgetScreenRenewMessage": "Код {code} перестанет работать. Кто ещё не вошёл по нему, тому отправь новый.",
+  "@budgetScreenRenewMessage": {
+    "description": "Экран общего бюджета: текст подтверждения нового кода (00-spec §2.1: новый код отменяет старый)",
+    "placeholders": {
+      "code": { "type": "String", "example": "MLN-48K2" }
+    }
+  },
+  "budgetScreenRenewConfirm": "Сделать новый",
+  "@budgetScreenRenewConfirm": { "description": "Экран общего бюджета: кнопка подтверждения нового кода" },
+  "budgetScreenCancel": "Отмена",
+  "@budgetScreenCancel": { "description": "Экран общего бюджета: вторая кнопка во всех подтверждениях — ничего не делать" },
+  "budgetScreenRecent": "Последние траты",
+  "@budgetScreenRecent": { "description": "Экран общего бюджета (13:1135): заголовок списка последних трат" },
+  "budgetScreenRecentWho": "кто добавил",
+  "@budgetScreenRecentWho": { "description": "Экран общего бюджета (13:1135): подпись справа от заголовка последних трат — над аватарами авторов" },
+  "budgetScreenRecentEmpty": "Трат пока нет",
+  "@budgetScreenRecentEmpty": { "description": "Экран общего бюджета: вместо списка последних трат, если в бюджете ещё нет трат" },
+  "budgetScreenToday": "сегодня",
+  "@budgetScreenToday": { "description": "Экран общего бюджета (13:1135): день траты в строке последних трат — сегодня" },
+  "budgetScreenYesterday": "вчера",
+  "@budgetScreenYesterday": { "description": "Экран общего бюджета (13:1135): день траты в строке последних трат — вчера" },
+  "budgetScreenDayTime": "{day}, {time}",
+  "@budgetScreenDayTime": {
+    "description": "Экран общего бюджета (13:1135): день траты и время, если трата записана в тот же день («сегодня, 12:05»)",
+    "placeholders": {
+      "day": { "type": "String", "example": "сегодня" },
+      "time": { "type": "String", "example": "12:05" }
+    }
+  },
+  "budgetScreenAddedBy": "добавил {name}",
+  "@budgetScreenAddedBy": {
+    "description": "Экран общего бюджета: TalkBack — автор траты в конце подписи строки",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" }
+    }
+  },
+  "budgetScreenNotLoaded": "Не получилось загрузить бюджет",
+  "@budgetScreenNotLoaded": { "description": "Экран общего бюджета: текст вместо содержимого, если бюджет не прочитался с телефона" },
+  "budgetScreenDelete": "Удалить бюджет",
+  "@budgetScreenDelete": { "description": "Экран общего бюджета: пункт меню «⋮» у создателя" },
+  "budgetScreenLeave": "Выйти из бюджета",
+  "@budgetScreenLeave": { "description": "Экран общего бюджета: пункт меню «⋮» у участника" },
+  "budgetScreenExclude": "Исключить",
+  "@budgetScreenExclude": { "description": "Экран общего бюджета: пункт меню долгого нажатия на участника (только у создателя) и кнопка подтверждения" },
+  "budgetScreenDeleteTitle": "Удалить бюджет «{budget}»?",
+  "@budgetScreenDeleteTitle": {
+    "description": "Экран общего бюджета: заголовок подтверждения удаления",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
+  "budgetScreenDeleteMessage": "Бюджет пропадёт у всех участников вместе с тратами, регулярными и категориями. Отменить удаление нельзя.",
+  "@budgetScreenDeleteMessage": { "description": "Экран общего бюджета: текст подтверждения удаления (DELETE /budgets/{id} ставит надгробия на всё содержимое)" },
+  "budgetScreenDeleteConfirm": "Удалить",
+  "@budgetScreenDeleteConfirm": { "description": "Экран общего бюджета: красная кнопка подтверждения удаления" },
+  "budgetScreenLeaveTitle": "Выйти из бюджета «{budget}»?",
+  "@budgetScreenLeaveTitle": {
+    "description": "Экран общего бюджета: заголовок подтверждения выхода",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
+  "budgetScreenLeaveMessage": "Траты бюджета пропадут с этого телефона, а добавленные тобой останутся у участников. Вернуться можно по новому коду.",
+  "@budgetScreenLeaveMessage": { "description": "Экран общего бюджета: текст подтверждения выхода" },
+  "budgetScreenLeaveConfirm": "Выйти",
+  "@budgetScreenLeaveConfirm": { "description": "Экран общего бюджета: красная кнопка подтверждения выхода" },
+  "budgetScreenExcludeTitle": "Исключить участника?",
+  "@budgetScreenExcludeTitle": { "description": "Экран общего бюджета: заголовок подтверждения исключения (имя — в тексте, без склонения)" },
+  "budgetScreenExcludeMessage": "{name} больше не увидит бюджет «{budget}». Траты, которые уже добавлены, останутся.",
+  "@budgetScreenExcludeMessage": {
+    "description": "Экран общего бюджета: текст подтверждения исключения",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" },
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
+  "budgetScreenExcluded": "{name} больше не в бюджете",
+  "@budgetScreenExcluded": {
+    "description": "Экран общего бюджета: снекбар после исключения участника",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" }
+    }
+  },
+  "budgetScreenLeft": "Ты больше не в бюджете «{budget}»",
+  "@budgetScreenLeft": {
+    "description": "Снекбар после своего выхода из общего бюджета (экран бюджета закрыт)",
+    "placeholders": {
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
+  "budgetScreenActionFailed": "Не получилось. Попробуй ещё раз",
+  "@budgetScreenActionFailed": { "description": "Экран общего бюджета: снекбар, если действие сломалось на телефоне (не ответ сервера и не сеть)" },
   "expenseMoveFailed": "Не получилось перенести трату. Попробуй ещё раз",
   "@expenseMoveFailed": { "description": "Трата · редактирование: снекбар, если категории нового бюджета не прочитались — бюджет траты не меняется" },
 

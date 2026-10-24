@@ -9,6 +9,7 @@ import 'budget_selection.dart';
 import 'current_user.dart';
 import 'db/app_database.dart';
 import 'db/redact_db_error.dart';
+import 'queries/budget_queries.dart';
 import 'queries/category_queries.dart';
 import 'queries/month_queries.dart';
 import 'queries/recurring_queries.dart';
@@ -37,6 +38,8 @@ typedef BudgetDay = ({String budgetId, LocalDate day});
 typedef BudgetPeriod = ({String budgetId, LocalDate from, LocalDate to});
 
 typedef BudgetYear = ({String budgetId, int year});
+
+typedef BudgetRecent = ({String budgetId, int limit});
 
 Duration? _noRetry(int retryCount, Object error) => null;
 
@@ -151,6 +154,11 @@ final recurringQueriesProvider = Provider<RecurringQueries>(
   name: 'recurringQueries',
 );
 
+final budgetQueriesProvider = Provider<BudgetQueries>(
+  (ref) => DriftBudgetQueries(ref.watch(appDatabaseProvider)),
+  name: 'budgetQueries',
+);
+
 final syncStateQueriesProvider = Provider<SyncStateQueries>(
   (ref) => DriftSyncStateQueries(ref.watch(appDatabaseProvider)),
   name: 'syncStateQueries',
@@ -186,6 +194,15 @@ final dayExpensesProvider = StreamProvider.autoDispose
           .watch(monthQueriesProvider)
           .watchDayExpenses(arg.budgetId, arg.day),
       name: 'dayExpenses',
+      retry: _noRetry,
+    );
+
+final recentExpensesProvider = StreamProvider.autoDispose
+    .family<List<Expense>, BudgetRecent>(
+      (ref, arg) => ref
+          .watch(budgetQueriesProvider)
+          .watchRecentExpenses(arg.budgetId, limit: arg.limit),
+      name: 'recentExpenses',
       retry: _noRetry,
     );
 

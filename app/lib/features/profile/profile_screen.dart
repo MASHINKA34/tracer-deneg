@@ -289,6 +289,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onCreate: () =>
                           _push('create budget', AppRoutes.newBudget),
                       onJoin: () => _push('join budget', AppRoutes.joinBudget),
+                      onOpen: (budget) => _push(
+                        'budget budgetId=${budget.id}',
+                        AppRoutes.budgetOf(budget.id),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     ProfileSectionHead(title: l10n.profileSettings),
@@ -401,6 +405,7 @@ class _Budgets extends ConsumerWidget {
     required this.onStub,
     required this.onCreate,
     required this.onJoin,
+    required this.onOpen,
   });
 
   final String? selectedId;
@@ -408,6 +413,7 @@ class _Budgets extends ConsumerWidget {
   final void Function(ProfileStub stub, {String details}) onStub;
   final VoidCallback onCreate;
   final VoidCallback onJoin;
+  final ValueChanged<Budget> onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -439,10 +445,13 @@ class _Budgets extends ConsumerWidget {
                 budget: budget,
                 open: budget.id == selectedId,
                 profiles: profiles,
-                onTap: () => onStub(
-                  ProfileStub.budget,
-                  details: ' budgetId=${budget.id} kind=${budget.kind.name}',
-                ),
+                onTap: () => budget.kind == BudgetKind.shared
+                    ? onOpen(budget)
+                    : onStub(
+                        ProfileStub.budget,
+                        details:
+                            ' budgetId=${budget.id} kind=${budget.kind.name}',
+                      ),
               ),
             ProfileBudgetRow(
               leading: ProfileIconBox(
