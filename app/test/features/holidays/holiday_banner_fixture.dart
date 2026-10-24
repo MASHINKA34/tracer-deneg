@@ -135,11 +135,12 @@ Future<void> pumpHolidayMonth(
   Brightness brightness = Brightness.light,
   double width = 360,
   double scale = 1,
+  double height = 800,
 }) async {
   await loadTestFonts();
   tester.view
     ..devicePixelRatio = goldenPixelRatio
-    ..physicalSize = Size(width, 800) * goldenPixelRatio
+    ..physicalSize = Size(width, height) * goldenPixelRatio
     ..viewPadding = const FakeViewPadding(top: 32)
     ..padding = const FakeViewPadding(top: 32);
   addTearDown(tester.view.reset);
