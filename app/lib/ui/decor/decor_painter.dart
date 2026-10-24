@@ -92,9 +92,10 @@ class DecorPainter extends CustomPainter {
     paintDecorRegions(canvas, regions, palette);
     final picture = recorder.endRecording();
     _log.fine(
-      'decor cache miss → generated layer=${layer.key} '
+      'decor picture cached layer=${layer.key} theme=${brightness.name} '
       'size=${size.width.toStringAsFixed(1)}x${size.height.toStringAsFixed(1)} '
-      'shapes=${regions.elementCount} in ${sw.elapsedMilliseconds}ms',
+      'shapes=${regions.elementCount} in ${sw.elapsedMilliseconds}ms '
+      '(cache miss)',
     );
     return picture;
   }
