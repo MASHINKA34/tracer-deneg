@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
 import '../../core/router.dart';
 import '../../ui/components/bottom_nav.dart';
 import '../expense/expense_snackbar_layer.dart';
+import '../holidays/mood_controller.dart';
 
 final _log = Logger('nav');
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
@@ -37,8 +39,11 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final active = _active;
+    final sticker = ref.watch(
+      moodControllerProvider.select((today) => today.holiday?.key.emoji),
+    );
     return PopScope<Object?>(
       canPop: active == AppNavTab.month,
       onPopInvokedWithResult: _handleBack,
@@ -50,6 +55,7 @@ class AppShell extends StatelessWidget {
             active: active,
             onTabSelected: _selectTab,
             onAdd: () => _openNewExpense(context),
+            fabSticker: sticker,
           ),
         ),
       ),
