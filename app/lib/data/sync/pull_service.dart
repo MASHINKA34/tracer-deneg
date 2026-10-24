@@ -32,6 +32,10 @@ enum PullReason {
   background,
   budgetCreated,
   budgetJoined,
+  budgetLeft,
+  budgetDeleted,
+  memberRemoved,
+  budgetDenied,
 }
 
 final class PullCounts {
