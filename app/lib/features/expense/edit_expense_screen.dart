@@ -23,6 +23,7 @@ import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/tokens/tokens.g.dart';
 import '../budgets/budget_switcher_sheet.dart';
+import '../budgets/expense_authors.dart';
 import '../month/day_sheet.dart' show expenseCategory, spokenAmount;
 import 'category_grid.dart';
 import 'edit_expense_controller.dart';
@@ -434,6 +435,9 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final changed = edits.changedFields(expense);
     final comment = edits.commentOf(expense);
     final recurringId = expense.recurringId;
+    final author = ref
+        .watch(expenseAuthorsProvider(budgetId))
+        ?.of(expense.authorId);
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return SingleChildScrollView(
@@ -491,6 +495,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (author != null)
+            Text(
+              l10n.expenseEditAddedBy(expenseAuthorName(l10n, author)),
+              key: const ValueKey('edit-expense-author'),
+              style: AppText.caption.copyWith(color: colors.textTertiary),
+            ),
           if (recurringId != null)
             Text(
               _recurringCaption(l10n, recurringId),
