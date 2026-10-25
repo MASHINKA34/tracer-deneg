@@ -14,6 +14,7 @@ abstract final class PrefKeys {
   static const String themeMode = 'themeMode';
   static const String selectedBudgetId = 'selectedBudgetId';
   static const String holidaySettings = 'holidaySettings';
+  static const String holidaySettingsUnsent = 'holidaySettingsUnsent';
   static const String hiddenHolidayBanners = 'hiddenHolidayBanners';
 
   static const Set<String> phoneSettings = {

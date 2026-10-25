@@ -30,8 +30,12 @@ class AccountApi {
 
   final ApiClient _client;
 
-  Future<MeReply> me() async {
-    final response = await _client.get(mePath);
+  Future<MeReply> me() async => _reply('GET', await _client.get(mePath));
+
+  Future<MeReply> updateMe(Map<String, Object?> fields) async =>
+      _reply('PATCH', await _client.patch(mePath, body: fields));
+
+  MeReply _reply(String method, ApiResponse response) {
     try {
       return MeReply(
         user: User.fromJson(response.data),
@@ -41,11 +45,11 @@ class AccountApi {
     } on FormatException catch (e) {
       final reason = withoutBirthdayValues(e.message);
       _log.warning(
-        'GET $mePath ${response.statusCode} answered without a user → bad '
+        '$method $mePath ${response.statusCode} answered without a user → bad '
         'response: $reason rid=${response.requestId}',
       );
       throw ApiBadResponse(
-        method: 'GET',
+        method: method,
         path: '${_client.config.baseUrl.path}$mePath',
         requestId: response.requestId,
         statusCode: response.statusCode,
