@@ -98,12 +98,31 @@ final class _Access {
   final MemberRole? role;
 }
 
-typedef _Tombstones = ({
-  int categories,
-  int expenses,
-  int recurring,
-  int invites,
-});
+typedef BudgetContentErased = ({int categories, int expenses, int recurring});
+
+typedef _Erased = ({int categories, int expenses, int recurring, int invites});
+
+Future<BudgetContentErased> eraseBudgetContent(
+  DbSession tx,
+  String budgetId,
+  Map<String, Object?> logParams,
+) async {
+  final counts = <String, int>{};
+  for (final table in const ['expenses', 'recurring_rules', 'categories']) {
+    final result = await tx.execute(
+      'DELETE FROM $table WHERE budget_id = \$1::uuid',
+      parameters: [budgetId],
+      what: 'erase $table of deleted budget',
+      logParams: logParams,
+    );
+    counts[table] = result.affectedRows;
+  }
+  return (
+    categories: counts['categories']!,
+    expenses: counts['expenses']!,
+    recurring: counts['recurring_rules']!,
+  );
+}
 
 class BudgetService {
   BudgetService({
@@ -569,14 +588,14 @@ class BudgetService {
       );
 
       if (heirs.isEmpty) {
-        final tombstones = await _tombstone(tx, budgetId, userId, now);
+        final erased = await _markDeleted(tx, budgetId, userId, now);
         await _markLeft(tx, budgetId, userId, now, 'leave as last member');
         cursor = await _lastSeq(tx, context);
         return _Outcome.ok((
           result: LeaveResult.deleted,
           heirId: null,
-          tombstones: tombstones,
-          invitesRevoked: tombstones.invites,
+          erased: erased,
+          invitesRevoked: erased.invites,
         ));
       }
 
@@ -586,7 +605,7 @@ class BudgetService {
         return _Outcome.ok((
           result: LeaveResult.left,
           heirId: null,
-          tombstones: null,
+          erased: null,
           invitesRevoked: 0,
         ));
       }
@@ -620,7 +639,7 @@ class BudgetService {
       return _Outcome.ok((
         result: LeaveResult.transferred,
         heirId: heirId,
-        tombstones: null,
+        erased: null,
         invitesRevoked: invites,
       ));
     });
@@ -632,7 +651,7 @@ class BudgetService {
             'invitesRevoked=${left.invitesRevoked}',
       LeaveResult.deleted =>
         'no members left, budget deleted '
-            '${_describeTombstones(left.tombstones!)}',
+            '${_describeErased(left.erased!)}',
     };
     _log.info(
       'budget $action ok result=${left.result.name} budgetId=$budgetId '
@@ -736,18 +755,15 @@ class BudgetService {
         what: 'count active members of deleted budget',
         logParams: context,
       );
-      final tombstones = await _tombstone(tx, budgetId, userId, now);
+      final erased = await _markDeleted(tx, budgetId, userId, now);
       cursor = await _lastSeq(tx, context);
-      return _Outcome.ok((
-        members: members.single[0]! as int,
-        tombstones: tombstones,
-      ));
+      return _Outcome.ok((members: members.single[0]! as int, erased: erased));
     });
     final deleted = _unwrap(action, outcome, context, sw);
     _log.info(
       'budget $action ok budgetId=$budgetId userId=$userId '
       'members=${deleted.members} '
-      '${_describeTombstones(deleted.tombstones)} '
+      '${_describeErased(deleted.erased)} '
       'in ${sw.elapsedMilliseconds}ms',
     );
     _notify(
@@ -783,7 +799,7 @@ class BudgetService {
     }
   }
 
-  Future<_Tombstones> _tombstone(
+  Future<_Erased> _markDeleted(
     DbSession tx,
     String budgetId,
     String userId,
@@ -798,24 +814,12 @@ class BudgetService {
       what: 'tombstone shared budget',
       logParams: context,
     );
-    final counts = <String, int>{};
-    for (final table in const ['categories', 'expenses', 'recurring_rules']) {
-      final result = await tx.execute(
-        'UPDATE $table SET deleted_at = \$3::timestamptz, '
-        r'updated_at = greatest(updated_at, $3::timestamptz), '
-        r'updated_by = $2::uuid WHERE budget_id = $1::uuid '
-        'AND deleted_at IS NULL',
-        parameters: [budgetId, userId, now],
-        what: 'tombstone $table of shared budget',
-        logParams: context,
-      );
-      counts[table] = result.affectedRows;
-    }
+    final erased = await eraseBudgetContent(tx, budgetId, context);
     final invites = await _revokeInvites(tx, budgetId, now);
     return (
-      categories: counts['categories']!,
-      expenses: counts['expenses']!,
-      recurring: counts['recurring_rules']!,
+      categories: erased.categories,
+      expenses: erased.expenses,
+      recurring: erased.recurring,
       invites: invites,
     );
   }
@@ -994,11 +998,11 @@ typedef _Invite = ({String code, int attempts, int revoked});
 typedef _Left = ({
   LeaveResult result,
   String? heirId,
-  _Tombstones? tombstones,
+  _Erased? erased,
   int invitesRevoked,
 });
 
-typedef _Deleted = ({int members, _Tombstones tombstones});
+typedef _Deleted = ({int members, _Erased erased});
 
 typedef _Joined = ({
   Budget budget,
@@ -1039,9 +1043,9 @@ String _reasonCode(BudgetFailureReason reason) => switch (reason) {
   BudgetFailureReason.idTaken => ApiErrorCode.conflict.code,
 };
 
-String _describeTombstones(_Tombstones t) =>
-    'tombstones=categories:${t.categories},expenses:${t.expenses},'
-    'recurring:${t.recurring} invitesRevoked=${t.invites}';
+String _describeErased(_Erased e) =>
+    'erased=categories:${e.categories},expenses:${e.expenses},'
+    'recurring:${e.recurring} invitesRevoked=${e.invites}';
 
 Budget _budgetFromRow(pg.ResultRow row) => Budget(
   id: row[0]! as String,

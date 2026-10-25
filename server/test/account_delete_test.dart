@@ -357,7 +357,8 @@ void main() {
   );
 
   test(
-    'одиночный общий бюджет удаляется надгробиями на всё содержимое',
+    'одиночный общий бюджет удаляется: траты, регулярные и категории стёрты, '
+    'строки бюджета и участника остаются для синхронизации',
     () async {
       final soloBefore = await budget(soloId);
 
@@ -369,21 +370,11 @@ void main() {
       for (final table in ['categories', 'expenses', 'recurring_rules']) {
         expect(
           await api.count(
-            'SELECT count(*)::int FROM $table '
-            'WHERE budget_id = \$1::uuid AND deleted_at IS NULL',
+            'SELECT count(*)::int FROM $table WHERE budget_id = \$1::uuid',
             [soloId],
           ),
           0,
-          reason: '$table alive',
-        );
-        expect(
-          await api.count(
-            'SELECT count(*)::int FROM $table '
-            'WHERE budget_id = \$1::uuid AND deleted_at IS NOT NULL',
-            [soloId],
-          ),
-          1,
-          reason: '$table tombstones',
+          reason: '$table rows',
         );
       }
       expect((await member(soloId, olga.id))[1], true);
@@ -400,7 +391,7 @@ void main() {
         contains(
           'INFO  [account] account deletion: shared budget deleted, '
           'no members left budgetId=$soloId userId=${olga.id} '
-          'categories=1 expenses=1 recurring=1',
+          'erased categories=1 expenses=1 recurring=1',
         ),
       );
     },
@@ -425,48 +416,52 @@ void main() {
     },
   );
 
-  test(
-    'все сессии отозваны: токены и refresh обоих устройств не работают',
-    () async {
-      expect(
-        await api.count(
-          r'SELECT count(*)::int FROM sessions '
-          r'WHERE user_id = $1::uuid AND revoked_at IS NULL',
-          [olga.id],
-        ),
-        2,
-      );
+  test('все сессии стёрты вместе с названиями устройств: токены и refresh '
+      'обоих устройств не работают', () async {
+    expect(
+      await api.count(
+        r'SELECT count(*)::int FROM sessions '
+        r'WHERE user_id = $1::uuid AND revoked_at IS NULL',
+        [olga.id],
+      ),
+      2,
+    );
 
-      expect((await deleteAccount()).status, 204);
+    expect((await deleteAccount()).status, 204);
 
-      expect(
-        await api.count(
-          r'SELECT count(*)::int FROM sessions '
-          r'WHERE user_id = $1::uuid AND revoked_at IS NULL',
-          [olga.id],
-        ),
-        0,
+    expect(
+      await api.count(
+        r'SELECT count(*)::int FROM sessions WHERE user_id = $1::uuid',
+        [olga.id],
+      ),
+      0,
+    );
+    expect(
+      await api.count(
+        r'SELECT count(*)::int FROM sessions WHERE user_id = $1::uuid',
+        [boris.id],
+      ),
+      1,
+    );
+    final me = await api.send('GET', '/me', bearer: olga.accessToken);
+    expect(me.status, 401);
+    expect(me.errorCode, 'unauthorized');
+    for (final refreshToken in [olga.refreshToken, olgaSecondRefresh]) {
+      final refresh = await api.post(
+        '/auth/refresh',
+        body: {'refreshToken': refreshToken},
       );
-      final me = await api.send('GET', '/me', bearer: olga.accessToken);
-      expect(me.status, 401);
-      expect(me.errorCode, 'unauthorized');
-      for (final refreshToken in [olga.refreshToken, olgaSecondRefresh]) {
-        final refresh = await api.post(
-          '/auth/refresh',
-          body: {'refreshToken': refreshToken},
-        );
-        expect(refresh.status, 401);
-        expect(refresh.errorCode, 'session_expired');
-      }
-      final again = await deleteAccount();
-      expect(again.status, 401);
-      expect(again.errorCode, 'unauthorized');
-      expect(
-        (await api.send('GET', '/me', bearer: boris.accessToken)).status,
-        200,
-      );
-    },
-  );
+      expect(refresh.status, 401);
+      expect(refresh.errorCode, 'session_expired');
+    }
+    final again = await deleteAccount();
+    expect(again.status, 401);
+    expect(again.errorCode, 'unauthorized');
+    expect(
+      (await api.send('GET', '/me', bearer: boris.accessToken)).status,
+      200,
+    );
+  });
 
   test(
     'итог в логе: сколько бюджетов удалено, передано, сколько сессий отозвано',
@@ -480,7 +475,7 @@ void main() {
             'INFO  \\[account\\] account deleted userId=${olga.id} '
             'sessionId=\\S+ budgetsDeleted=2 \\(personal=1 shared=1\\) '
             'budgetsTransferred=1 budgetsLeft=1 sharedExpensesKept=3 '
-            'invitesRevoked=2 sessionsRevoked=2 in \\d+ms',
+            'invitesRevoked=2 sessionsDeleted=2 in \\d+ms',
           ),
         ),
       );

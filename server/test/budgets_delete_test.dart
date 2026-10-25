@@ -61,8 +61,9 @@ void main() {
     };
   }
 
-  test('создатель удаляет бюджет → 204: надгробия на бюджет и всё содержимое, '
-      'коды отменены, у всех участников removedBudgetIds', () async {
+  test('создатель удаляет бюджет → 204: бюджет помечен удалённым, траты, '
+      'регулярные и категории стёрты (и ранее удалённые тоже), участники '
+      'остаются, коды отменены, у всех участников removedBudgetIds', () async {
     final expenses = [
       await fixture.expense(family.id, food, olga.id),
       await fixture.expense(family.id, food, boris.id),
@@ -88,21 +89,19 @@ void main() {
     expect(budget.deletedAt, isNotNull);
     expect(budget.updatedBy, olga.id);
     expect(await counts(), {
-      'categories': 11,
+      'categories': 0,
       'liveCategories': 0,
-      'expenses': 3,
+      'expenses': 0,
       'liveExpenses': 0,
-      'recurring': 1,
+      'recurring': 0,
       'liveRecurring': 0,
       'members': 2,
       'activeInvites': 0,
     });
-    for (final id in expenses) {
-      final row = (await storedRow(api, 'expenses', id))!;
-      expect(row.deletedAt, budget.deletedAt);
-      expect(row.updatedBy, olga.id);
+    for (final id in [...expenses, old]) {
+      expect(await storedRow(api, 'expenses', id), isNull);
     }
-    expect((await storedRow(api, 'expenses', old))!.deletedAt, oldDeletedAt);
+    expect(oldDeletedAt, isNotNull);
 
     for (final (user, cursor) in [(olga, olgaCursor), (boris, borisCursor)]) {
       final pulled = await pullUntilDone(api, user, cursor: cursor);
@@ -128,7 +127,7 @@ void main() {
       matches(
         RegExp(
           'INFO  \\[budgets\\] budget delete ok budgetId=${family.id} '
-          'userId=${olga.id} members=2 tombstones=categories:11,expenses:2,'
+          'userId=${olga.id} members=2 erased=categories:11,expenses:3,'
           'recurring:1 invitesRevoked=1 in \\d+ms rid=$rid',
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:shared/shared.dart';
 
 import '../auth/auth_service.dart';
 import '../auth/password_hasher.dart';
+import '../budgets/budget_service.dart';
 import '../db/database.dart';
 
 final _log = Logger('account');
@@ -57,7 +58,7 @@ class AccountDeletion {
     required this.sharedBudgetsLeft,
     required this.sharedExpensesKept,
     required this.invitesRevoked,
-    required this.sessionsRevoked,
+    required this.sessionsDeleted,
   });
 
   final int personalBudgetsDeleted;
@@ -66,7 +67,7 @@ class AccountDeletion {
   final int sharedBudgetsLeft;
   final int sharedExpensesKept;
   final int invitesRevoked;
-  final int sessionsRevoked;
+  final int sessionsDeleted;
 }
 
 enum _SharedExit { left, transferred, deleted }
@@ -376,10 +377,9 @@ class AccountService {
         logParams: {'userId': userId},
       );
       final sessions = await tx.execute(
-        r'UPDATE sessions SET revoked_at = now() '
-        r'WHERE user_id = $1::uuid AND revoked_at IS NULL',
+        r'DELETE FROM sessions WHERE user_id = $1::uuid',
         parameters: [userId],
-        what: 'revoke all sessions of deleted user',
+        what: 'delete all sessions of deleted user with device names',
         logParams: {'userId': userId},
       );
       return AccountDeletion(
@@ -389,7 +389,7 @@ class AccountService {
         sharedBudgetsLeft: left,
         sharedExpensesKept: kept.first.first! as int,
         invitesRevoked: invites.affectedRows,
-        sessionsRevoked: sessions.affectedRows,
+        sessionsDeleted: sessions.affectedRows,
       );
     });
 
@@ -428,7 +428,7 @@ class AccountService {
       'budgetsLeft=${deletion.sharedBudgetsLeft} '
       'sharedExpensesKept=${deletion.sharedExpensesKept} '
       'invitesRevoked=${deletion.invitesRevoked} '
-      'sessionsRevoked=${deletion.sessionsRevoked} '
+      'sessionsDeleted=${deletion.sessionsDeleted} '
       'in ${sw.elapsedMilliseconds}ms',
     );
     return deletion;
@@ -459,18 +459,7 @@ class AccountService {
         what: 'tombstone shared budget',
         logParams: context,
       );
-      final counts = <String, int>{};
-      for (final table in const ['categories', 'expenses', 'recurring_rules']) {
-        final result = await tx.execute(
-          'UPDATE $table SET deleted_at = now(), updated_at = now(), '
-          r'updated_by = $2::uuid WHERE budget_id = $1::uuid '
-          'AND deleted_at IS NULL',
-          parameters: [budgetId, userId],
-          what: 'tombstone $table of shared budget',
-          logParams: context,
-        );
-        counts[table] = result.affectedRows;
-      }
+      final erased = await eraseBudgetContent(tx, budgetId, context);
       await tx.execute(
         r'UPDATE budget_members SET left_at = now() '
         r'WHERE budget_id = $1::uuid AND user_id = $2::uuid',
@@ -488,8 +477,8 @@ class AccountService {
       steps.add(
         'shared budget deleted, no members left '
         'budgetId=$budgetId userId=$userId '
-        'categories=${counts['categories']} expenses=${counts['expenses']} '
-        'recurring=${counts['recurring_rules']}',
+        'erased categories=${erased.categories} '
+        'expenses=${erased.expenses} recurring=${erased.recurring}',
       );
       return _SharedExit.deleted;
     }

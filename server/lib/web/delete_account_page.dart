@@ -118,7 +118,7 @@ Handler deleteAccountSubmitHandler({
       '${deletion.personalBudgetsDeleted + deletion.sharedBudgetsDeleted} '
       'budgetsTransferred=${deletion.sharedBudgetsTransferred} '
       'budgetsLeft=${deletion.sharedBudgetsLeft} '
-      'sessionsRevoked=${deletion.sessionsRevoked} '
+      'sessionsDeleted=${deletion.sessionsDeleted} '
       'in ${sw.elapsedMilliseconds}ms',
     );
     return htmlResponse(200, renderAccountDeleted(), headers: _noStore);

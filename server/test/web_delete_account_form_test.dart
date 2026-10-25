@@ -120,7 +120,7 @@ void main() {
 
   test('верные логин и пароль → 200 «Аккаунт удалён»; та же логика, что '
       'DELETE /account: личный бюджет удалён, общий передан, профиль стёрт, '
-      'сессии отозваны', () async {
+      'сессии стёрты', () async {
     final page = await web.deleteByForm(' OLGA ', _olgaPassword);
 
     expect(page.status, 200, reason: '$page');
@@ -149,8 +149,7 @@ void main() {
     expect(family.toList(), [borisId, true]);
     expect(
       await web.count(
-        r'SELECT count(*)::int FROM sessions WHERE user_id = $1::uuid '
-        r'AND revoked_at IS NULL',
+        r'SELECT count(*)::int FROM sessions WHERE user_id = $1::uuid',
         [olgaId],
       ),
       0,
@@ -181,7 +180,7 @@ void main() {
         matches(
           r'INFO  \[web\] delete-account form: account deleted '
           r'login=ol\*\*\* ip=198\.51\.100\.1 budgetsDeleted=1 '
-          r'budgetsTransferred=1 budgetsLeft=0 sessionsRevoked=1 in \d+ms',
+          r'budgetsTransferred=1 budgetsLeft=0 sessionsDeleted=1 in \d+ms',
         ),
       ),
     );

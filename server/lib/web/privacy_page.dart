@@ -5,6 +5,7 @@ import 'package:shared/logging.dart';
 import 'package:shelf/shelf.dart';
 
 import '../jobs/client_errors_cleanup.dart';
+import '../jobs/sessions_cleanup.dart';
 import 'web_page.dart';
 
 final _log = Logger('web');
@@ -25,6 +26,7 @@ String renderPrivacyPage(PrivacySettings settings) {
   final operator = escapeHtml(settings.operator ?? notSpecified);
   final contact = escapeHtml(settings.contact ?? notSpecified);
   final reportDays = clientErrorRetention.inDays;
+  final sessionDays = endedSessionRetention.inDays;
   return renderPage(
     title: 'Политика конфиденциальности',
     body:
@@ -71,6 +73,12 @@ String renderPrivacyPage(PrivacySettings settings) {
         '<h2>Сколько хранятся</h2>\n'
         '<ul>\n'
         '<li>Аккаунт и траты: пока ты не удалишь аккаунт.</li>\n'
+        '<li>Удалённые траты, категории и регулярные траты: текст '
+        '(комментарий, название) стирается сразу. Остаётся пометка без '
+        'текста (сумма, дата, категория), чтобы удаление дошло до всех '
+        'телефонов. Она хранится, пока существует бюджет.</li>\n'
+        '<li>Название устройства, с которого выполнен вход: пока вход активен '
+        'и ещё $sessionDays дней после выхода.</li>\n'
         '<li>Отчёты об ошибках: $reportDays дней, потом удаляются '
         'автоматически.</li>\n'
         '<li>Журналы сервера: ограниченное время, затем перезаписываются.</li>\n'
@@ -87,10 +95,12 @@ String renderPrivacyPage(PrivacySettings settings) {
         '<li>Личный бюджет со всеми тратами, категориями и регулярными '
         'тратами удаляется сразу.</li>\n'
         '<li>Имя, дата рождения, пароль и код восстановления стираются, все '
-        'входы на устройствах завершаются.</li>\n'
+        'входы на устройствах завершаются, названия устройств стираются '
+        'сразу.</li>\n'
         '<li>Из общих бюджетов ты выходишь. Если ты создатель бюджета, права '
         'создателя переходят участнику, который присоединился раньше всех; '
-        'если других участников нет, бюджет удаляется.</li>\n'
+        'если других участников нет, бюджет удаляется со всеми тратами, '
+        'категориями и регулярными тратами.</li>\n'
         '<li>Твои траты в общих бюджетах остаются у '
         'участников, автор показывается как «Удалённый участник».</li>\n'
         '<li>Логин остаётся занятым: зарегистрироваться с ним снова '

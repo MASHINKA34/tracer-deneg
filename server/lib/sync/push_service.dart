@@ -29,6 +29,12 @@ const Map<SyncEntity, String> _tables = {
   SyncEntity.expense: 'expenses',
 };
 
+const Map<SyncEntity, String> _wipedOnDelete = {
+  SyncEntity.category: 'name',
+  SyncEntity.recurring: 'title',
+  SyncEntity.expense: 'comment',
+};
+
 const Map<SyncEntity, int> _applyOrder = {
   SyncEntity.budget: 0,
   SyncEntity.category: 1,
@@ -397,12 +403,14 @@ class PushService {
       return _Done.applied(visibleSeq: stored.seq);
     }
     final table = _tables[change.entity]!;
+    final wiped = _wipedOnDelete[change.entity]!;
     final rows = await tx.execute(
       'UPDATE $table SET deleted_at = \$2::timestamptz, '
       r'updated_at = greatest(updated_at, $2::timestamptz), '
-      r'updated_by = $3::uuid WHERE id = $1::uuid RETURNING seq',
+      'updated_by = \$3::uuid, $wiped = \'\' WHERE id = \$1::uuid '
+      'RETURNING seq',
       parameters: [change.id, at, batch.userId],
-      what: 'tombstone $table row',
+      what: 'tombstone $table row and wipe $wiped',
       logParams: {'id': change.id, 'budgetId': stored.budgetId},
     );
     final seq = rows.single[0]! as int;
@@ -411,7 +419,7 @@ class PushService {
       'id=${change.id} budgetId=${stored.budgetId} '
       'seq=${stored.seq}→$seq '
       'storedUpdatedAt=${encodeInstant(stored.updatedAt)} '
-      'deletedAt=${encodeInstant(at)}',
+      'deletedAt=${encodeInstant(at)} wiped=$wiped',
     );
     return _Done.applied(
       written: seq,

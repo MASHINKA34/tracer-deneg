@@ -147,8 +147,9 @@ void main() {
     );
   });
 
-  test('последний участник выходит → бюджет удалён с надгробиями на всё '
-      'содержимое, строки в базе остаются', () async {
+  test('последний участник выходит → бюджет помечен удалённым, траты, '
+      'регулярные и категории стёрты, строки бюджета и участника '
+      'остаются', () async {
     final expenses = [
       await fixture.expense(family.id, food, olga.id),
       await fixture.expense(family.id, food, olga.id),
@@ -165,26 +166,15 @@ void main() {
     expect(budget.deletedAt, isNotNull);
     expect(budget.updatedBy, olga.id);
     for (final id in expenses) {
-      expect((await storedRow(api, 'expenses', id))!.deletedAt, isNotNull);
+      expect(await storedRow(api, 'expenses', id), isNull);
     }
-    expect(
-      (await storedRow(api, 'recurring_rules', rule))!.deletedAt,
-      isNotNull,
-    );
-    expect(
-      await api.count(
-        r'SELECT count(*)::int FROM categories WHERE budget_id = $1::uuid '
-        'AND deleted_at IS NULL',
-        [family.id],
-      ),
-      0,
-    );
+    expect(await storedRow(api, 'recurring_rules', rule), isNull);
     expect(
       await api.count(
         r'SELECT count(*)::int FROM categories WHERE budget_id = $1::uuid',
         [family.id],
       ),
-      11,
+      0,
     );
     expect((await memberRow(api, family.id, olga.id))!.leftAt, isNotNull);
 
@@ -200,7 +190,7 @@ void main() {
         RegExp(
           'INFO  \\[budgets\\] budget leave ok result=deleted '
           'budgetId=${family.id} userId=${olga.id} no members left, budget '
-          'deleted tombstones=categories:11,expenses:2,recurring:1 '
+          'deleted erased=categories:11,expenses:2,recurring:1 '
           'invitesRevoked=1 in \\d+ms rid=',
         ),
       ),
