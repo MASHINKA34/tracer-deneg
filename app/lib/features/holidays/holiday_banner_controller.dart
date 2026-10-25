@@ -31,7 +31,17 @@ Set<String> decodeHiddenHolidayBanners(String text) {
   };
 }
 
-String _idsText(Set<String> ids) => '[${([...ids]..sort()).join(',')}]';
+const String memberBirthdayBannerPrefix = 'member:';
+
+String memberBirthdayBannerId(String userId, LocalDate birthday) =>
+    '$memberBirthdayBannerPrefix$userId:${birthday.year}';
+
+String _logId(String id) => id.startsWith(memberBirthdayBannerPrefix)
+    ? id.substring(0, id.lastIndexOf(':'))
+    : id;
+
+String _idsText(Set<String> ids) =>
+    '[${([for (final id in ids) _logId(id)]..sort()).join(',')}]';
 
 int? _yearOf(String id) {
   final colon = id.lastIndexOf(':');
@@ -148,11 +158,32 @@ final class HiddenHolidayBanners extends Notifier<Set<String>> {
   bool _same(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
-  Future<bool> hide(HolidayPhase phase) async {
-    final id = phase.occurrence.id;
+  Future<bool> hide(HolidayPhase phase) => _hide(
+    phase.occurrence.id,
+    subject: 'holiday banner',
+    target: 'id=${phase.occurrence.id}',
+    detail: ' holiday=${phase.key.name} stage=${phase.stage.name}',
+    until: 'the next holiday',
+  );
+
+  Future<bool> hideMemberBirthday(String userId, LocalDate birthday) => _hide(
+    memberBirthdayBannerId(userId, birthday),
+    subject: 'member birthday banner',
+    target: 'userId=$userId',
+    detail: '',
+    until: "the member's next birthday",
+  );
+
+  Future<bool> _hide(
+    String id, {
+    required String subject,
+    required String target,
+    required String detail,
+    required String until,
+  }) async {
     final previous = state;
     if (previous.contains(id)) {
-      _log.fine('holiday banner close tap id=$id: already hidden');
+      _log.fine('$subject close tap $target: already hidden');
       return true;
     }
     final today = ref.read(clockProvider).today();
@@ -169,7 +200,7 @@ final class HiddenHolidayBanners extends Notifier<Set<String>> {
     } catch (e, st) {
       final error = redactDbError(e);
       _log.warning(
-        'holiday banner hidden id=$id for this run only: saving key=$key '
+        '$subject hidden $target for this run only: saving key=$key '
         'failed after ${sw.elapsedMilliseconds}ms → shown again after '
         'restart: ${describeError(error)}',
         error,
@@ -180,8 +211,7 @@ final class HiddenHolidayBanners extends Notifier<Set<String>> {
       _saving--;
     }
     _log.info(
-      'holiday banner hidden id=$id holiday=${phase.key.name} '
-      'stage=${phase.stage.name} → until the next holiday; saved key=$key '
+      '$subject hidden $target$detail → until $until; saved key=$key '
       'ids=${_idsText(next)}'
       '${dropped.isEmpty ? '' : ' dropped past=${_idsText(dropped)}'} '
       'in ${sw.elapsedMilliseconds}ms',

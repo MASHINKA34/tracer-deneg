@@ -18,6 +18,8 @@ import '../../ui/theme/app_theme.dart';
 import '../expense/expense_snackbar_layer.dart';
 import '../holidays/holiday_banner_controller.dart';
 import '../holidays/holiday_banner_slot.dart';
+import '../holidays/member_birthday_banner_slot.dart';
+import '../holidays/member_birthdays.dart';
 import '../holidays/mood_controller.dart';
 import 'day_sheet.dart';
 import 'month_controller.dart';
@@ -248,10 +250,14 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
     Widget? card;
     var current = false;
     HolidayPhase? banner;
+    MemberBirthdayBanners? members;
     if (data != null || shown.hasError) {
       final month = data?.month ?? requested;
       current = month == YearMonth.of(today);
-      if (current) banner = ref.watch(holidayBannerProvider);
+      if (current) {
+        banner = ref.watch(holidayBannerProvider);
+        members = ref.watch(memberBirthdayBannersProvider);
+      }
       card = MonthCard(
         month: month,
         today: today,
@@ -306,9 +312,21 @@ class _MonthScreenState extends ConsumerState<MonthScreen> {
                         HolidayBannerSlot(phase: banner),
                         const SizedBox(height: 14),
                       ],
+                      if (members != null)
+                        for (final birthday in members.birthdays) ...[
+                          MemberBirthdayBannerSlot(
+                            key: ValueKey('member-birthday-${birthday.userId}'),
+                            birthday: birthday,
+                            budgetId: members.budgetId,
+                            budgetName: members.budgetName,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                       ?card,
                       if (current) ...[
-                        SizedBox(height: banner == null ? 20 : 14),
+                        SizedBox(
+                          height: banner == null && members == null ? 20 : 14,
+                        ),
                         TodayBlock(today: today),
                       ],
                     ],

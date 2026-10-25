@@ -1845,6 +1845,29 @@
   "@holidayBannerBirthdayGreetingTitleNoName": { "description": "Плашка праздника: свой день рождения, в «день» — заголовок, если имени аккаунта на телефоне нет" },
   "holidayBannerBirthdayGreetingSubtitle": "Пусть миллион копится сам 🎂",
   "@holidayBannerBirthdayGreetingSubtitle": { "description": "Плашка праздника: свой день рождения, в «день» — подпись" },
+  "memberBirthdayBannerTitle": "🎂 {name} — день рождения через {days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@memberBirthdayBannerTitle": {
+    "description": "Плашка «Участник» (35:11612): день рождения участника открытого общего бюджета через 1–7 дней — заголовок; имя без склонения (00-spec §2.1, §7.6.5)",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" },
+      "days": { "type": "int" }
+    }
+  },
+  "memberBirthdayBannerTodayTitle": "🎂 Сегодня день рождения: {name}",
+  "@memberBirthdayBannerTodayTitle": {
+    "description": "Плашка «Участник»: день рождения участника открытого общего бюджета сегодня — заголовок; имя без склонения",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" }
+    }
+  },
+  "memberBirthdayBannerSubtitle": "{date} · бюджет «{budget}»",
+  "@memberBirthdayBannerSubtitle": {
+    "description": "Плашка «Участник» (35:11612): подпись — день рождения (день и месяц в родительном падеже, без года) и название открытого общего бюджета",
+    "placeholders": {
+      "date": { "type": "String", "example": "2 декабря" },
+      "budget": { "type": "String", "example": "Семья" }
+    }
+  },
 
   "profileHolidaysOn": "Вкл",
   "@profileHolidaysOn": { "description": "Профиль (47:13952): значение справа в строке «Праздники», общий переключатель праздников включён" },
