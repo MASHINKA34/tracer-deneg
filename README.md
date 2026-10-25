@@ -277,6 +277,40 @@ keytool -list -v -keystore "$env:USERPROFILE\keys\milionchik-upload.jks" -alias 
 | `Failed to read key upload from store "…": Cannot recover key` | неверный `keyPassword` |
 | `No key with alias '…' found in keystore …` | неверный `keyAlias` |
 
+### Release-сборка
+
+Нужны `app/android/key.properties` (раздел выше) и адрес сервера. Домен сервера ещё не выбран: вместо `<домен>` подставить его.
+
+```powershell
+cd app
+flutter build appbundle --release --dart-define=API_URL=https://<домен>/api/v1
+flutter build apk --release --split-per-abi --dart-define=API_URL=https://<домен>/api/v1
+```
+
+| Файл в `app\build\app\outputs\` | Для чего |
+|---|---|
+| `bundle\release\app-release.aab` | загрузка в Google Play |
+| `flutter-apk\app-arm64-v8a-release.apk` | установка вручную на телефон с 64-битным ARM |
+| `flutter-apk\app-armeabi-v7a-release.apk` | установка вручную на телефон с 32-битным ARM |
+| `flutter-apk\app-x86_64-release.apk` | эмулятор |
+| `mapping\release\mapping.txt` | расшифровка Java/Kotlin-стеков этой сборки |
+
+- Какой APK нужен телефону: `adb shell getprop ro.product.cpu.abi`. Установка: `adb install flutter-apk\app-x86_64-release.apk`. Если на устройстве стоит debug-сборка (`flutter run`), она подписана другим ключом и `adb install` откажет с `INSTALL_FAILED_UPDATE_INCOMPATIBLE` - сначала `adb uninstall ru.milionchik.app` (данные приложения на устройстве удалятся).
+- Без `API_URL`, с `http://` или с неверным адресом release-приложение показывает экран «Не задан адрес сервера», в логе - `api config invalid`. Release ходит на сервер только по HTTPS: локальный сервер `http://10.0.2.2:8080` доступен только debug-сборке.
+- R8 включён (`isMinifyEnabled`, `isShrinkResources` в `app/android/app/build.gradle.kts`): Java/Kotlin-код сжимается и переименовывается, неиспользуемые ресурсы удаляются. Dart-код не обфусцируется. Правила для плагинов приходят вместе с плагинами и из Flutter; свои правила - `app/android/app/proguard-rules.pro` (имена классов виджета сохраняются, они пишутся в логи `[widget]`). Ресурс, который код берёт по имени (иконка уведомления `ic_stat_reminder`), должен быть в `app/android/app/src/main/res/raw/keep.xml`, иначе сжатие ресурсов его удалит.
+- `mapping.txt` перезаписывается каждой сборкой - копию сохранять для каждой выпущенной версии. В AAB он кладётся автоматически. Расшифровать стек из logcat: `& "$env:LOCALAPPDATA\Android\Sdk\cmdline-tools\latest\bin\retrace.bat" build\app\outputs\mapping\release\mapping.txt stack.txt`.
+- Проверка на эмуляторе: в `adb logcat -s milionchik` строка `INFO  [app] start version=1.0.0+4001 … log=info build=release`. `run-as` с release-сборкой не работает (она не debuggable): файл лога `files/logs/app.log` уходит разработчику через «Отправить логи».
+- targetSdk 36: с 31.08.2026 Google Play принимает новые приложения и обновления только с targetSdk не ниже 36 (developer.android.com/google/play/requirements/target-sdk, проверено 25.10.2026).
+
+### Версия приложения
+
+`version: x.y.z+N` в `app/pubspec.yaml`:
+
+- `x.y.z` - versionName, его видит пользователь в Google Play и в настройках телефона: `z` - исправления, `y` - новые возможности, `x` - большие изменения.
+- `N` - versionCode: растёт на 1 с каждой сборкой, которая уходит в Google Play, даже если `x.y.z` не менялся, и не сбрасывается при смене `x.y.z` (`1.0.0+1` → `1.0.1+2` → `1.1.0+3`). Google Play не принимает versionCode, который уже был загружен, а Android не ставит поверх сборку с versionCode меньше установленного (`INSTALL_FAILED_VERSION_DOWNGRADE`).
+- В AAB versionCode равен `N`. APK из `--split-per-abi` получают `1000 × код ABI + N` (armeabi-v7a - 1, arm64-v8a - 2, x86_64 - 4): при `N = 1` это 1001, 2001 и 4001, поэтому в строке старта на эмуляторе `1.0.0+4001`.
+- Версия сервера (`server/lib/version.dart`) своя и от версии приложения не зависит.
+
 ## Логи
 
 Одна строка — одно событие, формат общий для приложения и сервера:
