@@ -54,6 +54,7 @@ google-services.json
 GoogleService-Info.plist
 supabase/.env
 secrets/
+deploy/backups/
 
 # =====================================================================
 #  Android / Gradle / Kotlin
