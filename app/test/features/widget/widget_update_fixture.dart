@@ -63,6 +63,7 @@ final class FakeWidgetStorage implements HomeWidgetStorage {
   final List<String> redraws = [];
   Completer<void>? gate;
   Object? saveError;
+  Object? redrawError;
   int _active = 0;
   int maxActive = 0;
 
@@ -86,6 +87,8 @@ final class FakeWidgetStorage implements HomeWidgetStorage {
 
   @override
   Future<bool?> redraw(String qualifiedAndroidName) async {
+    final error = redrawError;
+    if (error != null) throw error;
     redraws.add(qualifiedAndroidName);
     return true;
   }
@@ -172,6 +175,7 @@ final class WidgetRig {
   Future<void> mount({
     List<Override> overrides = const [],
     bool signedIn = true,
+    LocalDate? today,
   }) async {
     addTearDown(logs.dispose);
     await tester.runAsync(() async {
@@ -188,7 +192,7 @@ final class WidgetRig {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           todayOverrideProvider.overrideWithBuild(
-            (ref, _) => LocalDate(2026, 10, 19),
+            (ref, _) => today ?? LocalDate(2026, 10, 19),
           ),
           secureValuesProvider.overrideWithValue(secure),
           if (signedIn)

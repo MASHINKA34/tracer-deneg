@@ -9,6 +9,7 @@ import 'package:milionchik/core/clock.dart';
 import 'package:milionchik/data/api/api_client.dart';
 import 'package:milionchik/data/api/api_providers.dart';
 import 'package:milionchik/data/api/token_store.dart';
+import 'package:milionchik/data/holiday_settings.dart';
 import 'package:milionchik/data/providers.dart';
 import 'package:milionchik/data/sync/sync_engine.dart';
 import 'package:milionchik/features/profile/theme_mode.dart';
@@ -247,5 +248,59 @@ void main() {
     expect(rig.storage.last.emoji, '🍂');
     expect(rig.storage.last.month, 'Ноябрь');
     expect(rig.storage.last.total, total(0));
+  });
+
+  testUnmounting('смена настроения в тот же день: хеллоуин выключен в '
+      'настройках праздников 31 октября - одна запись с осенью 🍂, причина '
+      '«mood changed»', (tester) async {
+    final patches = <FakeCall>[];
+    final rig = WidgetRig(tester);
+    await rig.mount(
+      today: LocalDate(2026, 10, 31),
+      overrides: [
+        apiClientProvider.overrideWith(
+          (ref) => ApiClient(
+            config: pullApiConfig,
+            tokens: MemoryTokenStore(
+              const AuthTokens(
+                accessToken: pullAccess,
+                refreshToken: pullRefresh,
+              ),
+            ),
+            adapter: FakeApiAdapter((call) {
+              if (call.path.endsWith('/me') && call.method == 'PATCH') {
+                patches.add(call);
+                return FakeReply.json(200, {
+                  ...widgetMeReply(),
+                  'holidaysDisabled': ['halloween'],
+                });
+              }
+              throw StateError('unexpected ${call.method} ${call.path}');
+            }),
+            newRequestId: () => 'ridwidgetmood001',
+          ),
+        ),
+      ],
+    );
+    expect(rig.storage.last.mood, 'halloween');
+    expect(rig.storage.last.emoji, '🎃');
+    final before = rig.storage.writes.length;
+
+    final saved = await rig.act(
+      (c) => c
+          .read(accountHolidaySettingsProvider.notifier)
+          .setHoliday(HolidayKey.halloween, false),
+    );
+    await rig.time.elapse(const Duration(seconds: 3));
+
+    expect(saved, isTrue);
+    expect(patches, hasLength(1));
+    final after = rig.storage.writes.sublist(before);
+    expect(after, hasLength(1));
+    expect(after.single.mood, 'autumn');
+    expect(after.single.emoji, '🍂');
+    expect(after.single.month, 'Октябрь');
+    expect(after.single.total, total(2140));
+    expect(rig.reasons.last, 'mood changed');
   });
 }
