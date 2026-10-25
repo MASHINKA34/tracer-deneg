@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
@@ -14,6 +15,43 @@ import 'repository_writer.dart';
 final _log = Logger('repo');
 
 const Duration expenseUndoWindow = Duration(seconds: 5);
+
+final class TodayExpenseSaved {
+  const TodayExpenseSaved({
+    required this.expenseId,
+    required this.budgetId,
+    required this.day,
+    required this.action,
+  });
+
+  final String expenseId;
+  final String budgetId;
+  final LocalDate day;
+  final String action;
+
+  @override
+  String toString() =>
+      'expense $action id=$expenseId budgetId=$budgetId day=$day';
+}
+
+typedef TodayExpenseListener = void Function(TodayExpenseSaved event);
+
+final class TodayExpenseEvents {
+  final StreamController<TodayExpenseSaved> _controller =
+      StreamController<TodayExpenseSaved>.broadcast();
+
+  Stream<TodayExpenseSaved> get stream => _controller.stream;
+
+  void add(TodayExpenseSaved event) {
+    if (_controller.isClosed) {
+      _log.fine('$event for today after events were closed: not delivered');
+      return;
+    }
+    _controller.add(event);
+  }
+
+  Future<void> close() => _controller.close();
+}
 
 abstract interface class ExpensesRepository {
   Stream<List<Expense>> watchByBudget(String budgetId);
@@ -59,6 +97,7 @@ final class DriftExpensesRepository implements ExpensesRepository {
     required CurrentUser currentUser,
     required OutboxQueue outbox,
     Now now = DateTime.now,
+    this._onTodayExpense,
   }) : _writer = RepositoryWriter(
          _db,
          outbox: outbox,
@@ -72,8 +111,33 @@ final class DriftExpensesRepository implements ExpensesRepository {
 
   final AppDatabase _db;
   final RepositoryWriter _writer;
+  final TodayExpenseListener? _onTodayExpense;
 
   OutboxQueue get _outbox => _writer.outbox;
+
+  void _savedForToday(Expense expense, DateTime at, String action) {
+    final listener = _onTodayExpense;
+    if (listener == null) return;
+    final today = LocalDate.fromDateTime(at.toLocal());
+    if (expense.spentOn != today) return;
+    final event = TodayExpenseSaved(
+      expenseId: expense.id,
+      budgetId: expense.budgetId,
+      day: today,
+      action: action,
+    );
+    _log.fine('$event is for today → today event');
+    try {
+      listener(event);
+    } catch (e, st) {
+      _log.warning(
+        'today event for $event failed, the expense is saved anyway: '
+        '${describeError(e)}',
+        e,
+        st,
+      );
+    }
+  }
 
   @override
   Stream<List<Expense>> watchByBudget(String budgetId) => _writer.watch(
@@ -135,12 +199,14 @@ final class DriftExpensesRepository implements ExpensesRepository {
   }) async {
     final id = newId();
     late int outboxId;
-    return _writer.edit(
+    late DateTime at;
+    final created = await _writer.edit(
       _entity,
       'create',
       id: id,
       describe: (e) => _describe(e, outboxId, SyncOp.upsert),
       body: (c) async {
+        at = c.now;
         final expense = Expense(
           id: id,
           budgetId: budgetId,
@@ -159,6 +225,8 @@ final class DriftExpensesRepository implements ExpensesRepository {
         return expense;
       },
     );
+    _savedForToday(created, at, 'create');
+    return created;
   }
 
   @override
@@ -169,14 +237,16 @@ final class DriftExpensesRepository implements ExpensesRepository {
     Money? amount,
     LocalDate? spentOn,
     String? comment,
-  }) {
+  }) async {
     late int outboxId;
-    return _writer.edit(
+    late DateTime at;
+    final updated = await _writer.edit(
       _entity,
       'update',
       id: id,
       describe: (e) => _describe(e, outboxId, SyncOp.upsert),
       body: (c) async {
+        at = c.now;
         final current = await _live(id);
         final expense = current.copyWith(
           budgetId: budgetId,
@@ -195,6 +265,8 @@ final class DriftExpensesRepository implements ExpensesRepository {
         return expense;
       },
     );
+    _savedForToday(updated, at, 'update');
+    return updated;
   }
 
   @override

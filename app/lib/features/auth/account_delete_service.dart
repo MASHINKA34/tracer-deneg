@@ -10,6 +10,7 @@ import '../../data/repositories/account_data_cleaner.dart';
 import '../../data/session/session_providers.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/sync_engine.dart';
+import '../reminders/reminder_scheduler.dart';
 import 'sign_in_notice.dart';
 
 final _log = Logger('auth');
@@ -79,6 +80,7 @@ class AccountDeleteService {
       'in ${sw.elapsedMilliseconds}ms → clearing phone data',
     );
     _ref.read(signInNoticeProvider.notifier).post(SignInNotice.accountDeleted);
+    await _ref.read(reminderSchedulerProvider).cancelAll('account-delete');
     await _ref.read(syncEngineProvider).hold('account-delete');
 
     final AccountDataRemoval removal;

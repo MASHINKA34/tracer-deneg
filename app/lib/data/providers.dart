@@ -80,12 +80,19 @@ final outboxQueueProvider = Provider<OutboxQueue>(
   name: 'outboxQueue',
 );
 
+final todayExpenseEventsProvider = Provider<TodayExpenseEvents>((ref) {
+  final events = TodayExpenseEvents();
+  ref.onDispose(events.close);
+  return events;
+}, name: 'todayExpenseEvents');
+
 final expensesRepositoryProvider = Provider<ExpensesRepository>(
   (ref) => DriftExpensesRepository(
     ref.watch(appDatabaseProvider),
     currentUser: ref.watch(currentUserProvider),
     outbox: ref.watch(outboxQueueProvider),
     now: ref.watch(clockProvider).now,
+    onTodayExpense: ref.watch(todayExpenseEventsProvider).add,
   ),
   name: 'expensesRepository',
 );
