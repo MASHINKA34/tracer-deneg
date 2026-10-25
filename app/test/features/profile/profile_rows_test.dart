@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:milionchik/features/categories/categories_screen.dart';
 import 'package:milionchik/features/export/export_screen.dart';
+import 'package:milionchik/features/holidays/holiday_settings_screen.dart';
 import 'package:milionchik/features/profile/profile_account_card.dart';
 import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/features/profile/recovery_code_reissue_screen.dart';
@@ -49,7 +50,7 @@ void main() {
     expect(find.text('Войти по коду приглашения'), findsOneWidget);
 
     final rows = <String, String?>{
-      'Праздники': 'скоро',
+      'Праздники': 'Вкл',
       'Категории': '10',
       'Тема': 'Как в системе',
       'Напоминания': 'скоро',
@@ -116,6 +117,7 @@ void main() {
 
   for (final (title, screen, log) in [
     ('Категории', CategoriesScreen, 'categories tap → /categories'),
+    ('Праздники', HolidaySettingsScreen, 'holidays tap → /profile/holidays'),
     ('Тема', ThemeScreen, 'theme tap → /profile/theme'),
     ('Экспорт трат в CSV', ExportScreen, 'export tap → /export'),
     (
@@ -144,7 +146,6 @@ void main() {
   }
 
   for (final (target, stub) in [
-    ('Праздники', 'holidays'),
     ('Напоминания', 'reminders'),
     ('Личный', 'budget'),
   ]) {

@@ -9,6 +9,7 @@ import '../../core/router.dart';
 import '../../data/api/api_error_text.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/db/redact_db_error.dart';
+import '../../data/holiday_settings.dart';
 import '../../data/providers.dart';
 import '../../data/session/session_providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -302,8 +303,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ListRow(
                           icon: AppIcons.calendar,
                           title: l10n.profileHolidays,
-                          value: l10n.profileSoon,
-                          onTap: () => _stub(ProfileStub.holidays),
+                          value: ref.watch(holidaySettingsProvider).enabled
+                              ? l10n.profileHolidaysOn
+                              : l10n.profileHolidaysOff,
+                          onTap: () => _push('holidays', AppRoutes.holidays),
                         ),
                         ListRow(
                           icon: AppIcons.tag,
