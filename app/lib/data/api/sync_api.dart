@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import 'account_api.dart' show withoutBirthdayValues;
 import 'api_client.dart';
 import 'api_exception.dart';
 import 'api_providers.dart';
@@ -48,9 +49,10 @@ class SyncApi {
         requestId: response.requestId,
       );
     } on FormatException catch (e) {
+      final reason = withoutBirthdayValues(e.message);
       _log.warning(
         'GET $pullPath ${response.statusCode} cursor=${query.cursor} answered '
-        'without a pull page → bad response: ${e.message} '
+        'without a pull page → bad response: $reason '
         'rid=${response.requestId}',
       );
       throw ApiBadResponse(
@@ -58,7 +60,7 @@ class SyncApi {
         path: '${_client.config.baseUrl.path}$pullPath',
         requestId: response.requestId,
         statusCode: response.statusCode,
-        reason: 'pull: ${e.message}',
+        reason: 'pull: $reason',
       );
     }
   }
