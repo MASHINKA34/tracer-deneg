@@ -17,6 +17,8 @@ const String backgroundJobLockName = 'ru.milionchik.lock.background-job';
 
 const String backgroundLogLockName = 'ru.milionchik.lock.background-log';
 
+const String homeWidgetLockName = 'ru.milionchik.lock.home-widget';
+
 const Duration _registrationPoll = Duration(milliseconds: 20);
 
 const String _waitMessage = 'wait';
@@ -228,18 +230,26 @@ final class IsolateLock {
 }
 
 final class IsolateCoordination {
-  const IsolateCoordination({required this.sessionRefresh, this.backgroundJob});
+  const IsolateCoordination({
+    required this.sessionRefresh,
+    this.backgroundJob,
+    this.homeWidget,
+  });
 
   factory IsolateCoordination.app() => IsolateCoordination(
     sessionRefresh: IsolateLock(sessionRefreshLockName),
     backgroundJob: IsolateLock(backgroundJobLockName),
+    homeWidget: IsolateLock(homeWidgetLockName),
   );
 
-  factory IsolateCoordination.background() =>
-      IsolateCoordination(sessionRefresh: IsolateLock(sessionRefreshLockName));
+  factory IsolateCoordination.background() => IsolateCoordination(
+    sessionRefresh: IsolateLock(sessionRefreshLockName),
+    homeWidget: IsolateLock(homeWidgetLockName),
+  );
 
   final IsolateLock sessionRefresh;
   final IsolateLock? backgroundJob;
+  final IsolateLock? homeWidget;
 }
 
 final isolateCoordinationProvider = Provider<IsolateCoordination?>(
