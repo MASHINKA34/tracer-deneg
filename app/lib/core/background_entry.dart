@@ -11,6 +11,7 @@ import 'package:shared/shared.dart' show LocalDate;
 import 'package:workmanager/workmanager.dart';
 
 import '../data/db/app_database.dart';
+import '../data/holiday_settings.dart';
 import '../data/providers.dart';
 import '../data/repositories/prefs_repository.dart';
 import '../data/session/secure_values.dart';
@@ -20,6 +21,8 @@ import '../data/session/session_store.dart';
 import '../data/sync/app_isolate_link.dart';
 import '../data/sync/background_job.dart';
 import '../data/sync/background_task_runner.dart';
+import '../features/profile/theme_mode.dart';
+import '../features/widget/widget_updater.dart';
 import 'clock.dart';
 import 'isolate_lock.dart';
 import 'logging/app_logging.dart';
@@ -240,9 +243,15 @@ final class BackgroundIsolate {
       if (session == null) {
         _log.info(
           'background task $task: no session on the phone → sync skipped, '
-          'recurring generator still runs',
+          'recurring generator still runs, the widget shows «sign in»',
         );
       }
+      final prefs = DriftPrefsRepository(db);
+      final themeMode = await loadThemeMode(prefs);
+      final holidaySettings = await loadHolidaySettings(
+        prefs,
+        userId: session?.user.userId,
+      );
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
@@ -250,6 +259,10 @@ final class BackgroundIsolate {
             IsolateCoordination.background(),
           ),
           errorReportingProvider.overrideWithValue(reporting),
+          ...backgroundWidgetOverrides(
+            themeMode: themeMode,
+            holidaySettings: holidaySettings,
+          ),
           if (session != null)
             sessionProvider.overrideWithBuild(
               (ref, _) => SessionActive(session.user),
