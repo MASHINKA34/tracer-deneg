@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:server/auth/password_hasher.dart';
 import 'package:test/test.dart';
 
@@ -155,4 +158,158 @@ void main() {
       expect(logs.text, isNot(contains(r'$argon2id$')));
     },
   );
+
+  group('не больше 4 хешей одновременно', () {
+    Future<void> pump() async {
+      for (var i = 0; i < 5; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    test('по умолчанию 4 места', () {
+      expect(argon2MaxConcurrent, 4);
+      expect(PasswordHasher().maxConcurrent, 4);
+    });
+
+    test('10 входов сразу: настоящий argon2id считается не больше 4 раз '
+        'одновременно, все хеши верные', () async {
+      var active = 0;
+      var peak = 0;
+      final hasher = PasswordHasher(
+        derive: (params, secret, salt) async {
+          active++;
+          peak = max(peak, active);
+          try {
+            return await deriveArgon2id(params, secret, salt);
+          } finally {
+            active--;
+          }
+        },
+      );
+
+      final hashes = await Future.wait([
+        for (var i = 0; i < 10; i++)
+          hasher.hash('$_password-$i', purpose: 'password'),
+      ]);
+
+      expect(peak, 4);
+      expect(hasher.running, 0);
+      expect(hasher.queued, 0);
+      peak = 0;
+      final matches = await Future.wait([
+        for (var i = 0; i < 10; i++)
+          hasher.verify('$_password-$i', hashes[i], purpose: 'password'),
+        hasher.verifyDummy('wrong-1', purpose: 'password'),
+        hasher.verifyDummy('wrong-2', purpose: 'password'),
+      ]);
+      expect(matches.sublist(0, 10), everyElement(isTrue));
+      expect(peak, 4);
+    });
+
+    test('очередь по порядку: освободилось место — начинается следующий; '
+        'ошибка хеша тоже освобождает место', () async {
+      final started = <String>[];
+      final gates = <Completer<List<int>>>[];
+      final hasher = PasswordHasher(
+        derive: (params, secret, salt) {
+          started.add(secret);
+          final gate = Completer<List<int>>();
+          gates.add(gate);
+          return gate.future;
+        },
+      );
+
+      final results = [
+        for (var i = 0; i < 6; i++)
+          hasher
+              .hash('secret-$i', purpose: 'password')
+              .then<Object>((value) => value, onError: (Object e) => e),
+      ];
+      await pump();
+      expect(started, ['secret-0', 'secret-1', 'secret-2', 'secret-3']);
+      expect(hasher.running, 4);
+      expect(hasher.queued, 2);
+
+      gates[0].completeError(StateError('argon2 broke'));
+      await pump();
+      expect(started, hasLength(5));
+      expect(started.last, 'secret-4');
+      expect(hasher.running, 4);
+      expect(hasher.queued, 1);
+
+      for (final gate in gates.sublist(1)) {
+        gate.complete(List<int>.filled(32, 7));
+      }
+      await pump();
+      expect(started.last, 'secret-5');
+      gates.last.complete(List<int>.filled(32, 7));
+
+      final done = await Future.wait(results);
+      expect(done.first, isA<StateError>());
+      expect(done.sublist(1), everyElement(startsWith(r'$argon2id$')));
+      expect(hasher.running, 0);
+      expect(hasher.queued, 0);
+    });
+
+    test('в логе: debug — постановка в очередь и ожидание места, '
+        'warning — если место ждали дольше порога', () async {
+      final hasher = PasswordHasher(
+        maxConcurrent: 1,
+        slowQueueWait: const Duration(milliseconds: 20),
+        derive: (params, secret, salt) async {
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          return List<int>.filled(32, 1);
+        },
+      );
+
+      final first = hasher.hash(_password, purpose: 'password');
+      final second = hasher.hash(_password, purpose: 'recovery');
+      await Future.wait([first, second]);
+
+      expect(
+        logs.text,
+        contains(
+          'DEBUG [auth] argon2id queued purpose=recovery running=1/1 '
+          'queued=1',
+        ),
+      );
+      expect(
+        logs.text,
+        contains(
+          RegExp(
+            r'WARN  \[auth\] argon2id slot waited (\d+)ms '
+            r'purpose=recovery running=1/1 queued=0 → too many '
+            r'password checks at once, requests wait for a slot',
+          ),
+        ),
+      );
+      expect(
+        logs.text,
+        contains(
+          RegExp(
+            r'DEBUG \[auth\] argon2id hash purpose=recovery '
+            r'm=19456,t=2,p=1 in \d+ms queueWait=([2-9]\d|\d{3,})ms',
+          ),
+        ),
+      );
+      expect(
+        logs.text,
+        contains(
+          RegExp(
+            r'DEBUG \[auth\] argon2id hash purpose=password '
+            r'm=19456,t=2,p=1 in \d+ms queueWait=\d+ms',
+          ),
+        ),
+      );
+      expect(RegExp('WARN').allMatches(logs.text), hasLength(1));
+      expect(logs.text, isNot(contains(_password)));
+    });
+
+    test('меньше 1 места — ошибка конструктора', () {
+      expect(
+        () => PasswordHasher(maxConcurrent: 0),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
 }

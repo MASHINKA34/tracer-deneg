@@ -125,7 +125,7 @@ void main() {
         logs.text,
         contains(
           RegExp(
-            r'INFO  \[server\] auth ready: argon2id m=19456,t=2,p=1 hash in \d+ms access=15m refresh=90d',
+            r'INFO  \[server\] auth ready: argon2id m=19456,t=2,p=1 hash in \d+ms maxConcurrent=4 access=15m refresh=90d',
           ),
         ),
       );

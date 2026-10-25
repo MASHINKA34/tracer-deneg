@@ -110,8 +110,8 @@ Future<RunningServer> startServer(
   }
   _log.info(
     'auth ready: argon2id ${hasher.params.phc} hash in '
-    '${warmUp.inMilliseconds}ms access=${accessTokenTtl.inMinutes}m '
-    'refresh=${refreshTokenTtl.inDays}d',
+    '${warmUp.inMilliseconds}ms maxConcurrent=${hasher.maxConcurrent} '
+    'access=${accessTokenTtl.inMinutes}m refresh=${refreshTokenTtl.inDays}d',
   );
 
   final limits = RequestLimits(trustedProxies: config.trustedProxies);

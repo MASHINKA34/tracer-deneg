@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
@@ -7,6 +9,15 @@ import 'package:cryptography/helpers.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('auth');
+
+const int argon2MaxConcurrent = 4;
+const Duration argon2SlowQueueWait = Duration(seconds: 1);
+
+typedef Argon2Derive = Future<List<int>> Function(
+  Argon2Params params,
+  String secret,
+  List<int> salt,
+);
 
 class Argon2Params {
   const Argon2Params({
@@ -48,12 +59,34 @@ class Argon2Params {
 }
 
 class PasswordHasher {
-  PasswordHasher({this.params = Argon2Params.owasp, Random? random})
-    : _random = random ?? Random.secure();
+  PasswordHasher({
+    this.params = Argon2Params.owasp,
+    this.maxConcurrent = argon2MaxConcurrent,
+    this.slowQueueWait = argon2SlowQueueWait,
+    this._derive = deriveArgon2id,
+    Random? random,
+  }) : _random = random ?? Random.secure() {
+    if (maxConcurrent < 1) {
+      throw ArgumentError.value(
+        maxConcurrent,
+        'maxConcurrent',
+        'at least one argon2id hash must be allowed at a time',
+      );
+    }
+  }
 
   final Argon2Params params;
+  final int maxConcurrent;
+  final Duration slowQueueWait;
+  final Argon2Derive _derive;
   final Random _random;
+  final Queue<Completer<void>> _waiting = Queue();
+  int _running = 0;
   Future<String>? _dummy;
+
+  int get running => _running;
+
+  int get queued => _waiting.length;
 
   Future<String> hash(String secret, {required String purpose}) async {
     final sw = Stopwatch()..start();
@@ -61,12 +94,12 @@ class PasswordHasher {
       params.saltLength,
       (_) => _random.nextInt(256),
     );
-    final digest = await _derive(params, secret, salt);
+    final derived = await _deriveInSlot(params, secret, salt, purpose);
     final encoded =
-        '\$argon2id\$v=19\$${params.phc}\$${_encode(salt)}\$${_encode(digest)}';
+        '\$argon2id\$v=19\$${params.phc}\$${_encode(salt)}\$${_encode(derived.digest)}';
     _log.fine(
       'argon2id hash purpose=$purpose ${params.phc} '
-      'in ${sw.elapsedMilliseconds}ms',
+      'in ${sw.elapsedMilliseconds}ms queueWait=${derived.waitedMs}ms',
     );
     return encoded;
   }
@@ -85,11 +118,16 @@ class PasswordHasher {
       );
       return false;
     }
-    final digest = await _derive(parsed.params, secret, parsed.salt);
-    final match = constantTimeBytesEquality.equals(digest, parsed.hash);
+    final derived = await _deriveInSlot(
+      parsed.params,
+      secret,
+      parsed.salt,
+      purpose,
+    );
+    final match = constantTimeBytesEquality.equals(derived.digest, parsed.hash);
     _log.fine(
       'argon2id verify purpose=$purpose ${parsed.params.phc} match=$match '
-      'in ${sw.elapsedMilliseconds}ms',
+      'in ${sw.elapsedMilliseconds}ms queueWait=${derived.waitedMs}ms',
     );
     return match;
   }
@@ -108,9 +146,50 @@ class PasswordHasher {
     _encode(List<int>.generate(24, (_) => _random.nextInt(256))),
     purpose: 'dummy',
   );
+
+  Future<({List<int> digest, int waitedMs})> _deriveInSlot(
+    Argon2Params params,
+    String secret,
+    List<int> salt,
+    String purpose,
+  ) async {
+    final sw = Stopwatch()..start();
+    if (_running < maxConcurrent) {
+      _running++;
+    } else {
+      final turn = Completer<void>();
+      _waiting.add(turn);
+      _log.fine(
+        'argon2id queued purpose=$purpose '
+        'running=$_running/$maxConcurrent queued=${_waiting.length}',
+      );
+      await turn.future;
+      if (sw.elapsed > slowQueueWait) {
+        _log.warning(
+          'argon2id slot waited ${sw.elapsedMilliseconds}ms purpose=$purpose '
+          'running=$_running/$maxConcurrent queued=${_waiting.length} '
+          '→ too many password checks at once, requests wait for a slot',
+        );
+      }
+    }
+    final waitedMs = sw.elapsedMilliseconds;
+    try {
+      return (digest: await _derive(params, secret, salt), waitedMs: waitedMs);
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  void _releaseSlot() {
+    if (_waiting.isEmpty) {
+      _running--;
+      return;
+    }
+    _waiting.removeFirst().complete();
+  }
 }
 
-Future<List<int>> _derive(
+Future<List<int>> deriveArgon2id(
   Argon2Params params,
   String secret,
   List<int> salt,
