@@ -22,6 +22,10 @@ const Set<String> _personalTextKeys = {
   'title',
 };
 
+const Set<String> _birthdayKeys = {'birthdayMonth', 'birthdayDay'};
+
+const String _birthdayMask = '***';
+
 const Set<String> _codeParentsKeptAsIs = {'error', 'rejected'};
 
 Object? maskJsonForLog(Object? value, [String? parentKey]) {
@@ -46,6 +50,7 @@ Object? _maskField(String key, Object? value, String? parentKey) {
     return maskInviteCode(_text(value));
   }
   if (_personalTextKeys.contains(key)) return maskToken(_text(value));
+  if (_birthdayKeys.contains(key)) return _birthdayMask;
   return maskJsonForLog(value, key);
 }
 
