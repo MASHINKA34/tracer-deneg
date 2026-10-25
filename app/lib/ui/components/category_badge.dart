@@ -10,13 +10,20 @@ import '../tokens/tokens.g.dart';
 /// `null`) — подложка `bg/surface-3` (00-spec §7.4).
 /// Эмодзи — системные (Noto Color Emoji на Android), со шрифтом не растут.
 class CategoryBadge extends StatelessWidget {
-  const CategoryBadge({super.key, required this.emoji, required this.color});
+  const CategoryBadge({
+    super.key,
+    required this.emoji,
+    required this.color,
+    this.background,
+  });
 
   /// Сторона значка.
   static const double size = 40;
 
   final String emoji;
   final CategoryColor? color;
+
+  final Color? background;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +34,7 @@ class CategoryBadge extends StatelessWidget {
         height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: colors.categorySoft(color),
+          color: background ?? colors.categorySoft(color),
           borderRadius: BorderRadius.circular(RadiusTokens.sm),
         ),
         child: Text(
