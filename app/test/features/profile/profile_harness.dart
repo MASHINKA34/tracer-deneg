@@ -57,6 +57,7 @@ final class ProfileHarness {
     List<Override> overrides = const [],
     bool sessionEvents = false,
     DateTime? now,
+    Widget Function(Widget app)? wrap,
   }) async {
     final logs = LogCapture();
     addTearDown(logs.dispose);
@@ -102,7 +103,9 @@ final class ProfileHarness {
             sessionProvider.overrideWithBuild((ref, _) => SessionActive(user)),
           ...overrides,
         ],
-        child: MilionchikApp(today: LocalDate.fromDateTime(now ?? testNow)),
+        child: (wrap ?? (app) => app)(
+          MilionchikApp(today: LocalDate.fromDateTime(now ?? testNow)),
+        ),
       ),
     );
     final h = ProfileHarness._(tester, database, adapter, logs);
