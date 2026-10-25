@@ -59,6 +59,18 @@ final class MonthController extends Notifier<YearMonth> {
     _log.fine('month $from → $state by=picker');
     return true;
   }
+
+  void openCurrent({required String by}) {
+    final today = ref.read(clockProvider).today();
+    final current = YearMonth.of(today);
+    final from = state;
+    if (from == current) {
+      _log.fine('month open current by=$by: $current is already shown');
+      return;
+    }
+    state = current;
+    _log.fine('month $from → $state by=$by (current month) today=$today');
+  }
 }
 
 final monthControllerProvider = NotifierProvider<MonthController, YearMonth>(

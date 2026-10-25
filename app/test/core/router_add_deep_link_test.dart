@@ -84,7 +84,7 @@ void main() {
     expect(find.byType(MonthScreen), findsOneWidget);
     expect(_tab(tester), AppNavTab.month);
     expect(_nav(records, Level.INFO), [
-      'deep link milionchik://add → /expense/new over /month from=cold start',
+      'deep link milionchik://add start=cold → /expense/new over /month',
       'push shell (from -)',
       'push month (from -)',
       'push newExpense (from shell)',
@@ -117,8 +117,8 @@ void main() {
     expect(
       _nav(records, Level.INFO),
       contains(
-        'deep link milionchik://add → /expense/new over /month '
-        'from=/stats',
+        'deep link milionchik://add start=warm from=/stats query=ignored '
+        '→ /expense/new over /month',
       ),
     );
     for (final r in records) {
@@ -137,7 +137,10 @@ void main() {
     expect(find.byType(MonthScreen), findsOneWidget);
     expect(
       records.where((r) => r.level == Level.WARNING).map((r) => r.message),
-      ['no route for path=/ → opening /month'],
+      [
+        'deep link milionchik://unknown start=warm from=/month: unknown link, '
+            'known: milionchik://add, milionchik://month → /month',
+      ],
     );
   });
 }

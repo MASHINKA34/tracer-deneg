@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart' show LocalDate;
@@ -33,6 +30,7 @@ import '../features/stats/stats_screen.dart';
 import '../ui/catalog/catalog_screen.dart';
 import 'app_frame.dart';
 import 'auth_gate.dart';
+import 'deep_link.dart';
 import 'logging/navigation_logger.dart';
 
 final _log = Logger('nav');
@@ -92,6 +90,7 @@ abstract final class AppRoutes {
 
   static const String deepLinkScheme = 'milionchik';
   static const String addDeepLinkHost = 'add';
+  static const String monthDeepLinkHost = 'month';
 
   static const String dateParameter = 'date';
 
@@ -187,8 +186,7 @@ final class SearchRouteFilter {
 const Duration newExpenseTransition = Duration(milliseconds: 300);
 
 bool isAddExpenseLink(Uri uri) =>
-    uri.scheme == AppRoutes.deepLinkScheme &&
-    uri.host == AppRoutes.addDeepLinkHost;
+    DeepLink.of(uri)?.target == DeepLinkTarget.add;
 
 /// Маршруты приложения. Пока заглушка «Милиончик» (главная появится на
 /// этапе 05) и — только в debug-сборке — каталог компонентов `/catalog`
@@ -199,32 +197,14 @@ GoRouter buildRouter({
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   late final GoRouter router;
+  final links = DeepLinkRouting(rootKey: rootKey, router: () => router);
   return router = GoRouter(
     navigatorKey: rootKey,
     initialLocation: initialLocation,
     observers: [NavigationLogger()],
     refreshListenable: auth?.changes,
-    redirect: (context, state) {
-      final signIn = auth?.redirect(state.uri);
-      if (signIn != null) return signIn;
-      if (!isAddExpenseLink(state.uri)) return null;
-      final current = router.routerDelegate.currentConfiguration;
-      _log.info(
-        'deep link ${AppRoutes.deepLinkScheme}://${AppRoutes.addDeepLinkHost} '
-        '→ ${AppRoutes.newExpense} over ${AppRoutes.month} '
-        'from=${current.isEmpty ? 'cold start' : current.uri.path}',
-      );
-      SchedulerBinding.instance
-        ..addPostFrameCallback((_) {
-          _log.fine(
-            'deep link add: ${AppRoutes.month} is shown, pushing '
-            '${AppRoutes.newExpense}',
-          );
-          unawaited(router.push<void>(AppRoutes.newExpense));
-        })
-        ..ensureVisualUpdate();
-      return AppRoutes.month;
-    },
+    redirect: (context, state) =>
+        links.redirect(state.uri, signIn: auth?.redirect(state.uri)),
     onException: (context, state, router) {
       _log.warning(
         'no route for path=${state.uri.path} → opening ${AppRoutes.month}',
