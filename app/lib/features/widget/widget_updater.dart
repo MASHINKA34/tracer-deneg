@@ -69,7 +69,7 @@ final class _WidgetSnapshot {
     final because = signedOutBecause;
     if (because != null) return '${data.describe()} because=$because';
     return '${data.describe()} budget=${budgetId ?? 'none'} '
-        'month=${YearMonth.of(today)} today=$today';
+        'month=${YearMonth.of(today)}';
   }
 }
 
@@ -325,7 +325,7 @@ final class WidgetUpdater {
     }
     final emoji = mood.holiday?.key.emoji ?? seasonEmoji(month);
     _log.fine(
-      'widget data budget=${budgetId ?? 'none'} month=$month days=$days '
+      'widget data budget=${budgetId ?? 'none'} date=$today days=$days '
       'total=${total.format()} today=${todayTotal.format()} '
       'mood=${mood.mood.name} emoji=$emoji theme=${theme.name}',
     );

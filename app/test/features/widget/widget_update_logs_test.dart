@@ -84,8 +84,7 @@ void main() {
       matches(
         RegExp(
           r'^widget updated reason=expenses changed state=month theme=dark '
-          r'mood=autumn budget=budget-personal-anya month=2026-10 '
-          r'today=2026-10-19 in \d+ms$',
+          r'mood=autumn budget=budget-personal-anya month=2026-10 in \d+ms$',
         ),
       ),
     );
