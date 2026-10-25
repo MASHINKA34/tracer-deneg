@@ -13,6 +13,7 @@ import 'queries/budget_queries.dart';
 import 'queries/category_queries.dart';
 import 'queries/month_queries.dart';
 import 'queries/recurring_queries.dart';
+import 'queries/reminder_queries.dart';
 import 'queries/search_queries.dart';
 import 'queries/stats_queries.dart';
 import 'queries/sync_state_queries.dart';
@@ -142,6 +143,11 @@ final searchQueriesProvider = Provider<SearchQueries>(
 final todayQueriesProvider = Provider<TodayQueries>(
   (ref) => DriftTodayQueries(ref.watch(appDatabaseProvider)),
   name: 'todayQueries',
+);
+
+final reminderQueriesProvider = Provider<ReminderQueries>(
+  (ref) => DriftReminderQueries(ref.watch(appDatabaseProvider)),
+  name: 'reminderQueries',
 );
 
 final categoryQueriesProvider = Provider<CategoryQueries>(

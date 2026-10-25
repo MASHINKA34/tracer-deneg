@@ -8,6 +8,7 @@ import 'package:milionchik/features/profile/profile_account_card.dart';
 import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/features/profile/recovery_code_reissue_screen.dart';
 import 'package:milionchik/features/profile/theme_screen.dart';
+import 'package:milionchik/features/reminders/reminders_screen.dart';
 import 'package:milionchik/l10n/app_localizations.dart';
 import 'package:milionchik/ui/components/avatar.dart';
 import 'package:milionchik/ui/components/list_row.dart';
@@ -53,7 +54,7 @@ void main() {
       'Праздники': 'Вкл',
       'Категории': '10',
       'Тема': 'Как в системе',
-      'Напоминания': 'скоро',
+      'Напоминания': 'Выкл',
       'Экспорт трат в CSV': null,
       'Код восстановления': 'Перевыпустить',
       'Отправить логи разработчику': null,
@@ -119,6 +120,7 @@ void main() {
     ('Категории', CategoriesScreen, 'categories tap → /categories'),
     ('Праздники', HolidaySettingsScreen, 'holidays tap → /profile/holidays'),
     ('Тема', ThemeScreen, 'theme tap → /profile/theme'),
+    ('Напоминания', RemindersScreen, 'reminders tap → /profile/reminders'),
     ('Экспорт трат в CSV', ExportScreen, 'export tap → /export'),
     (
       'Код восстановления',
@@ -145,10 +147,7 @@ void main() {
     });
   }
 
-  for (final (target, stub) in [
-    ('Напоминания', 'reminders'),
-    ('Личный', 'budget'),
-  ]) {
+  for (final (target, stub) in [('Личный', 'budget')]) {
     testWidgets('«$target» - заглушка: снекбар «Появится в следующем '
         'обновлении», экран не меняется', (tester) async {
       final h = await ProfileHarness.start(tester);

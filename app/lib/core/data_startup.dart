@@ -22,6 +22,7 @@ import '../data/session/session_store.dart';
 import '../data/sync/background_sync.dart';
 import '../features/holidays/holiday_banner_controller.dart';
 import '../features/profile/theme_mode.dart';
+import '../features/reminders/reminder_settings.dart';
 import '../features/startup/database_error_app.dart';
 import 'auth_gate.dart';
 import 'clock.dart';
@@ -30,6 +31,7 @@ import 'logging/error_report_triggers.dart';
 import 'logging/error_reporting.dart';
 import 'logging/provider_logger.dart';
 import 'recurring_triggers.dart';
+import 'reminder_triggers_scope.dart';
 import 'sync_triggers_scope.dart';
 
 final _log = Logger('app');
@@ -59,6 +61,7 @@ final class DataReady extends DataStartup {
     this.themeMode = ThemeMode.system,
     this.holidaySettings,
     this.hiddenHolidayBanners = const {},
+    this.reminders = ReminderSettings.standard,
   });
 
   final AppDatabase db;
@@ -68,6 +71,7 @@ final class DataReady extends DataStartup {
   final ThemeMode themeMode;
   final CachedHolidaySettings? holidaySettings;
   final Set<String> hiddenHolidayBanners;
+  final ReminderSettings reminders;
 
   bool get devSeedDemo =>
       seed.status == DevSeedStatus.seeded ||
@@ -143,6 +147,7 @@ Future<DataStartup> startData({
   final hiddenHolidayBanners = await loadHiddenHolidayBanners(
     DriftPrefsRepository(db),
   );
+  final reminders = await loadReminderSettings(DriftPrefsRepository(db));
   return DataReady(
     db,
     result,
@@ -151,6 +156,7 @@ Future<DataStartup> startData({
     themeMode: themeMode,
     holidaySettings: holidaySettings,
     hiddenHolidayBanners: hiddenHolidayBanners,
+    reminders: reminders,
   );
 }
 
@@ -246,11 +252,13 @@ Widget appRoot(
     :final themeMode,
     :final holidaySettings,
     :final hiddenHolidayBanners,
+    :final reminders,
   ) =>
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
         themeModeProvider.overrideWithBuild((ref, _) => themeMode),
+        reminderSettingsProvider.overrideWithBuild((ref, _) => reminders),
         signInRequiredProvider.overrideWithValue(_signInRequired(data)),
         if (session != null)
           sessionProvider.overrideWithBuild(
@@ -276,7 +284,9 @@ Widget appRoot(
       observers: const [ProviderLogger()],
       child: const RecurringTriggersScope(
         child: ErrorReportTriggersScope(
-          child: SyncTriggersScope(child: MilionchikApp()),
+          child: SyncTriggersScope(
+            child: ReminderTriggersScope(child: MilionchikApp()),
+          ),
         ),
       ),
     ),

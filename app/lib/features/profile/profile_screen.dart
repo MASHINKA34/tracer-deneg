@@ -22,6 +22,7 @@ import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../auth/sign_out_service.dart';
 import '../expense/expense_snackbar_layer.dart';
+import '../reminders/reminder_settings.dart';
 import 'profile_account_card.dart';
 import 'profile_budgets.dart';
 import 'send_logs_service.dart';
@@ -49,6 +50,11 @@ String themeModeLabel(AppLocalizations l10n, ThemeMode mode) => switch (mode) {
   ThemeMode.light => l10n.themeLight,
   ThemeMode.dark => l10n.themeDark,
 };
+
+String reminderLabel(AppLocalizations l10n, ReminderSettings settings) =>
+    settings.enabled
+    ? l10n.profileRemindersAt('${settings.time}')
+    : l10n.profileRemindersOff;
 
 int userCategoryCount(List<Category> categories) =>
     categories.where((c) => !c.isSystem).length;
@@ -329,8 +335,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ListRow(
                           icon: AppIcons.bell,
                           title: l10n.profileReminders,
-                          value: l10n.profileSoon,
-                          onTap: () => _stub(ProfileStub.reminders),
+                          value: reminderLabel(
+                            l10n,
+                            ref.watch(reminderSettingsProvider),
+                          ),
+                          onTap: () => _push('reminders', AppRoutes.reminders),
                         ),
                         ListRow(
                           icon: AppIcons.download,

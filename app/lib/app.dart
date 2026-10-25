@@ -19,6 +19,7 @@ import 'features/auth/session_end_service.dart';
 import 'features/expense/expense_snackbar_layer.dart';
 import 'features/holidays/mood_controller.dart';
 import 'features/profile/theme_mode.dart';
+import 'features/reminders/reminder_scheduler.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -53,10 +54,12 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
     ),
   );
   late final AppLifecycleListener _lifecycle;
+  late final ReminderTaps _reminderTaps = ref.read(reminderTapsProvider);
 
   @override
   void initState() {
     super.initState();
+    _reminderTaps.attach((link) => _router.go(link.toString()));
     _lifecycle = AppLifecycleListener(
       onResume: () => ref.read(moodControllerProvider.notifier).resumed(),
     );
@@ -81,6 +84,7 @@ class _MilionchikAppState extends ConsumerState<MilionchikApp> {
 
   @override
   void dispose() {
+    _reminderTaps.detach();
     _lifecycle.dispose();
     _router.dispose();
     _session.dispose();

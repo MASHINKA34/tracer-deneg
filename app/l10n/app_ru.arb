@@ -1951,5 +1951,40 @@
   "birthdaySheetDone": "Готово",
   "@birthdaySheetDone": { "description": "Шторка «Мой день рождения»: сохранить выбранные день и месяц" },
   "birthdaySheetClear": "Очистить",
-  "@birthdaySheetClear": { "description": "Шторка «Мой день рождения»: убрать дату рождения (есть, только если дата задана)" }
+  "@birthdaySheetClear": { "description": "Шторка «Мой день рождения»: убрать дату рождения (есть, только если дата задана)" },
+  "profileRemindersAt": "В {time}",
+  "@profileRemindersAt": {
+    "description": "Профиль (47:13952): значение справа в строке «Напоминания», напоминания включены",
+    "placeholders": {
+      "time": { "type": "String", "example": "21:00" }
+    }
+  },
+  "profileRemindersOff": "Выкл",
+  "@profileRemindersOff": { "description": "Профиль (47:13952): значение справа в строке «Напоминания», напоминания выключены" },
+  "remindersTitle": "Напоминания",
+  "@remindersTitle": { "description": "Напоминания (47:5492): заголовок экрана" },
+  "remindersSwitchTitle": "Напоминать о тратах",
+  "@remindersSwitchTitle": { "description": "Напоминания (47:5492): переключатель" },
+  "remindersSwitchHint": "Только если за день ничего не записано",
+  "@remindersSwitchHint": { "description": "Напоминания (47:5492): подпись под переключателем" },
+  "remindersTime": "Время",
+  "@remindersTime": { "description": "Напоминания (47:5492): строка времени напоминания, справа время, по тапу — системный выбор времени" },
+  "remindersNote": "Уведомление: «Запишешь траты за сегодня?» Тап — сразу «Новая трата». На Android 13+ при включении спрашиваем разрешение на уведомления; если запрещено — переключатель выключается и показываем, как разрешить в настройках.",
+  "@remindersNote": { "description": "Напоминания (47:5492): подпись под карточкой, текст из макета" },
+  "remindersDenied": "Уведомления запрещены в настройках телефона",
+  "@remindersDenied": { "description": "Напоминания: снекбар, разрешение на уведомления не дали — переключатель выключен" },
+  "remindersOpenSettings": "Открыть настройки",
+  "@remindersOpenSettings": { "description": "Напоминания: кнопка в снекбаре, открывает системные настройки уведомлений приложения" },
+  "remindersOpenSettingsFailed": "Не получилось открыть настройки. Разреши уведомления в настройках телефона",
+  "@remindersOpenSettingsFailed": { "description": "Напоминания: снекбар, системные настройки уведомлений не открылись" },
+  "remindersSaveFailed": "Не удалось сохранить напоминания. Попробуй ещё раз",
+  "@remindersSaveFailed": { "description": "Напоминания: снекбар, изменение не записалось в базу на телефоне — осталось как было" },
+  "reminderNotificationTitle": "Милиончик",
+  "@reminderNotificationTitle": { "description": "Уведомление-напоминание: заголовок (00-spec §12 п. 14)" },
+  "reminderNotificationBody": "Запишешь траты за сегодня?",
+  "@reminderNotificationBody": { "description": "Уведомление-напоминание: текст (00-spec §12 п. 14), тап открывает «Новую трату»" },
+  "reminderChannelName": "Напоминания",
+  "@reminderChannelName": { "description": "Системные настройки уведомлений: название канала напоминаний" },
+  "reminderChannelDescription": "Вечернее напоминание записать траты за день",
+  "@reminderChannelDescription": { "description": "Системные настройки уведомлений: описание канала напоминаний" }
 }

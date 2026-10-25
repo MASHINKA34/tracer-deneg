@@ -16,11 +16,15 @@ abstract final class PrefKeys {
   static const String holidaySettings = 'holidaySettings';
   static const String holidaySettingsUnsent = 'holidaySettingsUnsent';
   static const String hiddenHolidayBanners = 'hiddenHolidayBanners';
+  static const String remindersEnabled = 'remindersEnabled';
+  static const String reminderMinutes = 'reminderMinutes';
 
   static const Set<String> phoneSettings = {
     themeMode,
     signedInBefore,
     todayOverride,
+    remindersEnabled,
+    reminderMinutes,
   };
 }
 

@@ -8,6 +8,7 @@ import 'package:milionchik/data/session/session_providers.dart';
 import 'package:milionchik/data/session/session_state.dart';
 import 'package:milionchik/features/profile/profile_screen.dart';
 import 'package:milionchik/features/profile/theme_screen.dart';
+import 'package:milionchik/features/reminders/reminder_settings.dart';
 import 'package:milionchik/l10n/app_localizations.dart';
 import 'package:milionchik/ui/theme/app_theme.dart';
 import 'package:shared/shared.dart';
@@ -56,6 +57,9 @@ Future<void> _pump(
         clockProvider.overrideWithValue(Clock(now: () => testNow)),
         sessionProvider.overrideWithBuild(
           (ref, _) => const SessionActive(profileUser),
+        ),
+        reminderSettingsProvider.overrideWithBuild(
+          (ref, _) => const ReminderSettings(enabled: true),
         ),
       ],
       child: RepaintBoundary(

@@ -24,6 +24,7 @@ import '../features/profile/recovery_code_reissue_screen.dart';
 import '../features/profile/theme_screen.dart';
 import '../features/recurring/recurring_editor_screen.dart';
 import '../features/recurring/recurring_screen.dart';
+import '../features/reminders/reminders_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/stats/stats_screen.dart';
@@ -44,6 +45,7 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String theme = '/profile/theme';
   static const String holidays = '/profile/holidays';
+  static const String reminders = '/profile/reminders';
   static const String recoveryReissue = '/profile/recovery-code';
   static const String deleteAccount = '/profile/delete-account';
   static const String newExpense = '/expense/new';
@@ -77,6 +79,7 @@ abstract final class AppRoutes {
   static const String recoveryCodeName = 'recoveryCode';
   static const String themeName = 'theme';
   static const String holidaysName = 'holidays';
+  static const String remindersName = 'reminders';
   static const String recoveryReissueName = 'recoveryReissue';
   static const String deleteAccountName = 'deleteAccount';
   static const String newBudgetName = 'newBudget';
@@ -288,6 +291,13 @@ GoRouter buildRouter({
                     parentNavigatorKey: rootKey,
                     builder: (context, state) =>
                         const AppFrame(child: HolidaySettingsScreen()),
+                  ),
+                  GoRoute(
+                    path: 'reminders',
+                    name: AppRoutes.remindersName,
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) =>
+                        const AppFrame(child: RemindersScreen()),
                   ),
                   GoRoute(
                     path: 'recovery-code',
