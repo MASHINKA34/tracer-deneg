@@ -80,6 +80,9 @@ void main() {
 
   testWidgets('31 декабря, 10-е: первая трата в следующем году — «10 января '
       '2027»', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final h = await RecurringEditorHarness.start(
       tester,
       now: DateTime(2026, 12, 31, 12),
