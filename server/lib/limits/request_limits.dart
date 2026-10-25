@@ -20,6 +20,7 @@ const Duration ipRequestWindow = Duration(minutes: 1);
 const int maxRequestBodyBytes = 1024 * 1024;
 
 const String _authPath = 'api/v1/auth';
+const String _accountPath = 'api/v1/account';
 const String _clientErrorsPath = 'api/v1/client-errors';
 
 class RequestBodyTooLarge implements Exception {
@@ -67,6 +68,7 @@ class RequestLimits {
     'loginFailures':
         '$loginFailureLimit/${loginFailureWindow.inMinutes}m per login',
     'auth': '$authRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
+    'authCovers': '/auth/*,/account',
     'clientErrors':
         '$clientErrorRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
     'maxBodyBytes': maxBodyBytes,
@@ -167,11 +169,7 @@ class RequestLimits {
             'failures=${loginFailures.count(key)}/$loginFailureLimit '
             'window=${loginFailureWindow.inMinutes}m retryAfter=${seconds}s',
           );
-          return _tooMany(
-            seconds,
-            'Слишком много неудачных попыток. '
-            'Попробуй через ${retryWaitText(seconds)}',
-          );
+          return tooManyFailures(seconds);
         }
 
         final attempt = loginFailures.record(key);
@@ -233,7 +231,9 @@ class RequestLimits {
       };
 
   SlidingWindowLimiter? _ipLimiterFor(String path) {
-    if (path == _authPath || path.startsWith('$_authPath/')) {
+    if (path == _authPath ||
+        path.startsWith('$_authPath/') ||
+        path == _accountPath) {
       return authRequests;
     }
     if (path == _clientErrorsPath || path.startsWith('$_clientErrorsPath/')) {
@@ -315,6 +315,11 @@ class _LimitedBody {
     return false;
   }
 }
+
+Response tooManyFailures(int seconds) => _tooMany(
+  seconds,
+  'Слишком много неудачных попыток. Попробуй через ${retryWaitText(seconds)}',
+);
 
 Response _tooMany(int seconds, String message) => errorResponse(
   429,

@@ -7,6 +7,8 @@ import 'package:shelf/shelf.dart';
 import '../account/account_service.dart';
 import '../auth/auth_middleware.dart';
 import '../auth/auth_service.dart';
+import '../limits/request_limits.dart';
+import '../limits/sliding_window.dart';
 import 'json.dart';
 
 final _log = Logger('account');
@@ -130,27 +132,78 @@ Handler updateMeHandler(AccountService account) => (Request request) async {
   }
 };
 
-Handler deleteAccountHandler(AccountService account) =>
-    (Request request) async {
-      const operation = 'account deletion';
-      final context = authContextOf(request);
-      final body = await _readBody(request, operation, context.userId);
-      if (body.error != null) return body.error!;
-      final password = body.fields!['password'];
-      if (password is! String || password.isEmpty) {
-        return _badFields(operation, context.userId, ['password']);
-      }
-      try {
-        await account.deleteAccount(
-          userId: context.userId,
-          sessionId: context.sessionId,
-          password: password,
-        );
-        return Response(204);
-      } on AuthFailure catch (e) {
-        return _failure(e);
-      }
-    };
+Handler deleteAccountHandler(
+  AccountService account,
+  RequestLimits limits,
+) => (Request request) async {
+  const operation = 'account deletion';
+  final context = authContextOf(request);
+  final userId = context.userId;
+  final body = await _readBody(request, operation, userId);
+  if (body.error != null) return body.error!;
+  final password = body.fields!['password'];
+  if (password is! String || password.isEmpty) {
+    return _badFields(operation, userId, ['password']);
+  }
+
+  final String key;
+  try {
+    key = normalizeLogin(await account.loginOf(userId));
+  } on AuthFailure catch (e) {
+    return _failure(e);
+  }
+  final masked = maskLogin(key);
+  final failures = limits.loginFailures;
+  final who = 'userId=$userId login=$masked';
+  final wait = failures.blockedFor(key);
+  if (wait != null) {
+    final seconds = retryAfterSeconds(wait);
+    _log.warning(
+      '$operation blocked: login attempts limit hit $who '
+      'failures=${failures.count(key)}/$loginFailureLimit '
+      'window=${loginFailureWindow.inMinutes}m retryAfter=${seconds}s',
+    );
+    return tooManyFailures(seconds);
+  }
+
+  final attempt = failures.record(key);
+  try {
+    await account.deleteAccount(
+      userId: userId,
+      sessionId: context.sessionId,
+      password: password,
+    );
+  } on AuthFailure catch (e) {
+    if (e.reason != AuthFailureReason.badCredentials) {
+      failures.forget(key, attempt);
+      _log.fine('$operation attempt not counted: reason=${e.reason.code} $who');
+      return _failure(e);
+    }
+    final count = failures.count(key);
+    if (count >= loginFailureLimit) {
+      _log.warning(
+        '$operation attempts exhausted $who '
+        'failures=$count/$loginFailureLimit '
+        'window=${loginFailureWindow.inMinutes}m → next attempts blocked '
+        'for ${retryAfterSeconds(failures.blockedFor(key)!)}s',
+      );
+    } else {
+      _log.fine(
+        '$operation failure recorded $who failures=$count/$loginFailureLimit',
+      );
+    }
+    return _failure(e);
+  } catch (e) {
+    failures.forget(key, attempt);
+    _log.fine('$operation attempt not counted: ${e.runtimeType} $who');
+    rethrow;
+  }
+  final cleared = failures.reset(key) - 1;
+  if (cleared > 0) {
+    _log.fine('$operation ok → failures reset $who cleared=$cleared');
+  }
+  return Response(204);
+};
 
 class _Body {
   const _Body.ok(this.fields) : error = null;

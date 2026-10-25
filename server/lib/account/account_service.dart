@@ -185,6 +185,23 @@ class AccountService {
     return change;
   }
 
+  Future<String> loginOf(String userId) async {
+    final rows = await db.execute(
+      r'SELECT login FROM users WHERE id = $1::uuid AND deleted_at IS NULL',
+      parameters: [userId],
+      what: 'find login for password attempts',
+      logParams: {'userId': userId},
+    );
+    if (rows.isEmpty) {
+      _log.warning(
+        'login lookup rejected reason=${AuthFailureReason.userDeleted.code} '
+        'userId=$userId',
+      );
+      throw AuthFailure(AuthFailureReason.userDeleted);
+    }
+    return rows.first.first! as String;
+  }
+
   Future<AccountDeletion> deleteAccount({
     required String userId,
     required String sessionId,

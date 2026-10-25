@@ -88,7 +88,7 @@ Handler buildHandler({
       '/api/v1/account',
       const Pipeline()
           .addMiddleware(requireAuth)
-          .addHandler(deleteAccountHandler(account)),
+          .addHandler(deleteAccountHandler(account, requestLimits)),
     )
     ..get(
       '/api/v1/sync/pull',
