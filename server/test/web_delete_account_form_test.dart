@@ -112,7 +112,8 @@ void main() {
       logs.lines,
       contains(
         matches(
-          r'DEBUG \[web\] page shown /delete-account status=200 bytes=\d+',
+          r'DEBUG \[web\] page shown /delete-account status=200 '
+          r'contact=empty bytes=\d+',
         ),
       ),
     );

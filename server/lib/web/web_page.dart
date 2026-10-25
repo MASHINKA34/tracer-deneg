@@ -12,6 +12,7 @@ final _log = Logger('web');
 const String privacyPath = '/privacy';
 const String deleteAccountPath = '/delete-account';
 const String notSpecified = 'не указан';
+const int manualDeletionDays = 30;
 
 class PrivacySettings {
   const PrivacySettings({this.contact, this.operator});
@@ -23,6 +24,15 @@ class PrivacySettings {
     'contact': contact == null ? 'empty' : 'set',
     'operator': operator == null ? 'empty' : 'set',
   };
+}
+
+String manualDeletionHtml(String? contact) {
+  final to = contact == null
+      ? 'оператору данных (контакт: $notSpecified)'
+      : 'на ${escapeHtml(contact)}';
+  return 'Нет ни пароля, ни кода восстановления? Напиши $to и укажи логин. '
+      'Удалим аккаунт вручную в течение $manualDeletionDays дней. Можем '
+      'задать пару вопросов об аккаунте, чтобы убедиться, что он твой.';
 }
 
 const String pageCss =

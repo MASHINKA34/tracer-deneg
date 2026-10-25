@@ -265,11 +265,14 @@ void main() {
 
       expect(status, 200);
       expect(html, contains('<strong>Оператор данных:</strong> не указан'));
-      for (final name in ['PRIVACY_CONTACT', 'PRIVACY_OPERATOR']) {
+      for (final (name, pages) in [
+        ('PRIVACY_CONTACT', '/privacy and /delete-account show'),
+        ('PRIVACY_OPERATOR', '/privacy shows'),
+      ]) {
         expect(
           logs.text,
           contains(
-            'WARN  [server] $name is empty → /privacy shows «не указан»; '
+            'WARN  [server] $name is empty → $pages «не указан»; '
             'set it in .env on the server before deploy',
           ),
         );

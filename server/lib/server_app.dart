@@ -138,8 +138,11 @@ Future<RunningServer> startServer(
     ('PRIVACY_OPERATOR', privacy.operator),
   ]) {
     if (value != null) continue;
+    final pages = name == 'PRIVACY_CONTACT'
+        ? '$privacyPath and $deleteAccountPath show'
+        : '$privacyPath shows';
     _log.warning(
-      '$name is empty → $privacyPath shows «$notSpecified»; '
+      '$name is empty → $pages «$notSpecified»; '
       'set it in .env on the server before deploy',
     );
   }

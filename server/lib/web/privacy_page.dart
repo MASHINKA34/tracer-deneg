@@ -89,6 +89,7 @@ String renderPrivacyPage(PrivacySettings settings) {
         '<li>Без приложения: на странице '
         '<a href="$deleteAccountPath">удаления аккаунта</a> по логину и '
         'паролю.</li>\n'
+        '<li>${manualDeletionHtml(settings.contact)}</li>\n'
         '</ul>\n'
         '<p>Что происходит при удалении:</p>\n'
         '<ul>\n'

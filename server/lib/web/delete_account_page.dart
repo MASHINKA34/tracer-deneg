@@ -17,11 +17,14 @@ final _log = Logger('web');
 const String _formContentType = 'application/x-www-form-urlencoded';
 const Map<String, String> _noStore = {'cache-control': 'no-store'};
 
-Handler deleteAccountFormHandler() {
-  final html = renderDeleteAccountForm();
+Handler deleteAccountFormHandler(PrivacySettings privacy) {
+  final html = renderDeleteAccountForm(contact: privacy.contact);
   final bytes = utf8.encode(html).length;
+  final contact = privacy.contact == null ? 'empty' : 'set';
   return (Request request) {
-    _log.fine('page shown $deleteAccountPath status=200 bytes=$bytes');
+    _log.fine(
+      'page shown $deleteAccountPath status=200 contact=$contact bytes=$bytes',
+    );
     return htmlResponse(200, html, headers: _noStore);
   };
 }
@@ -29,6 +32,7 @@ Handler deleteAccountFormHandler() {
 Handler deleteAccountSubmitHandler({
   required AccountService account,
   required RequestLimits limits,
+  required PrivacySettings privacy,
 }) => (Request request) async {
   final sw = Stopwatch()..start();
   final ip = clientIp(request, limits.trustedProxies);
@@ -59,6 +63,7 @@ Handler deleteAccountSubmitHandler({
         error:
             'Не получилось прочитать форму. Открой страницу удаления '
             'аккаунта заново и отправь форму ещё раз.',
+        contact: privacy.contact,
       ),
       headers: _noStore,
     );
@@ -77,7 +82,11 @@ Handler deleteAccountSubmitHandler({
     );
     return htmlResponse(
       400,
-      renderDeleteAccountForm(error: 'Введи логин и пароль.', login: login),
+      renderDeleteAccountForm(
+        error: 'Введи логин и пароль.',
+        login: login,
+        contact: privacy.contact,
+      ),
       headers: _noStore,
     );
   }
@@ -143,6 +152,7 @@ Handler deleteAccountSubmitHandler({
         renderDeleteAccountForm(
           error: 'Неверный логин или пароль.',
           login: login,
+          contact: privacy.contact,
         ),
         headers: _noStore,
       );
@@ -165,6 +175,7 @@ Handler deleteAccountSubmitHandler({
 String renderDeleteAccountForm({
   String? error,
   String login = '',
+  required String? contact,
 }) => renderPage(
   title: 'Удаление аккаунта',
   body:
@@ -193,7 +204,8 @@ String renderDeleteAccountForm({
       '<button type="submit">Удалить аккаунт навсегда</button>\n'
       '</form>\n'
       '<p class="muted">Не помнишь пароль? Восстанови его в приложении: '
-      '«Забыл пароль?» на экране входа и код восстановления.</p>\n',
+      '«Забыл пароль?» на экране входа и код восстановления.</p>\n'
+      '<p class="muted">${manualDeletionHtml(contact)}</p>\n',
 );
 
 String renderAccountDeleted() => renderPage(

@@ -150,14 +150,18 @@ Handler buildHandler({
       deleteAccountPath,
       const Pipeline()
           .addMiddleware(webErrorPages())
-          .addHandler(deleteAccountFormHandler()),
+          .addHandler(deleteAccountFormHandler(privacy)),
     )
     ..post(
       deleteAccountPath,
       const Pipeline()
           .addMiddleware(webErrorPages())
           .addHandler(
-            deleteAccountSubmitHandler(account: account, limits: requestLimits),
+            deleteAccountSubmitHandler(
+              account: account,
+              limits: requestLimits,
+              privacy: privacy,
+            ),
           ),
     );
   if (ws != null) {
