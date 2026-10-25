@@ -1,0 +1,101 @@
+name: milionchik
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: milionchik
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required, set it in deploy/.env}
+      POSTGRES_DB: milionchik
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U milionchik -d milionchik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://milionchik:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required, set it in deploy/.env}@db:5432/milionchik?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required, set it in deploy/.env}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PRIVACY_CONTACT: ${PRIVACY_CONTACT:-}
+      PRIVACY_OPERATOR: ${PRIVACY_OPERATOR:-}
+      TRUSTED_PROXIES: 172.30.80.0/24
+    networks:
+      - backend
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    logging: *logging
+
+  caddy:
+    image: caddy:2.11.7
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required, set it in deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+      - backend
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "443"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *logging
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.80.0/24
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
