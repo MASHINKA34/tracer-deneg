@@ -52,7 +52,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768m
+          memory: 256m
     logging: *logging
 
   caddy:
