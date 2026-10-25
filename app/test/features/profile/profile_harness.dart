@@ -56,6 +56,7 @@ final class ProfileHarness {
     Brightness platformBrightness = Brightness.light,
     List<Override> overrides = const [],
     bool sessionEvents = false,
+    DateTime? now,
   }) async {
     final logs = LogCapture();
     addTearDown(logs.dispose);
@@ -84,7 +85,7 @@ final class ProfileHarness {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(database),
-          clockProvider.overrideWithValue(Clock(now: () => testNow)),
+          clockProvider.overrideWithValue(Clock(now: () => now ?? testNow)),
           secureValuesProvider.overrideWithValue(values),
           deviceNameProvider.overrideWithValue('Pixel 7'),
           apiClientProvider.overrideWith((ref) {
@@ -101,7 +102,7 @@ final class ProfileHarness {
             sessionProvider.overrideWithBuild((ref, _) => SessionActive(user)),
           ...overrides,
         ],
-        child: MilionchikApp(today: LocalDate.fromDateTime(testNow)),
+        child: MilionchikApp(today: LocalDate.fromDateTime(now ?? testNow)),
       ),
     );
     final h = ProfileHarness._(tester, database, adapter, logs);
