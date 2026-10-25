@@ -9,7 +9,6 @@ import 'package:milionchik/app.dart';
 import 'package:milionchik/core/data_startup.dart';
 import 'package:milionchik/data/api/token_store.dart';
 import 'package:milionchik/data/db/app_database.dart';
-import 'package:milionchik/data/repositories/budgets_repository.dart';
 import 'package:milionchik/data/session/session.dart';
 import 'package:milionchik/data/sync/background_job.dart';
 import 'package:milionchik/features/widget/home_widget_data.dart';
