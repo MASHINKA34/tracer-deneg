@@ -1,0 +1,1 @@
+-keepnames class ru.milionchik.app.widget.**
