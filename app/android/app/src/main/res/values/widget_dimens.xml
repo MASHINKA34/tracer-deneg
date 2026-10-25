@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="widget_padding_start">18dp</dimen>
+    <dimen name="widget_padding_top">16dp</dimen>
+    <dimen name="widget_padding_end">14dp</dimen>
+    <dimen name="widget_padding_bottom">14dp</dimen>
+    <dimen name="widget_month_gap">6dp</dimen>
+    <dimen name="widget_column_gap">4dp</dimen>
+    <dimen name="widget_total_gap">2dp</dimen>
+    <dimen name="widget_add_gap">12dp</dimen>
+    <dimen name="widget_add_size">52dp</dimen>
+    <dimen name="widget_add_icon_size">26dp</dimen>
+    <dimen name="widget_card_radius">26dp</dimen>
+</resources>

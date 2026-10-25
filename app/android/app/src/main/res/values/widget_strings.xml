@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Милиончик</string>
+    <string name="widget_description">Итог месяца, траты за сегодня и кнопка «+» для новой траты</string>
+    <string name="widget_sign_in">Войди в Милиончик</string>
+</resources>
