@@ -1986,5 +1986,21 @@
   "reminderChannelName": "Напоминания",
   "@reminderChannelName": { "description": "Системные настройки уведомлений: название канала напоминаний" },
   "reminderChannelDescription": "Вечернее напоминание записать траты за день",
-  "@reminderChannelDescription": { "description": "Системные настройки уведомлений: описание канала напоминаний" }
+  "@reminderChannelDescription": { "description": "Системные настройки уведомлений: описание канала напоминаний" },
+  "widgetToday": "Сегодня · {amount}",
+  "@widgetToday": {
+    "description": "Виджет 3×2 (46:5638): строка под итогом месяца — сколько потрачено сегодня",
+    "placeholders": {
+      "amount": { "type": "String", "example": "1 100 ₽" }
+    }
+  },
+  "widgetLabel": "{month}: за месяц {total}, сегодня {today}",
+  "@widgetLabel": {
+    "description": "Виджет 3×2: подпись для TalkBack всего виджета, суммы словами; тап открывает месяц",
+    "placeholders": {
+      "month": { "type": "String", "example": "Октябрь" },
+      "total": { "type": "String", "example": "18 300 рублей" },
+      "today": { "type": "String", "example": "1 100 рублей" }
+    }
+  }
 }
