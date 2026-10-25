@@ -1868,6 +1868,13 @@
       "budget": { "type": "String", "example": "Семья" }
     }
   },
+  "budgetScreenMemberBirthday": "{name} 🎂",
+  "@budgetScreenMemberBirthday": {
+    "description": "Экран общего бюджета (35:11612): имя участника, у которого день рождения сегодня или в ближайшие 7 дней",
+    "placeholders": {
+      "name": { "type": "String", "example": "Дима" }
+    }
+  },
 
   "profileHolidaysOn": "Вкл",
   "@profileHolidaysOn": { "description": "Профиль (47:13952): значение справа в строке «Праздники», общий переключатель праздников включён" },

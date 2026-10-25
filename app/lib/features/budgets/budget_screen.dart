@@ -26,6 +26,7 @@ import '../../ui/icons/app_icon.dart';
 import '../../ui/theme/app_text.dart';
 import '../../ui/theme/app_theme.dart';
 import '../expense/expense_snackbar_layer.dart';
+import '../holidays/member_birthdays.dart';
 import '../month/day_sheet.dart' show expenseCategory;
 import '../profile/profile_budgets.dart' show ProfileCard;
 import 'budget_actions_service.dart';
@@ -531,6 +532,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     required Map<String, MemberProfile> profiles,
     required bool owner,
     required LocalDate today,
+    required bool birthdaySoon,
   }) {
     final self = user != null && member.userId == user.userId;
     final name = budgetMemberName(l10n, member, user: user, profiles: profiles);
@@ -540,7 +542,11 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     );
     return BudgetMemberRow(
       key: ValueKey('member-${member.userId}'),
-      name: self ? l10n.budgetScreenYou(name) : name,
+      name: self
+          ? l10n.budgetScreenYou(name)
+          : birthdaySoon
+          ? l10n.budgetScreenMemberBirthday(name)
+          : name,
       plainName: name,
       color: member.avatarColor,
       subtitle: member.role == MemberRole.owner
@@ -587,6 +593,12 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final invites = ref.watch(budgetInvitesProvider);
     final clock = ref.watch(clockProvider);
     final today = clock.today();
+    final birthdays = {
+      for (final birthday in ref.watch(
+        memberBirthdaysProvider((budgetId: _id, today: today)),
+      ))
+        birthday.userId,
+    };
 
     MemberRole? role;
     for (final member in members ?? const <BudgetMember>[]) {
@@ -643,6 +655,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                     profiles: profiles,
                     owner: owner,
                     today: today,
+                    birthdaySoon: birthdays.contains(member.userId),
                   ),
               ],
             ),

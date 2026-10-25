@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import '../../data/holiday_settings.dart';
 import '../../data/providers.dart';
 import '../../data/session/session_providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -79,14 +80,13 @@ bool _sameList(List<MemberBirthday> a, List<MemberBirthday> b) {
 bool memberBirthdaysOn(HolidaySettings settings) =>
     settings.enabled && !settings.disabled.contains(HolidayKey.birthday);
 
+typedef MemberBirthdaysKey = ({String budgetId, LocalDate today});
+
 final memberBirthdaysProvider = Provider.autoDispose
-    .family<List<MemberBirthday>, String>((ref, budgetId) {
-      final today = ref.watch(
-        moodControllerProvider.select(
-          (m) => (date: m.date, on: memberBirthdaysOn(m.settings)),
-        ),
-      );
-      if (!today.on) return const [];
+    .family<List<MemberBirthday>, MemberBirthdaysKey>((ref, key) {
+      final on = ref.watch(holidaySettingsProvider.select(memberBirthdaysOn));
+      if (!on) return const [];
+      final budgetId = key.budgetId;
       final budget = ref.watch(budgetProvider(budgetId)).value;
       if (budget == null || budget.kind != BudgetKind.shared) return const [];
       final members = ref.watch(budgetMembersProvider(budgetId)).value;
@@ -97,7 +97,7 @@ final memberBirthdaysProvider = Provider.autoDispose
       return [
         for (final upcoming in upcomingBirthdays(
           [for (final m in members) ?profiles[m.userId]],
-          today.date,
+          key.today,
           excludeUserId: self,
         ))
           MemberBirthday(
@@ -113,7 +113,10 @@ final memberBirthdayBannersProvider =
       if (budgetId == null) return null;
       final budget = ref.watch(budgetProvider(budgetId)).value;
       if (budget == null || budget.kind != BudgetKind.shared) return null;
-      final birthdays = ref.watch(memberBirthdaysProvider(budgetId));
+      final today = ref.watch(moodControllerProvider.select((m) => m.date));
+      final birthdays = ref.watch(
+        memberBirthdaysProvider((budgetId: budgetId, today: today)),
+      );
       if (birthdays.isEmpty) return null;
       final hidden = ref.watch(hiddenHolidayBannersProvider);
       final shown = <MemberBirthday>[];
