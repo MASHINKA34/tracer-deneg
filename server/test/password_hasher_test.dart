@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:cryptography/dart.dart';
 import 'package:server/auth/password_hasher.dart';
 import 'package:test/test.dart';
 
@@ -175,12 +176,14 @@ void main() {
         'одновременно, все хеши верные', () async {
       var active = 0;
       var peak = 0;
+      final used = <DartArgon2State>{};
       final hasher = PasswordHasher(
-        derive: (params, secret, salt) async {
+        derive: (state, secret, salt) async {
           active++;
           peak = max(peak, active);
+          used.add(state);
           try {
-            return await deriveArgon2id(params, secret, salt);
+            return await deriveArgon2id(state, secret, salt);
           } finally {
             active--;
           }
@@ -195,6 +198,8 @@ void main() {
       expect(peak, 4);
       expect(hasher.running, 0);
       expect(hasher.queued, 0);
+      expect(hasher.buffers, 4);
+      expect(used, hasLength(4));
       peak = 0;
       final matches = await Future.wait([
         for (var i = 0; i < 10; i++)
@@ -204,6 +209,68 @@ void main() {
       ]);
       expect(matches.sublist(0, 10), everyElement(isTrue));
       expect(peak, 4);
+      expect(hasher.buffers, 4);
+      expect(used, hasLength(4));
+    });
+
+    test('буфер argon2id переиспользуется: подряд — один буфер, '
+        'в логе — когда добавлен новый', () async {
+      final used = <DartArgon2State>{};
+      final hasher = PasswordHasher(
+        derive: (state, secret, salt) {
+          used.add(state);
+          return deriveArgon2id(state, secret, salt);
+        },
+      );
+      expect(hasher.buffers, 0);
+
+      for (var i = 0; i < 3; i++) {
+        final stored = await hasher.hash('$_password-$i', purpose: 'password');
+        expect(
+          await hasher.verify('$_password-$i', stored, purpose: 'password'),
+          isTrue,
+        );
+      }
+
+      expect(hasher.buffers, 1);
+      expect(used, hasLength(1));
+      expect(
+        RegExp(
+          r'DEBUG \[auth\] argon2id buffer added purpose=password '
+          r'm=19456,t=2,p=1 buffers=1/4 \(19456 KiB each, kept for the next '
+          r'hashes\)',
+        ).allMatches(logs.text),
+        hasLength(1),
+      );
+    });
+
+    test('хеш со старыми параметрами — отдельный буфер, освобождается сразу, '
+        'запас буферов не трогает', () async {
+      const reference =
+          r'$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc';
+      final states = <DartArgon2State>[];
+      final hasher = PasswordHasher(
+        derive: (state, secret, salt) {
+          states.add(state);
+          return deriveArgon2id(state, secret, salt);
+        },
+      );
+
+      expect(
+        await hasher.verify('password', reference, purpose: 'test'),
+        isTrue,
+      );
+
+      expect(hasher.buffers, 0);
+      expect(states.single.memory, 65536);
+      expect(states.single.isBufferUsed, isFalse);
+      expect(
+        logs.text,
+        contains(
+          'DEBUG [auth] argon2id one-off buffer purpose=test for stored '
+          'm=65536,t=2,p=1 (current m=19456,t=2,p=1) → freed right after',
+        ),
+      );
     });
 
     test('очередь по порядку: освободилось место — начинается следующий; '
@@ -211,7 +278,7 @@ void main() {
       final started = <String>[];
       final gates = <Completer<List<int>>>[];
       final hasher = PasswordHasher(
-        derive: (params, secret, salt) {
+        derive: (state, secret, salt) {
           started.add(secret);
           final gate = Completer<List<int>>();
           gates.add(gate);
@@ -249,6 +316,15 @@ void main() {
       expect(done.sublist(1), everyElement(startsWith(r'$argon2id$')));
       expect(hasher.running, 0);
       expect(hasher.queued, 0);
+      expect(hasher.buffers, 4);
+      expect(
+        logs.text,
+        contains(
+          'WARN  [auth] argon2id failed purpose=password m=19456,t=2,p=1: '
+          'StateError: Bad state: argon2 broke → its buffer freed, '
+          'buffers=3/4',
+        ),
+      );
     });
 
     test('в логе: debug — постановка в очередь и ожидание места, '
@@ -256,7 +332,7 @@ void main() {
       final hasher = PasswordHasher(
         maxConcurrent: 1,
         slowQueueWait: const Duration(milliseconds: 20),
-        derive: (params, secret, salt) async {
+        derive: (state, secret, salt) async {
           await Future<void>.delayed(const Duration(milliseconds: 60));
           return List<int>.filled(32, 1);
         },

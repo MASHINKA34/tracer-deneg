@@ -3,10 +3,10 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 import 'package:cryptography/helpers.dart';
 import 'package:logging/logging.dart';
+import 'package:shared/logging.dart';
 
 final _log = Logger('auth');
 
@@ -14,7 +14,7 @@ const int argon2MaxConcurrent = 4;
 const Duration argon2SlowQueueWait = Duration(seconds: 1);
 
 typedef Argon2Derive = Future<List<int>> Function(
-  Argon2Params params,
+  DartArgon2State state,
   String secret,
   List<int> salt,
 );
@@ -81,12 +81,16 @@ class PasswordHasher {
   final Argon2Derive _derive;
   final Random _random;
   final Queue<Completer<void>> _waiting = Queue();
+  final List<DartArgon2State> _idleBuffers = [];
   int _running = 0;
+  int _buffers = 0;
   Future<String>? _dummy;
 
   int get running => _running;
 
   int get queued => _waiting.length;
+
+  int get buffers => _buffers;
 
   Future<String> hash(String secret, {required String purpose}) async {
     final sw = Stopwatch()..start();
@@ -174,9 +178,63 @@ class PasswordHasher {
     }
     final waitedMs = sw.elapsedMilliseconds;
     try {
-      return (digest: await _derive(params, secret, salt), waitedMs: waitedMs);
+      final digest = params == this.params
+          ? await _deriveReusing(secret, salt, purpose)
+          : await _deriveOnce(params, secret, salt, purpose);
+      return (digest: digest, waitedMs: waitedMs);
     } finally {
       _releaseSlot();
+    }
+  }
+
+  Future<List<int>> _deriveReusing(
+    String secret,
+    List<int> salt,
+    String purpose,
+  ) async {
+    final DartArgon2State state;
+    if (_idleBuffers.isNotEmpty) {
+      state = _idleBuffers.removeLast();
+    } else {
+      state = newArgon2State(params);
+      _buffers++;
+      _log.fine(
+        'argon2id buffer added purpose=$purpose ${params.phc} '
+        'buffers=$_buffers/$maxConcurrent (${params.memoryKib} KiB each, '
+        'kept for the next hashes)',
+      );
+    }
+    final List<int> digest;
+    try {
+      digest = await _derive(state, secret, salt);
+    } catch (e) {
+      _buffers--;
+      if (!state.isBufferUsed) state.tryReleaseMemory();
+      _log.warning(
+        'argon2id failed purpose=$purpose ${params.phc}: ${describeError(e)} '
+        '→ its buffer freed, buffers=$_buffers/$maxConcurrent',
+      );
+      rethrow;
+    }
+    _idleBuffers.add(state);
+    return digest;
+  }
+
+  Future<List<int>> _deriveOnce(
+    Argon2Params stored,
+    String secret,
+    List<int> salt,
+    String purpose,
+  ) async {
+    _log.fine(
+      'argon2id one-off buffer purpose=$purpose for stored ${stored.phc} '
+      '(current ${params.phc}) → freed right after',
+    );
+    final state = newArgon2State(stored);
+    try {
+      return await _derive(state, secret, salt);
+    } finally {
+      if (!state.isBufferUsed) state.tryReleaseMemory();
     }
   }
 
@@ -189,23 +247,18 @@ class PasswordHasher {
   }
 }
 
+DartArgon2State newArgon2State(Argon2Params params) => DartArgon2id(
+  parallelism: params.parallelism,
+  memory: params.memoryKib,
+  iterations: params.iterations,
+  hashLength: params.hashLength,
+).newState();
+
 Future<List<int>> deriveArgon2id(
-  Argon2Params params,
+  DartArgon2State state,
   String secret,
   List<int> salt,
-) async {
-  final algorithm = DartArgon2id(
-    parallelism: params.parallelism,
-    memory: params.memoryKib,
-    iterations: params.iterations,
-    hashLength: params.hashLength,
-  );
-  final key = await algorithm.deriveKey(
-    secretKey: SecretKey(utf8.encode(secret)),
-    nonce: salt,
-  );
-  return key.extractBytes();
-}
+) => state.deriveKeyBytes(password: utf8.encode(secret), nonce: salt);
 
 String _encode(List<int> bytes) => base64.encode(bytes).replaceAll('=', '');
 
