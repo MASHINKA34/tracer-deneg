@@ -442,17 +442,21 @@ final class _Gen {
 
   void heart(double cx, double cy, double s, DecorInk col, [double a = 0]) {
     List<double> q(double x, double y) => pt(cx, cy, x * s, y * s, a);
-    _out.add(
-      DecorElement.path([
-        PathCommand('M', q(0, 0.85)),
-        PathCommand('C', [
-          ...q(-1.15, 0.05),
-          ...q(-0.6, -0.95),
-          ...q(0, -0.38),
-        ]),
-        PathCommand('C', [...q(0.6, -0.95), ...q(1.15, 0.05), ...q(0, 0.85)]),
-        const PathCommand('Z', []),
-      ], fill: col),
+    moving(
+      DecorMotion.beat,
+      (cx, cy),
+      () => _out.add(
+        DecorElement.path([
+          PathCommand('M', q(0, 0.85)),
+          PathCommand('C', [
+            ...q(-1.15, 0.05),
+            ...q(-0.6, -0.95),
+            ...q(0, -0.38),
+          ]),
+          PathCommand('C', [...q(0.6, -0.95), ...q(1.15, 0.05), ...q(0, 0.85)]),
+          const PathCommand('Z', []),
+        ], fill: col),
+      ),
     );
   }
 
@@ -736,6 +740,7 @@ final class _Gen {
   }
 
   void hSun(double cx, double cy, double r, DecorInk col) {
+    final from = _out.length;
     dot(cx, cy, 0.46 * r, col);
     for (var j = 0; j < 8; j++) {
       final g = j * math.pi / 4;
@@ -751,6 +756,7 @@ final class _Gen {
         math.max(1, 0.16 * r),
       );
     }
+    span(DecorMotion.spin, from, _out.length, (cx, cy));
   }
 
   void hTree(double cx, double cy, double s) {
@@ -776,8 +782,10 @@ final class _Gen {
   }
 
   void hBall(double cx, double cy, double r, DecorInk col) {
+    final from = _out.length;
     dot(cx, cy, r, col);
     rect(cx, cy - r - 0.15 * r, 0.7 * r, 0.45 * r, DecorInk.c4);
+    span(DecorMotion.swing, from, _out.length, (cx, cy - 1.375 * r));
   }
 
   void hTangerine(double cx, double cy, double r) {
@@ -829,19 +837,23 @@ final class _Gen {
     double ht,
     double a,
     DecorInk col,
-  ) => poly(
-    cx,
-    cy,
-    [
-      [-wd / 2, -ht / 2],
-      [wd / 2, -ht / 2],
-      [wd / 2 - ht * 0.45, 0],
-      [wd / 2, ht / 2],
-      [-wd / 2, ht / 2],
-      [-wd / 2 + ht * 0.45, 0],
-    ],
-    a,
-    col,
+  ) => moving(
+    DecorMotion.flutter,
+    (cx, cy),
+    () => poly(
+      cx,
+      cy,
+      [
+        [-wd / 2, -ht / 2],
+        [wd / 2, -ht / 2],
+        [wd / 2 - ht * 0.45, 0],
+        [wd / 2, ht / 2],
+        [-wd / 2, ht / 2],
+        [-wd / 2 + ht * 0.45, 0],
+      ],
+      a,
+      col,
+    ),
   );
 
   void hPancake(double cx, double cy, double r) {
@@ -940,9 +952,11 @@ final class _Gen {
   }
 
   void hHammer(double cx, double cy, double s, double a) {
-    rect(cx, cy, 0.2 * s, 1.1 * s, DecorInk.c3, a, 0, 0.2 * s);
-    rect(cx, cy, 0.26 * s, 0.36 * s, DecorInk.c1, a, 0, 0.6 * s);
-    rect(cx, cy, 0.85 * s, 0.3 * s, DecorInk.c2, a, 0, -0.42 * s);
+    moving(DecorMotion.knock, at(cx, cy, 0, 0.78 * s, a), () {
+      rect(cx, cy, 0.2 * s, 1.1 * s, DecorInk.c3, a, 0, 0.2 * s);
+      rect(cx, cy, 0.26 * s, 0.36 * s, DecorInk.c1, a, 0, 0.6 * s);
+      rect(cx, cy, 0.85 * s, 0.3 * s, DecorInk.c2, a, 0, -0.42 * s);
+    });
   }
 
   void hNail(double cx, double cy, double s, double a) {
@@ -989,7 +1003,10 @@ final class _Gen {
     hCarnHead(hx, hy, s);
   }
 
-  void hSalute(double cx, double cy, double r, DecorInk col) {
+  void hSalute(double cx, double cy, double r, DecorInk col) =>
+      moving(DecorMotion.flash, (cx, cy), () => _salute(cx, cy, r, col));
+
+  void _salute(double cx, double cy, double r, DecorInk col) {
     for (var j = 0; j < 10; j++) {
       final g = j * math.pi / 5;
       ln(
@@ -1013,6 +1030,7 @@ final class _Gen {
   }
 
   void hBalloon(double cx, double cy, double s, DecorInk col, [double a = 0]) {
+    final from = _out.length;
     ell(cx, cy, 0.72 * s, 0.92 * s, col, a);
     poly(
       cx,
@@ -1040,10 +1058,40 @@ final class _Gen {
         explicitNoFill: true,
       ),
     );
+    final end = _out.length;
+    switch (layer) {
+      case DecorLayer.children:
+        final order = nextOrder(DecorMotion.rise);
+        final [kx, ky] = pt(cx, cy, 0, s, a);
+        span(
+          DecorMotion.rise,
+          from,
+          end,
+          (cx, cy),
+          order: order,
+          amount: _region == DecorRegion.top ? 6 : 3,
+        );
+        span(DecorMotion.string, end - 1, end, (kx, ky), order: order);
+      case DecorLayer.birthday:
+        final [ex, ey] = pt(cx, cy, 0, 2.0 * s, a);
+        span(DecorMotion.swing, from, end, (ex, ey));
+      default:
+        break;
+    }
   }
 
-  void hConfetti(double cx, double cy, double s, DecorInk col, double a) =>
+  void hConfetti(double cx, double cy, double s, DecorInk col, double a) {
+    if (layer == DecorLayer.birthday) {
+      moving(
+        DecorMotion.confetti,
+        (cx, cy),
+        () => rect(cx, cy, s, s * 0.45, col, a),
+        amount: fallDistance,
+      );
+    } else {
       rect(cx, cy, s, s * 0.45, col, a);
+    }
+  }
 
   void hPencil(double cx, double cy, double len, double a) {
     rect(cx, cy, len * 0.72, len * 0.18, DecorInk.c4, a, -0.03 * len, 0);
@@ -1072,6 +1120,7 @@ final class _Gen {
 
   void hBell(double cx, double cy, double s) {
     List<double> q(double x, double y) => pt(cx, cy, x * s, y * s, 0);
+    final from = _out.length;
     _out.add(
       DecorElement.path([
         PathCommand('M', q(-0.6, 0.45)),
@@ -1083,6 +1132,7 @@ final class _Gen {
       ], fill: DecorInk.c4),
     );
     dot(cx, cy + 0.74 * s, 0.16 * s, DecorInk.c4);
+    span(DecorMotion.ring, from, _out.length, (cx, cy - 0.72 * s));
     poly(
       cx,
       cy,
@@ -1160,6 +1210,7 @@ final class _Gen {
 
   void hGhost(double cx, double cy, double s) {
     List<double> q(double x, double y) => pt(cx, cy, x * s, y * s, 0);
+    final from = _out.length;
     _out.add(
       DecorElement.path(
         [
@@ -1185,6 +1236,7 @@ final class _Gen {
     dot(cx - 0.2 * s, cy - 0.15 * s, 0.09 * s, DecorInk.c3);
     dot(cx + 0.2 * s, cy - 0.15 * s, 0.09 * s, DecorInk.c3);
     ell(cx, cy + 0.12 * s, 0.08 * s, 0.11 * s, DecorInk.c3);
+    span(DecorMotion.bob, from, _out.length, (cx, cy), amount: 4);
   }
 
   void hWeb(double ox, double oy, double radius, double sxSign, double sySign) {
@@ -1240,6 +1292,7 @@ final class _Gen {
   }
 
   void hSpider(double cx, double cy, double s, double top) {
+    final from = _out.length;
     _out.add(
       DecorElement.path(
         [
@@ -1270,9 +1323,42 @@ final class _Gen {
     dot(cx, cy - 0.55 * s, 0.32 * s, DecorInk.c2);
     dot(cx - 0.12 * s, cy - 0.6 * s, 0.08 * s, DecorInk.c3);
     dot(cx + 0.12 * s, cy - 0.6 * s, 0.08 * s, DecorInk.c3);
+    final order = nextOrder(DecorMotion.descend);
+    span(
+      DecorMotion.thread,
+      from,
+      from + 1,
+      (cx, top),
+      order: order,
+      amount: f2(cy - 0.5 * s) - f2(top),
+    );
+    span(
+      DecorMotion.descend,
+      from + 1,
+      _out.length,
+      (cx, cy),
+      order: order,
+      amount: 10,
+    );
   }
 
   void hBat(double cx, double cy, double s, double a) {
+    final from = _out.length;
+    final order = nextOrder(DecorMotion.flapRight);
+    span(
+      DecorMotion.flapRight,
+      from,
+      from + 1,
+      at(cx, cy, 0.16 * s, 0.02 * s, a),
+      order: order,
+    );
+    span(
+      DecorMotion.flapLeft,
+      from + 1,
+      from + 2,
+      at(cx, cy, -0.16 * s, 0.02 * s, a),
+      order: order,
+    );
     const wing = [
       [0.12, -0.1],
       [0.5, -0.45],
@@ -1429,13 +1515,17 @@ final class _Gen {
         for (double x = 10; x < 336; x += 21, j++) {
           final y = wy(x) + 4.6;
           rect(sx(x), y - 3.4, 2.4, 1.8, DecorInk.c1);
-          ell(
-            sx(x),
-            y,
-            2.6,
-            3.6,
-            const [DecorInk.c2, DecorInk.c4, DecorInk.c3][j % 3],
-            (rnd() - 0.5) * 0.5,
+          moving(
+            DecorMotion.blink,
+            (sx(x), y),
+            () => ell(
+              sx(x),
+              y,
+              2.6,
+              3.6,
+              const [DecorInk.c2, DecorInk.c4, DecorInk.c3][j % 3],
+              (rnd() - 0.5) * 0.5,
+            ),
           );
         }
       case DecorLayer.halloweenSpooky:
@@ -1471,12 +1561,16 @@ final class _Gen {
             const [DecorInk.c1, DecorInk.c3][(i ~/ 2) % 2],
           );
         } else {
-          star5(
-            x,
-            y,
-            s * 0.95,
-            const [DecorInk.c4, DecorInk.c2][(i ~/ 2) % 2],
-            rnd() * 0.6,
+          moving(
+            DecorMotion.twinkle,
+            (x, y),
+            () => star5(
+              x,
+              y,
+              s * 0.95,
+              const [DecorInk.c4, DecorInk.c2][(i ~/ 2) % 2],
+              rnd() * 0.6,
+            ),
           );
         }
       case DecorLayer.maslenitsa:
@@ -1490,12 +1584,17 @@ final class _Gen {
         if (i.isOdd) {
           hMimosa(x, y + 1, s * 0.75);
         } else {
-          hTulipHead(
-            x,
-            y + 1,
-            s * 0.95,
-            const [DecorInk.c1, DecorInk.c3][(i ~/ 2) % 2],
-            (rnd() - 0.5) * 0.4,
+          final a = (rnd() - 0.5) * 0.4;
+          moving(
+            DecorMotion.sway,
+            at(x, y + 1, 0, 1.3 * s * 0.95, a),
+            () => hTulipHead(
+              x,
+              y + 1,
+              s * 0.95,
+              const [DecorInk.c1, DecorInk.c3][(i ~/ 2) % 2],
+              a,
+            ),
           );
         }
       case DecorLayer.labour:
@@ -1526,12 +1625,17 @@ final class _Gen {
         if (i % 3 == 0) {
           hPencil(x, y + 2, s * 2.6, (rnd() - 0.5) * 1.0);
         } else if (i % 3 == 1) {
-          hLeaf(
-            x,
-            y + 2,
-            s * 0.75,
-            rnd() * 6.28,
-            const [DecorInk.c1, DecorInk.c2][i % 2],
+          moving(
+            DecorMotion.fall,
+            (x, y + 2),
+            () => hLeaf(
+              x,
+              y + 2,
+              s * 0.75,
+              rnd() * 6.28,
+              const [DecorInk.c1, DecorInk.c2][i % 2],
+            ),
+            amount: fallDistance,
           );
         } else {
           hNotebook(x, y + 2, s * 1.1, (rnd() - 0.5) * 0.6);
@@ -1579,20 +1683,45 @@ final class _Gen {
         heart(190, 50, 3.6, DecorInk.c2, -0.3);
         heart(228, 53, 2.6, DecorInk.c1, 0.2);
       case DecorLayer.defender:
-        star5(212, 36, 13, DecorInk.c4);
-        star5(212, 37, 5.5, DecorInk.c2);
+        moving(DecorMotion.twinkle, (
+          212,
+          36,
+        ), () => star5(212, 36, 13, DecorInk.c4));
+        moving(DecorMotion.twinkle, (
+          212,
+          37,
+        ), () => star5(212, 37, 5.5, DecorInk.c2));
         hRibbon(240, 21, 18, 6, -0.3, DecorInk.c1);
-        star5(188, 50, 4, DecorInk.c2, 0.3);
+        moving(DecorMotion.twinkle, (
+          188,
+          50,
+        ), () => star5(188, 50, 4, DecorInk.c2, 0.3));
       case DecorLayer.maslenitsa:
-        for (var j = 0; j < 4; j++) {
-          ell(212, 47 - j * 4.2, 14, 3.6, j.isOdd ? DecorInk.c2 : DecorInk.c4);
-        }
-        dot(212, 30, 2.8, DecorInk.c1);
+        moving(DecorMotion.hop, (212, 47), () {
+          for (var j = 0; j < 4; j++) {
+            ell(
+              212,
+              47 - j * 4.2,
+              14,
+              3.6,
+              j.isOdd ? DecorInk.c2 : DecorInk.c4,
+            );
+          }
+          dot(212, 30, 2.8, DecorInk.c1);
+        });
         hSun(240, 20, 7.5, DecorInk.c4);
         hDiamond(188, 50, 3.4, DecorInk.c1);
       case DecorLayer.women:
-        hTulip(204, 30, 10, DecorInk.c1, -0.18);
-        hTulip(220, 34, 8.5, DecorInk.c3, 0.2);
+        moving(
+          DecorMotion.sway,
+          at(204, 30, 0, 1.3 * 10, -0.18),
+          () => hTulip(204, 30, 10, DecorInk.c1, -0.18),
+        );
+        moving(
+          DecorMotion.sway,
+          at(220, 34, 0, 1.3 * 8.5, 0.2),
+          () => hTulip(220, 34, 8.5, DecorInk.c3, 0.2),
+        );
         hMimosa(241, 21, 5);
         hMimosa(187, 50, 3.4);
       case DecorLayer.labour:
@@ -1613,8 +1742,18 @@ final class _Gen {
         hConfetti(242, 50, 3, DecorInk.c1, 1.2);
       case DecorLayer.knowledge:
         hBell(212, 35, 12);
-        hLeaf(239, 22, 6, 0.8, DecorInk.c1);
-        hLeaf(189, 49, 4, 2.1, DecorInk.c2);
+        moving(
+          DecorMotion.fall,
+          (239, 22),
+          () => hLeaf(239, 22, 6, 0.8, DecorInk.c1),
+          amount: fallDistance,
+        );
+        moving(
+          DecorMotion.fall,
+          (189, 49),
+          () => hLeaf(189, 49, 4, 2.1, DecorInk.c2),
+          amount: fallDistance,
+        );
         hPencil(236, 50, 12, -0.4);
       case DecorLayer.halloweenCute:
         hGhost(212, 34, 13);
@@ -1664,7 +1803,16 @@ final class _Gen {
         if (i.isOdd) {
           dot(cx, cy, 1.4, DecorInk.c3);
         } else {
-          star5(cx, cy, 3.9, const [DecorInk.c4, DecorInk.c2][(i ~/ 2) % 2]);
+          moving(
+            DecorMotion.twinkle,
+            (cx, cy),
+            () => star5(
+              cx,
+              cy,
+              3.9,
+              const [DecorInk.c4, DecorInk.c2][(i ~/ 2) % 2],
+            ),
+          );
         }
       case DecorLayer.maslenitsa:
         if (i % 3 == 0) {
@@ -1678,11 +1826,15 @@ final class _Gen {
         if (i.isOdd) {
           dot(cx, cy, 1.5, DecorInk.c4);
         } else {
-          hTulipHead(
-            cx,
-            cy,
-            3.9,
-            const [DecorInk.c1, DecorInk.c3][(i ~/ 2) % 2],
+          moving(
+            DecorMotion.sway,
+            (cx, cy + 1.3 * 3.9),
+            () => hTulipHead(
+              cx,
+              cy,
+              3.9,
+              const [DecorInk.c1, DecorInk.c3][(i ~/ 2) % 2],
+            ),
           );
         }
       case DecorLayer.labour:
@@ -1709,12 +1861,17 @@ final class _Gen {
         if (i.isOdd) {
           dot(cx, cy, 1.4, DecorInk.c4);
         } else {
-          hLeaf(
-            cx,
-            cy,
-            3.4,
-            rnd() * 6.28,
-            const [DecorInk.c1, DecorInk.c2][(i ~/ 2) % 2],
+          moving(
+            DecorMotion.fall,
+            (cx, cy),
+            () => hLeaf(
+              cx,
+              cy,
+              3.4,
+              rnd() * 6.28,
+              const [DecorInk.c1, DecorInk.c2][(i ~/ 2) % 2],
+            ),
+            amount: fallDistance,
           );
         }
       case DecorLayer.halloweenCute:
