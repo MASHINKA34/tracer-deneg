@@ -119,6 +119,21 @@ flutter test integration_test -d emulator-5554
 - Первый запуск собирает APK через Gradle и скачивает зависимости `integration_test` (около 3 минут), повторный - около 1-1,5 минуты; сам сценарий идёт 5-16 секунд.
 - В `tool/check.ps1` integration-тест не входит: ему нужен запущенный эмулятор, сборка и установка APK занимают минуты, а полная проверка проекта должна проходить без устройства.
 
+### Замер кадров анимации декора
+
+Сценарий `app/integration_test/decor_animation_perf_test.dart`: главная 29 декабря 2026 (Новый год, база в памяти с тратами декабря), 10 секунд анимации декора, потом 5 секунд с выключенными системными анимациями. Время кадров честное только в profile-сборке:
+
+```powershell
+cd app
+adb shell am force-stop ru.milionchik.app
+flutter drive --profile --driver=test_driver/integration_test.dart --target=integration_test/decor_animation_perf_test.dart -d emulator-5554
+```
+
+- Итог - `All tests passed!`; цифры - в `app/build/integration_response_data.json` (`newyear_animated` и `animations_disabled`: число кадров, среднее/90-й/99-й/худшее время сборки (UI) и растеризации кадра в мс, пропуски `missed_frame_*_budget_count`, `tickers_max` - сколько тикеров анимаций было активно) и строками `decor perf animated: …` / `decor perf animations disabled: …` в `adb logcat -s milionchik`.
+- Эмулятор рисует медленнее телефона, поэтому сравнивать цифры имеет смысл только между прогонами на одном образе.
+- `flutter drive` после прогона удаляет приложение с эмулятора вместе с данными; чтобы оставить его (и данные), добавь `--keep-app-running` и потом поставь обычную сборку через `flutter run`.
+- Без анимаций кадры всё равно идут: тестовая обвязка `integration_test` сама просит кадр после каждого кадра. Поэтому «тишину» сценарий проверяет по числу активных тикеров (`tickers max=0` в логе), а не по числу кадров.
+
 ### Локальная база (`app/lib/data/db/`)
 
 База на телефоне — SQLite через drift: таблицы в `tables.dart`, класс `AppDatabase` и версия схемы (`schemaVersion`) в `app_database.dart`, запуск шагов миграции и ошибка неизвестной версии — в `migrations.dart`. Снимки схемы каждой версии лежат в `app/drift_schemas/app_database/drift_schema_v<N>.json`, их тестовые копии — в `app/test/data/db/app_database/generated/` (настройка — `app/build.yaml`). Тест `test/data/db/schema_snapshot_test.dart` сверяет текущую схему со снимком последней версии: если поменять таблицу и не выпустить новую версию, он краснеет и пишет, какая колонка или индекс разошлись.
