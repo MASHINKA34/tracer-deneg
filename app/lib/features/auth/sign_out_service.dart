@@ -12,6 +12,7 @@ import '../../data/sync/pull_controller.dart';
 import '../../data/sync/sync_engine.dart';
 import '../../data/sync/sync_service.dart';
 import '../reminders/reminder_scheduler.dart';
+import '../widget/widget_updater.dart';
 
 final _log = Logger('auth');
 
@@ -129,6 +130,9 @@ class SignOutService {
       return SignOutFailed(error);
     }
 
+    await _ref
+        .read(widgetUpdaterProvider)
+        .updateImmediately(WidgetUpdateSource.accountCleared);
     await _ref.read(reminderSchedulerProvider).cancelAll('sign-out');
 
     final serverRevoked = userId != null && await _logoutOnServer();

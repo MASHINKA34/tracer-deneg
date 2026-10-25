@@ -11,6 +11,7 @@ import '../../data/session/session_providers.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/sync_engine.dart';
 import '../reminders/reminder_scheduler.dart';
+import '../widget/widget_updater.dart';
 import 'sign_in_notice.dart';
 
 final _log = Logger('auth');
@@ -103,6 +104,9 @@ class AccountDeleteService {
           .ended(SessionEndReason.sessionRejected);
       return AccountDeleted(requestId: rid, removal: null, elapsed: sw.elapsed);
     }
+    await _ref
+        .read(widgetUpdaterProvider)
+        .updateImmediately(WidgetUpdateSource.accountCleared);
 
     try {
       await _ref.read(sessionProvider.notifier).clear();

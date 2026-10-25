@@ -57,6 +57,10 @@ class _WidgetTriggersScopeState extends ConsumerState<WidgetTriggersScope>
       if (previous?.name == next.name && previous?.userId == next.userId) {
         return;
       }
+      if (previous is SessionActive && next is! SessionActive) {
+        unawaited(_updater.updateImmediately(WidgetUpdateSource.session));
+        return;
+      }
       _updater.request(WidgetUpdateSource.session);
     });
     try {

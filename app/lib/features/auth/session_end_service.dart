@@ -11,6 +11,7 @@ import '../../data/session/session_providers.dart';
 import '../../data/session/session_state.dart';
 import '../../data/sync/pull_controller.dart';
 import '../../data/sync/sync_engine.dart';
+import '../widget/widget_updater.dart';
 
 final _log = Logger('auth');
 
@@ -151,6 +152,9 @@ class SessionEndService {
     final removal = await _ref
         .read(accountDataCleanerProvider)
         .clearAccountData('account-switch');
+    await _ref
+        .read(widgetUpdaterProvider)
+        .updateImmediately(WidgetUpdateSource.accountCleared);
     _log.info(
       '$action: previous account userId=$previousId cleared queue='
       '${removal.outbox} rows=${removal.total} account prefs '

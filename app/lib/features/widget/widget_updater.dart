@@ -39,7 +39,8 @@ enum WidgetUpdateSource {
   theme('theme changed'),
   systemTheme('system theme changed', redraw: true),
   budget('budget changed'),
-  session('session changed');
+  session('session changed'),
+  accountCleared('account data cleared', redraw: true);
 
   const WidgetUpdateSource(this.label, {this.redraw = false});
 
@@ -51,6 +52,8 @@ typedef WidgetDayTotals =
     Future<Map<int, Money>> Function(String budgetId, YearMonth month);
 
 typedef WidgetSignedOutReason = String? Function();
+
+typedef _Failure = ({Object error, StackTrace stack});
 
 final class _WidgetSnapshot {
   const _WidgetSnapshot(
@@ -107,7 +110,7 @@ final class WidgetUpdater {
   final Set<WidgetUpdateSource> _pending = {};
   Timer? _quiet;
   Timer? _deadline;
-  Future<void> _tail = Future<void>.value();
+  Future<Object?> _tail = Future<Object?>.value();
   String? _lastJson;
   bool _datesReady = false;
   bool _unavailable = false;
@@ -115,7 +118,7 @@ final class WidgetUpdater {
 
   bool get hasPending => _pending.isNotEmpty;
 
-  Future<void> get idle => _tail;
+  Future<void> get idle => _tail.then((_) {});
 
   void request(WidgetUpdateSource source) {
     if (_disposed) {
@@ -151,10 +154,24 @@ final class WidgetUpdater {
     );
   }
 
-  Future<void> updateNow(String reason) {
+  Future<void> updateNow(String reason) async {
     final joined = _takePending();
     final full = joined.isEmpty ? reason : '$reason+${_describe(joined)}';
-    return _enqueue(full, redraw: true);
+    final failure = await _enqueue(full, redraw: true);
+    if (failure != null) {
+      Error.throwWithStackTrace(failure.error, failure.stack);
+    }
+  }
+
+  Future<void> updateImmediately(WidgetUpdateSource source) async {
+    final sources = {source, ..._takePending()};
+    final reason = _describe(sources);
+    _log.fine(
+      'widget update reason=$reason starts without the '
+      '${coalesceDelay.inMilliseconds}ms delay: ${source.label} must reach '
+      'the widget before the process can be killed',
+    );
+    await _enqueue(reason, redraw: true);
   }
 
   void dispose(String why) {
@@ -173,12 +190,7 @@ final class WidgetUpdater {
     if (sources.isEmpty) return;
     final reason = _describe(sources);
     _log.fine('widget update starts reason=$reason after $after');
-    unawaited(
-      _enqueue(
-        reason,
-        redraw: sources.any((s) => s.redraw),
-      ).then<void>((_) {}, onError: (Object _, StackTrace _) {}),
-    );
+    unawaited(_enqueue(reason, redraw: sources.any((s) => s.redraw)));
   }
 
   Set<WidgetUpdateSource> _takePending() {
@@ -191,97 +203,88 @@ final class WidgetUpdater {
     return taken;
   }
 
-  Future<void> _enqueue(String reason, {required bool redraw}) {
+  Future<_Failure?> _enqueue(String reason, {required bool redraw}) {
     final run = _tail.then((_) => _update(reason, redraw: redraw));
-    _tail = run.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    _tail = run;
     return run;
   }
 
-  Future<void> _update(String reason, {required bool redraw}) async {
+  Future<_Failure?> _update(String reason, {required bool redraw}) async {
     if (_unavailable) {
       _log.fine(
         'widget update reason=$reason skipped: the home widget plugin is not '
         'available in this run (warning above)',
       );
-      return;
+      return null;
     }
     final sw = Stopwatch()..start();
+    var step = 'waiting for the lock';
     IsolateLease? lease;
-    final lock = _lock;
-    if (lock != null) {
-      try {
-        lease = await lock.acquire('home widget update ($reason)');
-      } catch (e, st) {
-        _log.severe(
-          'widget update reason=$reason not done: lock ${lock.name} not '
-          'taken after ${sw.elapsedMilliseconds}ms → the widget keeps its '
-          'previous data: ${describeError(e)}',
-          e,
-          st,
-        );
-        rethrow;
-      }
-    }
     try {
-      await _write(reason, redraw: redraw, sw: sw, waited: lease);
+      lease = await _lock?.acquire('home widget update ($reason)');
+      final other = lease?.waitedFor;
+      final waitText = other == null
+          ? ''
+          : ' after waiting ${lease!.waited.inMilliseconds}ms for $other';
+      step = 'reading its data';
+      final snapshot = await _snapshot();
+      final json = snapshot.data.encode();
+      if (!redraw && json == _lastJson) {
+        _log.fine(
+          'widget update reason=$reason: ${snapshot.describe()} unchanged '
+          'since the last write → not written, checked in '
+          '${sw.elapsedMilliseconds}ms',
+        );
+        return null;
+      }
+      step = 'saving';
+      await _store.show(snapshot.data, reason: reason);
+      _lastJson = json;
+      _log.info(
+        'widget updated reason=$reason ${snapshot.describe()}$waitText '
+        'in ${sw.elapsedMilliseconds}ms',
+      );
+      return null;
+    } catch (e, st) {
+      _lastJson = null;
+      _failed(reason, step, e, st, sw);
+      return (error: e, stack: st);
     } finally {
       lease?.release();
     }
   }
 
-  Future<void> _write(
-    String reason, {
-    required bool redraw,
-    required Stopwatch sw,
-    IsolateLease? waited,
-  }) async {
-    final other = waited?.waitedFor;
-    final waitText = other == null
-        ? ''
-        : ' after waiting ${waited!.waited.inMilliseconds}ms for $other';
-    final _WidgetSnapshot snapshot;
-    try {
-      snapshot = await _snapshot();
-    } catch (e, st) {
-      final error = redactDbError(e);
-      _log.severe(
-        'widget update reason=$reason failed while reading its data after '
-        '${sw.elapsedMilliseconds}ms → the widget keeps its previous data: '
-        '${describeError(error)}',
-        error,
-        st,
-      );
-      rethrow;
-    }
-    final json = snapshot.data.encode();
-    if (!redraw && json == _lastJson) {
-      _log.fine(
-        'widget update reason=$reason: ${snapshot.describe()} unchanged since '
-        'the last write → not written, checked in ${sw.elapsedMilliseconds}ms',
-      );
-      return;
-    }
-    try {
-      await _store.show(snapshot.data, reason: reason);
-    } on MissingPluginException catch (e) {
+  void _failed(
+    String reason,
+    String step,
+    Object error,
+    StackTrace stack,
+    Stopwatch sw,
+  ) {
+    if (error is MissingPluginException) {
       _unavailable = true;
       _log.warning(
         'home widget plugin is not available on this platform '
-        '(${describeError(e)}) → widget updates are off until restart',
+        '(${describeError(error)}) → widget updates are off until restart',
       );
-      rethrow;
-    } catch (_) {
+      return;
+    }
+    if (step == 'saving') {
       _log.warning(
         'widget update reason=$reason not shown after '
         '${sw.elapsedMilliseconds}ms: the widget storage failed (error '
-        'above) → the widget keeps its previous data',
+        'above) → the widget keeps its previous data, the next update '
+        'writes and redraws it again',
       );
-      rethrow;
+      return;
     }
-    _lastJson = json;
-    _log.info(
-      'widget updated reason=$reason ${snapshot.describe()}$waitText '
-      'in ${sw.elapsedMilliseconds}ms',
+    final safe = redactDbError(error);
+    _log.severe(
+      'widget update reason=$reason failed while $step after '
+      '${sw.elapsedMilliseconds}ms → the widget keeps its previous data, the '
+      'next update writes and redraws it again: ${describeError(safe)}',
+      safe,
+      stack,
     );
   }
 

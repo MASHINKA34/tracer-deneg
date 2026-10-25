@@ -72,6 +72,11 @@ void main() {
     await rig.settle();
     expect(await tester.runAsync(() => rowsIn(rig.db, 'expenses')), 0);
     expect(rig.container.read(sessionProvider), isA<SessionActive>());
+    final immediate = rig.storage.writes.sublist(before);
+    expect(immediate, hasLength(1));
+    expect(immediate.single.at, rig.time.now);
+    expectSignedOut(immediate.single);
+    expect(rig.reasons.last, startsWith('account data cleared'));
     await rig.time.elapse(const Duration(seconds: 3));
 
     expect(outcome, isNull);
@@ -98,21 +103,25 @@ void main() {
     expect(rig.storage.last.state, 'signedOut');
   });
 
-  testUnmounting('сессия закончилась: «Войди в Милиончик», траты на телефоне '
-      'остались', (tester) async {
+  testUnmounting('сессия закончилась: «Войди в Милиончик» сразу, без '
+      'задержки склейки, траты на телефоне остались', (tester) async {
     final rig = await mount(
       tester,
       (call) => throw StateError('unexpected ${call.method} ${call.path}'),
     );
+    final before = rig.storage.writes.length;
 
     rig.container
         .read(sessionProvider.notifier)
         .ended(SessionEndReason.refreshRejected);
     await rig.settle();
-    await rig.time.elapse(const Duration(seconds: 1));
 
+    expect(rig.storage.writes.sublist(before), hasLength(1));
+    expect(rig.storage.last.at, rig.time.now);
     expectSignedOut(rig.storage.last);
     expect(rig.reasons.last, 'session changed');
+    await rig.time.elapse(const Duration(seconds: 3));
+    expect(rig.storage.writes.sublist(before), hasLength(1));
     expect(
       rig.logs.linesOf('widget', Level.INFO).last,
       contains('because=session ended'),
@@ -120,8 +129,8 @@ void main() {
     expect(await tester.runAsync(() => rowsIn(rig.db, 'expenses')), 4);
   });
 
-  testUnmounting('удаление аккаунта: после ответа сервера - «Войди в '
-      'Милиончик»', (tester) async {
+  testUnmounting('удаление аккаунта: после ответа сервера и очистки - «Войди '
+      'в Милиончик» сразу, без задержки склейки', (tester) async {
     final rig = await mount(tester, (call) {
       if (call.path.endsWith(accountPath) && call.method == 'DELETE') {
         return const FakeReply(204);
@@ -139,9 +148,12 @@ void main() {
     for (var i = 0; i < 20 && outcome == null; i++) {
       await rig.settle();
     }
-    await rig.time.elapse(const Duration(seconds: 3));
 
     expect(outcome, isA<AccountDeleted>());
+    expect(rig.storage.last.at, rig.time.now);
+    expectSignedOut(rig.storage.last);
+    expect(rig.reasons, contains(startsWith('account data cleared')));
+    await rig.time.elapse(const Duration(seconds: 3));
     expectSignedOut(rig.storage.last);
     expect(rig.container.read(sessionProvider), isA<SessionAbsent>());
   });

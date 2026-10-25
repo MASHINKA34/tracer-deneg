@@ -193,4 +193,46 @@ void main() {
     expect(storage.writes, isEmpty);
     expect(time.active, isEmpty);
   });
+
+  test('сбой перерисовки в склеенном обновлении: error хранилища со стеком и '
+      'warning обновителя, без необработанной ошибки; следующее обновление '
+      'с теми же данными записывает и перерисовывает заново', () async {
+    final widget = updater();
+
+    widget.request(WidgetUpdateSource.expenses);
+    await time.elapse(_second);
+    storage.redrawError = StateError('launcher host is gone');
+    widget.request(WidgetUpdateSource.systemTheme);
+    await time.elapse(_second);
+
+    final severe = logs.records
+        .where((r) => r.loggerName == 'widget' && r.level == Level.SEVERE)
+        .single;
+    expect(severe.message, contains('home widget redraw request failed'));
+    expect(severe.error, isA<StateError>());
+    expect(severe.stackTrace, isNotNull);
+    expect(
+      logs.records
+          .where((r) => r.loggerName == 'widget' && r.level == Level.WARNING)
+          .single
+          .message,
+      matches(
+        RegExp(
+          r'^widget update reason=system theme changed not shown after \d+ms: '
+          r'the widget storage failed \(error above\) → the widget keeps its '
+          r'previous data, the next update writes and redraws it again$',
+        ),
+      ),
+    );
+    expect(storage.redraws, hasLength(1));
+
+    storage.redrawError = null;
+    widget.request(WidgetUpdateSource.budget);
+    await time.elapse(_second);
+
+    expect(storage.writes, hasLength(3));
+    expect(storage.writes[2].text, storage.writes[0].text);
+    expect(storage.redraws, hasLength(2));
+    expect(widgetReasons(logs.records).last, 'budget changed');
+  });
 }

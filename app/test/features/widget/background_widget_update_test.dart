@@ -214,7 +214,8 @@ void main() {
           RegExp(
             r'^widget update reason=background task sync-periodic not shown '
             r'after \d+ms: the widget storage failed \(error above\) → the '
-            r'widget keeps its previous data$',
+            r'widget keeps its previous data, the next update writes and '
+            r'redraws it again$',
           ),
         ),
       ],
