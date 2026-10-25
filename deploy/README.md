@@ -580,6 +580,32 @@ free -h
 
 После перезагрузки VPS контейнеры поднимаются сами; если нет - `sudo systemctl status docker` и `docker compose up -d --wait`.
 
+## 17. Удаление аккаунта по запросу
+
+Если человек не помнит пароль и потерял код восстановления, он пишет на `PRIVACY_CONTACT` из `deploy/.env`: страницы `/delete-account` и `/privacy` обещают удалить аккаунт вручную в течение 30 дней и предупреждают, что могут быть вопросы об аккаунте. Как проверить, что пишет владелец, решает оператор. Удаление - командой `admin.dart delete-account` во временном контейнере Dart, как в разделе 15 (зависимости скачивает первая команда оттуда). Сначала без `--yes` - команда только показывает, что будет удалено, и ничего не меняет. Из `/opt/milionchik`:
+
+```bash
+cd /opt/milionchik
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e PUB_CACHE=/src/server/.dart_tool/pub-cache --network milionchik_backend --env-file deploy/.env -v "$PWD":/src -w /src/server dart:3.13.6 sh -c 'DATABASE_URL="postgres://milionchik:${POSTGRES_PASSWORD}@db:5432/milionchik?sslmode=disable" exec dart run bin/admin.dart delete-account <логин>'
+```
+
+```
+account olga userId=<id>: nothing deleted yet, run again with --yes to delete
+  personal budget <id>: erased with 2 expenses, 1 recurring, 11 categories
+  shared budget <id>: owner, 1 other member → ownership passes to the earliest member, own expenses stay: 1
+  shared budget <id>: owner, no other members → erased with 1 expense
+  sessions: 1 → deleted
+  profile: name, birthday, password and recovery code erased; login stays taken
+```
+
+Удаление - та же команда с `--yes` после логина (`delete-account <логин> --yes`). Правила те же, что при удалении в приложении:
+
+```
+account olga userId=<id> deleted: budgetsDeleted=2 (personal=1 shared=1) budgetsTransferred=1 budgetsLeft=0 sharedExpensesKept=1 invitesRevoked=0 sessionsDeleted=1
+```
+
+Код выхода 1 и строка `no account with login <логин>` или `account <логин> is already deleted` - такого аккаунта нет или он уже удалён, ничего не удалено. Отменить удаление нельзя, вернуть данные можно только из бэкапа (12.5) вместе со всей базой.
+
 ## Приложение для этого сервера
 
 Release-сборка на Windows - корневой [README.md](../README.md), разделы «Подпись release-сборки» и «Release-сборка». Адрес сервера задаётся при сборке:

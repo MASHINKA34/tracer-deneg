@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart';
-import 'package:shared/logging.dart';
+import 'package:shared/shared.dart';
 
+import '../account/account_service.dart';
+import '../auth/auth_service.dart';
+import '../auth/password_hasher.dart';
 import '../client_errors/client_error_store.dart';
 import '../config/config.dart';
 import '../config/dotenv.dart';
@@ -33,6 +36,13 @@ Commands:
       Run every daily job of the server once now (old client error reports,
       expired and revoked invites, sessions ended more than 90 days ago).
       Exit code 1 if any job failed; the other jobs still run.
+  delete-account <login> [--yes]
+      Delete an account without its password, for a request sent to
+      PRIVACY_CONTACT. Without --yes only prints what would be deleted.
+      Same rules as deletion in the app: personal budget erased, shared
+      budgets left or passed to the earliest member (erased if nobody else
+      is left), sessions deleted. Exit code 1 if there is no such account
+      or it is already deleted.
   help
       This text.
 
@@ -58,6 +68,13 @@ final class ErrorsQuery {
   final Duration since;
   final String sinceText;
   final int limit;
+}
+
+final class DeleteAccountArgs {
+  const DeleteAccountArgs({required this.login, required this.confirmed});
+
+  final String login;
+  final bool confirmed;
 }
 
 final RegExp _age = RegExp(r'^(\d{1,6})([mhd])$');
@@ -122,6 +139,69 @@ ErrorsQuery parseErrorsArgs(List<String> args) {
   return ErrorsQuery(since: age, sinceText: since.trim(), limit: count);
 }
 
+DeleteAccountArgs parseDeleteAccountArgs(List<String> args) {
+  final positional = <String>[];
+  var confirmed = false;
+  for (final arg in args) {
+    if (arg == '--yes') {
+      confirmed = true;
+    } else if (arg.startsWith('-')) {
+      throw AdminUsageException(
+        'unknown option "${terminalSafe(arg, maxChars: 32)}"',
+      );
+    } else {
+      positional.add(arg);
+    }
+  }
+  if (positional.length != 1) {
+    throw AdminUsageException(
+      'needs exactly one <login>, got ${positional.length}',
+    );
+  }
+  final login = normalizeLogin(positional.single);
+  if (validateLogin(login) != null) {
+    throw AdminUsageException(
+      'login "${terminalSafe(maskLogin(login), maxChars: 40)}" is not valid '
+      '(3-32 characters a-z 0-9 _ .)',
+    );
+  }
+  return DeleteAccountArgs(login: login, confirmed: confirmed);
+}
+
+String _count(int n, String one, [String? many]) =>
+    '$n ${n == 1 ? one : many ?? '${one}s'}';
+
+String _sharedPlanLine(SharedBudgetPlan shared) {
+  final role = shared.isOwner ? 'owner' : 'member';
+  if (shared.otherMembers == 0) {
+    return '  shared budget ${shared.budgetId}: $role, no other members → '
+        'erased with ${_count(shared.expenses, 'expense')}';
+  }
+  final exit = shared.isOwner
+      ? 'ownership passes to the earliest member'
+      : 'leaves';
+  return '  shared budget ${shared.budgetId}: $role, '
+      '${_count(shared.otherMembers, 'other member')} → $exit, '
+      'own expenses stay: ${shared.ownExpenses}';
+}
+
+List<String> formatDeletionPlan(String login, AccountDeletionPlan plan) {
+  final personal = plan.personal;
+  return [
+    'account $login userId=${plan.userId}: nothing deleted yet, run again '
+        'with --yes to delete',
+    if (personal != null)
+      '  personal budget ${personal.budgetId}: erased with '
+          '${_count(personal.expenses, 'expense')}, '
+          '${personal.recurring} recurring, '
+          '${_count(personal.categories, 'category', 'categories')}',
+    for (final shared in plan.shared) _sharedPlanLine(shared),
+    '  sessions: ${plan.sessions} → deleted',
+    '  profile: name, birthday, password and recovery code erased; login '
+        'stays taken',
+  ];
+}
+
 Future<int> runAdmin(
   List<String> args, {
   required Map<String, String> environment,
@@ -136,7 +216,7 @@ Future<int> runAdmin(
     return args.isEmpty ? adminExitUsage : adminExitOk;
   }
   final command = args.first;
-  if (command != 'errors' && command != 'jobs') {
+  if (!const {'errors', 'jobs', 'delete-account'}.contains(command)) {
     _log.severe(
       'unknown command "${terminalSafe(command, maxChars: 32)}" '
       '→ see usage below',
@@ -146,11 +226,15 @@ Future<int> runAdmin(
   }
 
   ErrorsQuery? query;
+  DeleteAccountArgs? deletion;
   try {
-    if (command == 'errors') {
-      query = parseErrorsArgs(args.sublist(1));
-    } else {
-      _checkJobsArgs(args.sublist(1));
+    switch (command) {
+      case 'errors':
+        query = parseErrorsArgs(args.sublist(1));
+      case 'jobs':
+        _checkJobsArgs(args.sublist(1));
+      default:
+        deletion = parseDeleteAccountArgs(args.sublist(1));
     }
   } on AdminUsageException catch (e) {
     _log.severe('$command: ${e.message} → see usage below');
@@ -185,6 +269,15 @@ Future<int> runAdmin(
   } on FormatException catch (e) {
     _log.severe('DATABASE_URL is invalid: ${e.message}');
     return adminExitFailure;
+  }
+
+  if (deletion != null) {
+    return _runDeleteAccount(
+      config,
+      deletion,
+      out: out,
+      connectAttempts: connectAttempts,
+    );
   }
 
   if (query == null) {
@@ -305,6 +398,89 @@ Future<int> _runJobs(
     return failed.isEmpty ? adminExitOk : adminExitFailure;
   } finally {
     await db.close(reason: 'admin jobs done');
+  }
+}
+
+Future<int> _runDeleteAccount(
+  DatabaseConfig config,
+  DeleteAccountArgs args, {
+  required void Function(String line) out,
+  required int connectAttempts,
+}) async {
+  final sw = Stopwatch()..start();
+  final login = args.login;
+  final masked = maskLogin(login);
+  _log.info(
+    'admin delete-account login=$masked confirmed=${args.confirmed} '
+    'db=${config.masked}',
+  );
+  final db = await _connect(config, connectAttempts);
+  if (db == null) return adminExitFailure;
+  final account = AccountService(db: db, hasher: PasswordHasher());
+  try {
+    if (!args.confirmed) {
+      final plan = await account.planDeletionByLogin(login);
+      formatDeletionPlan(login, plan).forEach(out);
+      _log.info(
+        'admin delete-account plan shown login=$masked userId=${plan.userId} '
+        'personal=${plan.personal == null ? 0 : 1} '
+        'shared=${plan.shared.length} sessions=${plan.sessions} '
+        'in ${sw.elapsedMilliseconds}ms → exit $adminExitOk',
+      );
+      return adminExitOk;
+    }
+    final (:userId, :deletion) = await account.deleteAccountByAdmin(login);
+    out(
+      'account $login userId=$userId deleted: budgetsDeleted='
+      '${deletion.personalBudgetsDeleted + deletion.sharedBudgetsDeleted} '
+      '(personal=${deletion.personalBudgetsDeleted} '
+      'shared=${deletion.sharedBudgetsDeleted}) '
+      'budgetsTransferred=${deletion.sharedBudgetsTransferred} '
+      'budgetsLeft=${deletion.sharedBudgetsLeft} '
+      'sharedExpensesKept=${deletion.sharedExpensesKept} '
+      'invitesRevoked=${deletion.invitesRevoked} '
+      'sessionsDeleted=${deletion.sessionsDeleted}',
+    );
+    _log.info(
+      'admin delete-account done login=$masked userId=$userId '
+      'in ${sw.elapsedMilliseconds}ms → exit $adminExitOk',
+    );
+    return adminExitOk;
+  } on AccountNotFound catch (e) {
+    out(
+      e.alreadyDeleted
+          ? 'account $login is already deleted'
+          : 'no account with login $login',
+    );
+    final what = e.alreadyDeleted
+        ? 'account $masked is already deleted'
+        : 'no account with login $masked';
+    _log.severe(
+      'admin delete-account: $what → nothing deleted, exit $adminExitFailure',
+    );
+    return adminExitFailure;
+  } on AuthFailure catch (e) {
+    out(
+      'account $login changed while deleting, nothing deleted; run the '
+      'command again',
+    );
+    _log.severe(
+      'admin delete-account rejected reason=${e.reason.code} login=$masked '
+      'in ${sw.elapsedMilliseconds}ms → nothing deleted, '
+      'exit $adminExitFailure',
+    );
+    return adminExitFailure;
+  } catch (e, st) {
+    _log.severe(
+      'admin delete-account failed login=$masked '
+      'in ${sw.elapsedMilliseconds}ms: ${describeError(e)} '
+      '→ exit $adminExitFailure',
+      e,
+      st,
+    );
+    return adminExitFailure;
+  } finally {
+    await db.close(reason: 'admin delete-account done');
   }
 }
 

@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:server/auth/auth_service.dart';
 import 'package:server/auth/password_hasher.dart';
 import 'package:server/auth/tokens.dart';
+import 'package:server/config/config.dart';
 import 'package:server/db/database.dart';
 import 'package:server/db/migrator.dart';
 import 'package:server/http/router.dart';
 import 'package:server/sync/sync_notifier.dart';
 import 'package:shelf/shelf.dart';
+import 'package:test/test.dart';
 
 import 'test_support.dart';
 
@@ -37,8 +39,15 @@ class AuthHarness {
     AccessTokens? accessTokens,
     SyncNotifier notifier = const NoopSyncNotifier(),
     DateTime Function()? now,
+    String? databaseUrl,
   }) async {
-    final db = await openScratchDatabase();
+    final Database db;
+    if (databaseUrl == null) {
+      db = await openScratchDatabase();
+    } else {
+      db = Database.open(DatabaseConfig.parse(databaseUrl));
+      addTearDown(() => db.close(reason: 'test done'));
+    }
     await Migrator(db, directory: Directory('migrations')).run();
     final auth = AuthService(
       db: db,

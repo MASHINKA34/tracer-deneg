@@ -72,6 +72,60 @@ class AccountDeletion {
 
 enum _SharedExit { left, transferred, deleted }
 
+class AccountNotFound implements Exception {
+  const AccountNotFound({required this.alreadyDeleted});
+
+  final bool alreadyDeleted;
+
+  @override
+  String toString() =>
+      'AccountNotFound: ${alreadyDeleted ? 'already deleted' : 'no such login'}';
+}
+
+class PersonalBudgetPlan {
+  const PersonalBudgetPlan({
+    required this.budgetId,
+    required this.expenses,
+    required this.recurring,
+    required this.categories,
+  });
+
+  final String budgetId;
+  final int expenses;
+  final int recurring;
+  final int categories;
+}
+
+class SharedBudgetPlan {
+  const SharedBudgetPlan({
+    required this.budgetId,
+    required this.isOwner,
+    required this.otherMembers,
+    required this.ownExpenses,
+    required this.expenses,
+  });
+
+  final String budgetId;
+  final bool isOwner;
+  final int otherMembers;
+  final int ownExpenses;
+  final int expenses;
+}
+
+class AccountDeletionPlan {
+  const AccountDeletionPlan({
+    required this.userId,
+    required this.personal,
+    required this.shared,
+    required this.sessions,
+  });
+
+  final String userId;
+  final PersonalBudgetPlan? personal;
+  final List<SharedBudgetPlan> shared;
+  final int sessions;
+}
+
 class AccountService {
   AccountService({required this.db, required this.hasher});
 
@@ -289,6 +343,117 @@ class AccountService {
       userId: userId,
       storedPasswordHash: storedPasswordHash,
       origin: origin,
+    );
+  }
+
+  Future<AccountDeletionPlan> planDeletionByLogin(String login) async {
+    final sw = Stopwatch()..start();
+    final normalized = normalizeLogin(login);
+    final masked = maskLogin(normalized);
+    final user = await _findForAdmin(normalized, masked);
+    final context = {'userId': user.id};
+    final personal = await db.execute(
+      'SELECT b.id, '
+      '(SELECT count(*)::int FROM expenses e WHERE e.budget_id = b.id '
+      'AND e.deleted_at IS NULL), '
+      '(SELECT count(*)::int FROM recurring_rules r WHERE r.budget_id = b.id '
+      'AND r.deleted_at IS NULL), '
+      '(SELECT count(*)::int FROM categories c WHERE c.budget_id = b.id '
+      'AND c.deleted_at IS NULL) '
+      r"FROM budgets b WHERE b.owner_id = $1::uuid AND b.kind = 'personal'",
+      parameters: [user.id],
+      what: 'plan deletion: personal budget',
+      logParams: context,
+    );
+    final shared = await db.execute(
+      r'SELECT b.id, (b.owner_id = m.user_id OR m.role = $2), '
+      '(SELECT count(*)::int FROM budget_members o WHERE o.budget_id = b.id '
+      r'AND o.user_id <> $1::uuid AND o.left_at IS NULL), '
+      '(SELECT count(*)::int FROM expenses e WHERE e.budget_id = b.id '
+      r'AND e.author_id = $1::uuid AND e.deleted_at IS NULL), '
+      '(SELECT count(*)::int FROM expenses e WHERE e.budget_id = b.id '
+      'AND e.deleted_at IS NULL) '
+      'FROM budget_members m JOIN budgets b ON b.id = m.budget_id '
+      r'WHERE m.user_id = $1::uuid AND m.left_at IS NULL '
+      "AND b.kind = 'shared' AND b.deleted_at IS NULL ORDER BY b.id",
+      parameters: [user.id, MemberRole.owner.name],
+      what: 'plan deletion: shared budgets',
+      logParams: context,
+    );
+    final sessions = await db.execute(
+      r'SELECT count(*)::int FROM sessions WHERE user_id = $1::uuid',
+      parameters: [user.id],
+      what: 'plan deletion: sessions',
+      logParams: context,
+    );
+    final plan = AccountDeletionPlan(
+      userId: user.id,
+      personal: personal.isEmpty
+          ? null
+          : PersonalBudgetPlan(
+              budgetId: personal.first[0]! as String,
+              expenses: personal.first[1]! as int,
+              recurring: personal.first[2]! as int,
+              categories: personal.first[3]! as int,
+            ),
+      shared: [
+        for (final row in shared)
+          SharedBudgetPlan(
+            budgetId: row[0]! as String,
+            isOwner: row[1]! as bool,
+            otherMembers: row[2]! as int,
+            ownExpenses: row[3]! as int,
+            expenses: row[4]! as int,
+          ),
+      ],
+      sessions: sessions.first.first! as int,
+    );
+    _log.info(
+      'account deletion planned userId=${user.id} login=$masked '
+      'personal=${plan.personal == null ? 0 : 1} shared=${plan.shared.length} '
+      'sessions=${plan.sessions} in ${sw.elapsedMilliseconds}ms',
+    );
+    return plan;
+  }
+
+  Future<({String userId, AccountDeletion deletion})> deleteAccountByAdmin(
+    String login,
+  ) async {
+    final sw = Stopwatch()..start();
+    final normalized = normalizeLogin(login);
+    final masked = maskLogin(normalized);
+    final user = await _findForAdmin(normalized, masked);
+    final deletion = await _deleteVerified(
+      sw,
+      userId: user.id,
+      storedPasswordHash: user.passwordHash,
+      origin: {'via': 'admin', 'login': masked},
+    );
+    return (userId: user.id, deletion: deletion);
+  }
+
+  Future<({String id, String passwordHash})> _findForAdmin(
+    String normalized,
+    String masked,
+  ) async {
+    final rows = await db.execute(
+      r'SELECT id, password_hash, deleted_at IS NOT NULL FROM users '
+      r'WHERE lower(login) = $1',
+      parameters: [normalized],
+      what: 'find user by login for admin deletion',
+      logParams: {'login': masked},
+    );
+    if (rows.isEmpty || rows.first[2] == true) {
+      final alreadyDeleted = rows.isNotEmpty;
+      _log.fine(
+        'admin account lookup login=$masked → '
+        '${alreadyDeleted ? 'already deleted' : 'no such login'}',
+      );
+      throw AccountNotFound(alreadyDeleted: alreadyDeleted);
+    }
+    return (
+      id: rows.first[0]! as String,
+      passwordHash: rows.first[1]! as String,
     );
   }
 
