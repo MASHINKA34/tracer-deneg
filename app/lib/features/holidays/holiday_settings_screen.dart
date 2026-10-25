@@ -357,7 +357,7 @@ class _BirthdayRow extends StatelessWidget {
                       final widest = [
                         FittingText.widestWord(
                           context,
-                          l10n.holidaysBirthdayTitle,
+                          l10n.holidaysBirthdayTitle.replaceAll(' ', ' '),
                           AppText.labelM,
                         ),
                         FittingText.widestWord(
