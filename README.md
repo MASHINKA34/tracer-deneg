@@ -203,6 +203,80 @@ flutter drive --profile --driver=test_driver/integration_test.dart --target=inte
   ```
 - если повторный `flutter run` при уже открытом приложении завершается ошибкой `Activity class {ru.milionchik.app/…MainActivity} does not exist` — это система эмулятора перезапустилась (падает снимок задачи старого экземпляра); запустить `flutter run` ещё раз.
 
+### Подпись release-сборки
+
+Release-сборку (`flutter build apk --release`) Gradle подписывает ключом, который описан в `app/android/key.properties`. Ни ключа (`.jks`), ни `key.properties` в репозитории нет и быть не должно: git их игнорирует (`key.properties`, `*.jks`, `*.keystore` в `.gitignore` и `app/android/.gitignore`). Debug- и profile-сборкам (`flutter run`, `flutter build apk --debug`, `flutter build apk --profile`, integration-тесты и замер кадров выше) ключ не нужен - они подписываются debug-ключом Android SDK.
+
+Без `key.properties` release-сборка останавливается в первые секунды:
+
+```
+Execution failed for task ':app:checkReleaseSigning'.
+> Release signing is not configured: D:\GEYDEV\tracer-deneg\app\android\key.properties not found. Create it with storeFile, storePassword, keyAlias, keyPassword as described in README.md (section "Подпись release-сборки"). Debug and profile builds do not need it.
+```
+
+**1. Создать ключ** - один раз на всю жизнь приложения. `keytool` входит в JDK; если команды нет в `PATH`, путь к JDK - в строке `Java binary at:` из `flutter doctor -v`, `keytool.exe` лежит рядом с `java.exe`. Ключ кладётся вне папки проекта:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\keys"
+keytool -genkey -v -keystore "$env:USERPROFILE\keys\milionchik-upload.jks" -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+keytool спросит пароль хранилища (дважды, не короче 6 символов), имя и организацию (можно пропустить через Enter), подтверждение `yes` и в конце пароль ключа (Enter - такой же, как у хранилища). Пароли лучше из латиницы и цифр: их нужно одинаково ввести и в keytool, и в `key.properties`. Предупреждение `The JKS keystore uses a proprietary format…` в конце - нормально, формат JKS взят из инструкции Flutter. `-validity 10000` - около 27 лет (Android советует не меньше 25).
+
+**2. Сохранить ключ и пароли.**
+
+- Файл `milionchik-upload.jks` и оба пароля - в менеджер паролей или в зашифрованную копию на втором носителе. Не в репозиторий, не в чат и не в почту.
+- Потерять нельзя: Android не ставит обновление, подписанное другим ключом, поверх установленного приложения - его придётся удалить, и данные на телефоне, которые не успели уйти на сервер, пропадут. Повторный `keytool` с теми же паролями создаёт другой ключ, старый так не восстановить. Если приложение публикуется в Google Play с Play App Signing, этот ключ - ключ загрузки: при потере можно запросить его сброс в Play Console.
+- Файл вместе с паролем - это право выпускать «обновления» Милиончика: никому не передавать.
+
+**3. Создать `app/android/key.properties`** из корня репозитория и вписать значения:
+
+```powershell
+Set-Content -Path app\android\key.properties -Value 'storeFile=', 'storePassword=', 'keyAlias=', 'keyPassword=' -Encoding ascii
+notepad app\android\key.properties
+```
+
+```properties
+storeFile=
+storePassword=
+keyAlias=
+keyPassword=
+```
+
+- `storeFile` - полный путь к `.jks` через прямые слэши: `C:/Users/<имя>/keys/milionchik-upload.jks`. Одиночный `\` в `.properties` - служебный символ: `C:\Users\…` превратится в `C:Users…`, и сборка скажет `keystore file not found` (двойной `\\` тоже работает).
+- `storePassword` и `keyPassword` - пароли из шага 1 (если на пароль ключа нажимали Enter - оба одинаковые).
+- `keyAlias` - значение `-alias` из шага 1, то есть `upload`.
+
+**4. Проверить, что файл не попадёт в git:**
+
+```powershell
+git check-ignore -v app/android/key.properties
+```
+
+Должно вывести `app/android/.gitignore:12:key.properties	app/android/key.properties`. Пустой вывод - файл не игнорируется, ничего не коммитить.
+
+**5. Собрать и проверить подпись:**
+
+```powershell
+cd app
+flutter build apk --release
+& "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0\apksigner.bat" verify --print-certs build\app\outputs\flutter-apk\app-release.apk
+keytool -list -v -keystore "$env:USERPROFILE\keys\milionchik-upload.jks" -alias upload
+```
+
+В выводе сборки - строка `[signing] release signing from …\app\android\key.properties: storeFile=…\milionchik-upload.jks keyAlias=upload` (паролей в ней нет) и `√ Built build\app\outputs\flutter-apk\app-release.apk`. `apksigner` печатает `Signer #1 certificate SHA-256 digest: …` - это должен быть тот же отпечаток, что `SHA256:` в выводе `keytool -list` (там заглавными и через двоеточия).
+
+Если сборка упала:
+
+| В выводе | Что не так |
+|---|---|
+| `Release signing is not configured: …\key.properties not found` | нет файла `app/android/key.properties` |
+| `Release signing: …\key.properties has no value for storePassword, keyPassword` | у перечисленных ключей пустое значение или нет строки |
+| `Release signing: keystore file not found: <путь>` | `storeFile` указывает не туда (часто - одиночные `\` в пути) |
+| `Failed to read key upload from store "…": Keystore was tampered with, or password was incorrect` | неверный `storePassword` |
+| `Failed to read key upload from store "…": Cannot recover key` | неверный `keyPassword` |
+| `No key with alias '…' found in keystore …` | неверный `keyAlias` |
+
 ## Логи
 
 Одна строка — одно событие, формат общий для приложения и сервера:
