@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared/shared.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../decor/decor_painter.dart';
+import '../decor/decor_animation.dart';
 import '../icons/app_icon.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
@@ -86,15 +86,11 @@ class MonthCard extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(
-                child: RepaintBoundary(
-                  child: CustomPaint(
-                    painter: DecorPainter(
-                      mood: mood,
-                      brightness: theme.brightness,
-                      phase: decorPhase,
-                      cornerRadius: _radius,
-                    ),
-                  ),
+                child: AnimatedDecor(
+                  mood: mood,
+                  brightness: theme.brightness,
+                  phase: decorPhase,
+                  cornerRadius: _radius,
                 ),
               ),
               Padding(

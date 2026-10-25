@@ -34,6 +34,73 @@ enum DecorLayer {
   bool get isSeason => index <= DecorLayer.autumn.index;
 }
 
+enum DecorRegion { top, left, right, bottom }
+
+enum DecorMotion {
+  blink,
+  swing,
+  beat,
+  twinkle,
+  flutter,
+  spin,
+  hop,
+  sway,
+  knock,
+  flash,
+  rise,
+  string,
+  ring,
+  fall,
+  confetti,
+  bob,
+  descend,
+  thread,
+  flapLeft,
+  flapRight,
+}
+
+final class DecorMotionSpan {
+  const DecorMotionSpan(
+    this.motion,
+    this.region,
+    this.start,
+    this.end,
+    this.pivotX,
+    this.pivotY, {
+    this.order = 0,
+    this.amount = 0,
+  });
+
+  final DecorMotion motion;
+  final DecorRegion region;
+  final int start;
+  final int end;
+  final double pivotX;
+  final double pivotY;
+  final int order;
+  final double amount;
+
+  bool covers(DecorRegion r, int index) =>
+      r == region && index >= start && index < end;
+
+  DecorMotionSpan shifted(double dx) => DecorMotionSpan(
+    motion,
+    region,
+    start,
+    end,
+    pivotX + dx,
+    pivotY,
+    order: order,
+    amount: amount,
+  );
+
+  @override
+  String toString() =>
+      'DecorMotionSpan(${motion.name} ${region.name}[$start..$end) '
+      'pivot=(${pivotX.toStringAsFixed(2)}, ${pivotY.toStringAsFixed(2)}) '
+      'order=$order amount=$amount)';
+}
+
 /// Узор по областям карточки — как `seasonRegions` / `holidayRegions`
 /// генератора в JS: [top] — от левого верхнего угла карточки, [left] —
 /// от (0, 60), [right] — от (W − 12, 60), [bottom] — от (0, H − 12).
@@ -45,6 +112,7 @@ final class DecorRegions {
     required this.bottom,
     required this.width,
     required this.height,
+    this.motions = const [],
   });
 
   final List<DecorElement> top;
@@ -53,9 +121,17 @@ final class DecorRegions {
   final List<DecorElement> bottom;
   final double width;
   final double height;
+  final List<DecorMotionSpan> motions;
 
   int get elementCount =>
       top.length + left.length + right.length + bottom.length;
+
+  List<DecorElement> of(DecorRegion region) => switch (region) {
+    DecorRegion.top => top,
+    DecorRegion.left => left,
+    DecorRegion.right => right,
+    DecorRegion.bottom => bottom,
+  };
 }
 
 /// Ширина карточки, под которую нарисован декор в Figma.
@@ -96,6 +172,10 @@ final class _Gen {
   final double dx;
 
   List<DecorElement> _out = [];
+  DecorRegion _region = DecorRegion.top;
+  final Map<List<DecorElement>, DecorRegion> _regions = Map.identity();
+  final List<DecorMotionSpan> _motions = [];
+  final Map<DecorMotion, int> _orders = {};
 
   double rnd() => _random.next();
 
@@ -107,6 +187,11 @@ final class _Gen {
     final left = <DecorElement>[];
     final right = <DecorElement>[];
     final bottom = <DecorElement>[];
+    _regions
+      ..[top] = DecorRegion.top
+      ..[left] = DecorRegion.left
+      ..[right] = DecorRegion.right
+      ..[bottom] = DecorRegion.bottom;
     if (layer.isSeason) {
       _season(top, left, right, bottom);
     } else {
@@ -119,26 +204,77 @@ final class _Gen {
       bottom: bottom,
       width: w,
       height: h,
+      motions: List.unmodifiable(_motions),
     );
   }
 
   /// Рисует [body] в [target] (порядок фигур = порядок в JS).
   void into(List<DecorElement> target, void Function() body) {
     final saved = _out;
+    final savedRegion = _region;
     _out = target;
+    _region = _regions[target]!;
     body();
     _out = saved;
+    _region = savedRegion;
   }
 
   /// Фигуры из [body] — со сдвигом на [dx] по x (композиция у стрелок).
   void shifted(void Function() body) {
     final start = _out.length;
+    final motionsStart = _motions.length;
     body();
     if (dx == 0) return;
     for (var i = start; i < _out.length; i++) {
       _out[i] = _translate(_out[i], dx);
     }
+    for (var i = motionsStart; i < _motions.length; i++) {
+      _motions[i] = _motions[i].shifted(dx);
+    }
   }
+
+  int nextOrder(DecorMotion m) {
+    final order = _orders[m] ?? 0;
+    _orders[m] = order + 1;
+    return order;
+  }
+
+  void span(
+    DecorMotion m,
+    int start,
+    int end,
+    (double, double) pivot, {
+    int? order,
+    double amount = 0,
+  }) => _motions.add(
+    DecorMotionSpan(
+      m,
+      _region,
+      start,
+      end,
+      pivot.$1,
+      pivot.$2,
+      order: order ?? nextOrder(m),
+      amount: amount,
+    ),
+  );
+
+  void moving(
+    DecorMotion m,
+    (double, double) pivot,
+    void Function() body, {
+    double amount = 0,
+  }) {
+    final start = _out.length;
+    body();
+    span(m, start, _out.length, pivot, amount: amount);
+  }
+
+  double get fallDistance => switch (_region) {
+    DecorRegion.top => 10,
+    DecorRegion.left || DecorRegion.right => 22,
+    DecorRegion.bottom => 6,
+  };
 
   // ---------- примитивы (как в JS) ----------
 
