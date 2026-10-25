@@ -104,10 +104,7 @@ class _BirthdaySheetState extends State<BirthdaySheet> {
       _month = month;
       if (day != null && day > days) _day = days;
     });
-    _log.fine(
-      'birthday sheet month selected'
-      '${day != null && day > days ? ', day moved to the last day of it' : ''}',
-    );
+    _log.fine('birthday sheet month selected');
   }
 
   void _selectDay(int day) {

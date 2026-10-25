@@ -305,6 +305,23 @@ void main() {
 
     expect(find.text('29 февраля'), findsOneWidget);
     expect(server.patches.single, {'birthdayMonth': 2, 'birthdayDay': 29});
+    final sheetLines = [
+      for (final line in h.linesOf('holidays'))
+        if (line.contains('birthday sheet'))
+          line.substring(line.indexOf('birthday sheet')),
+    ];
+    expect(sheetLines, hasLength(4));
+    expect(
+      sheetLines,
+      everyElement(
+        matches(
+          RegExp(
+            r'^birthday sheet (opened, date not set|month selected|day '
+            r'selected|done after \d+ms)$',
+          ),
+        ),
+      ),
+    );
   });
 
   testUnmounting('без сети: переключатель меняется сразу, PATCH не прошёл - '
