@@ -1,0 +1,35 @@
+{
+	log {
+		output stderr
+		format console {
+			time_format iso8601
+			level_format upper
+		}
+		level INFO
+	}
+}
+
+http://{$DOMAIN} {
+	header -Server
+	redir https://{host}{uri} 308
+}
+
+{$DOMAIN} {
+	header {
+		defer
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+		-Via
+		-X-Powered-By
+	}
+
+	@app path /api/* /privacy /delete-account
+	handle @app {
+		reverse_proxy server:8080
+	}
+
+	handle {
+		respond 404
+	}
+}
