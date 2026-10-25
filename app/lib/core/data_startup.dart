@@ -24,6 +24,7 @@ import '../features/holidays/holiday_banner_controller.dart';
 import '../features/profile/theme_mode.dart';
 import '../features/reminders/reminder_settings.dart';
 import '../features/startup/database_error_app.dart';
+import '../features/widget/widget_updater.dart';
 import 'auth_gate.dart';
 import 'clock.dart';
 import 'isolate_lock.dart';
@@ -33,6 +34,7 @@ import 'logging/provider_logger.dart';
 import 'recurring_triggers.dart';
 import 'reminder_triggers_scope.dart';
 import 'sync_triggers_scope.dart';
+import 'widget_triggers_scope.dart';
 
 final _log = Logger('app');
 
@@ -260,6 +262,7 @@ Widget appRoot(
         themeModeProvider.overrideWithBuild((ref, _) => themeMode),
         reminderSettingsProvider.overrideWithBuild((ref, _) => reminders),
         signInRequiredProvider.overrideWithValue(_signInRequired(data)),
+        homeWidgetUpdateOverride(),
         if (session != null)
           sessionProvider.overrideWithBuild(
             (ref, _) => SessionActive(session.user),
@@ -285,7 +288,9 @@ Widget appRoot(
       child: const RecurringTriggersScope(
         child: ErrorReportTriggersScope(
           child: SyncTriggersScope(
-            child: ReminderTriggersScope(child: MilionchikApp()),
+            child: ReminderTriggersScope(
+              child: WidgetTriggersScope(child: MilionchikApp()),
+            ),
           ),
         ),
       ),
