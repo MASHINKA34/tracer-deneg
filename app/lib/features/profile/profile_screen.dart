@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/router.dart';
+import '../../core/web_links.dart';
 import '../../data/api/api_error_text.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/db/redact_db_error.dart';
@@ -207,6 +208,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _openPrivacy() async {
+    final opened = await ref
+        .read(webLinksProvider)
+        .open(WebPage.privacy, from: WebLinkSource.profile);
+    if (!mounted || opened) return;
+    _showSnackbar(AppLocalizations.of(context).linkOpenFailed);
+  }
+
   void _showSnackbar(String text) => showAppSnackbar(
     context,
     text: text,
@@ -357,6 +366,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           icon: AppIcons.message,
                           title: l10n.profileSendLogs,
                           onTap: _sendLogs,
+                        ),
+                        Semantics(
+                          link: true,
+                          label: l10n.a11yWebLink(l10n.linkPrivacy),
+                          excludeSemantics: true,
+                          onTap: _openPrivacy,
+                          child: ListRow(
+                            icon: AppIcons.lock,
+                            title: l10n.linkPrivacy,
+                            onTap: _openPrivacy,
+                          ),
                         ),
                         ListRow(
                           icon: AppIcons.logOut,
