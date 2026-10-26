@@ -114,7 +114,7 @@ void main() {
               'expense',
           '  sessions: 1 → deleted',
           '  profile: name, birthday, password and recovery code erased; login '
-              'stays taken',
+              'released, it can be registered again',
         ]),
       );
       expect(
@@ -222,10 +222,7 @@ void main() {
     out.clear();
     expect(await admin(['olga']), adminExitFailure);
     expect(await admin(['olga', '--yes']), adminExitFailure);
-    expect(out, [
-      'account olga is already deleted',
-      'account olga is already deleted',
-    ]);
+    expect(out, ['no account with login olga', 'no account with login olga']);
   });
 
   test('неверные аргументы → справка и код 64, база не открывается', () async {

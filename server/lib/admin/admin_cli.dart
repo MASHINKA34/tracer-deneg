@@ -198,7 +198,7 @@ List<String> formatDeletionPlan(String login, AccountDeletionPlan plan) {
     for (final shared in plan.shared) _sharedPlanLine(shared),
     '  sessions: ${plan.sessions} → deleted',
     '  profile: name, birthday, password and recovery code erased; login '
-        'stays taken',
+        'released, it can be registered again',
   ];
 }
 

@@ -11,6 +11,9 @@ final _log = Logger('account');
 
 const String deletedMemberName = 'Удалённый участник';
 
+String deletedAccountLogin(String userId) =>
+    'deleted.${userId.toLowerCase().replaceAll('-', '')}';
+
 const String _userColumns =
     'id, login, display_name, birthday_month, birthday_day, '
     'holidays_enabled, holidays_disabled, created_at, seq';
@@ -464,16 +467,18 @@ class AccountService {
     required Map<String, Object?> origin,
   }) async {
     final steps = <String>[];
+    String? releasedLogin;
     final deletion = await db.transaction('delete account', (tx) async {
       steps.clear();
       final locked = await tx.execute(
-        r'SELECT 1 FROM users WHERE id = $1::uuid AND deleted_at IS NULL '
+        r'SELECT login FROM users WHERE id = $1::uuid AND deleted_at IS NULL '
         r'AND password_hash = $2 FOR UPDATE',
         parameters: [userId, storedPasswordHash],
         what: 'lock user for account deletion',
         logParams: {'userId': userId},
       );
       if (locked.isEmpty) return null;
+      releasedLogin = locked.first.first! as String;
 
       final personal = await tx.execute(
         r'DELETE FROM budgets '
@@ -536,11 +541,13 @@ class AccountService {
       await tx.execute(
         r'UPDATE users SET deleted_at = now(), display_name = $2, '
         r'birthday_month = NULL, birthday_day = NULL, '
-        r"password_hash = '', recovery_hash = '' WHERE id = $1::uuid",
-        parameters: [userId, deletedMemberName],
+        r"password_hash = '', recovery_hash = '', login = $3 "
+        r'WHERE id = $1::uuid',
+        parameters: [userId, deletedMemberName, deletedAccountLogin(userId)],
         what: 'mark user deleted and clear profile',
         logParams: {'userId': userId},
       );
+      steps.add('login released userId=$userId');
       final sessions = await tx.execute(
         r'DELETE FROM sessions WHERE user_id = $1::uuid',
         parameters: [userId],
@@ -582,6 +589,10 @@ class AccountService {
     for (final step in steps) {
       _log.info('account deletion: $step');
     }
+    _log.fine(
+      'account deletion: released login=${maskLogin(releasedLogin)} '
+      'userId=$userId → free for new registrations',
+    );
     final budgetsDeleted =
         deletion.personalBudgetsDeleted + deletion.sharedBudgetsDeleted;
     _log.info(

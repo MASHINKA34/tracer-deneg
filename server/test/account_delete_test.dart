@@ -340,7 +340,7 @@ void main() {
       expect(profile[0], deletedMemberName);
       expect(profile[0], 'Удалённый участник');
       expect(profile.sublist(1, 4), [null, null, true]);
-      expect(profile[4], 'olga');
+      expect(profile[4], deletedAccountLogin(olga.id));
       expect(profile[5]! as int, greaterThan(seqBefore));
       expect(profile.sublist(6), ['', '']);
       expect(

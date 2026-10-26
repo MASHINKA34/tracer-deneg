@@ -49,9 +49,9 @@ void main() {
     Future<bool> veraDeleted() async =>
         await web.count(
           "SELECT count(*)::int FROM users WHERE login = 'vera' "
-          'AND deleted_at IS NOT NULL',
+          'AND deleted_at IS NULL',
         ) ==
-        1;
+        0;
 
     void expectPayloadTooLarge(WebPage page) {
       expect(page.status, 413, reason: '$page');

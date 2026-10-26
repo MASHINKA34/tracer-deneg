@@ -22,9 +22,9 @@ void main() {
   Future<bool> annaDeleted() async =>
       await web.count(
         "SELECT count(*)::int FROM users WHERE login = 'anna' "
-        'AND deleted_at IS NOT NULL',
+        'AND deleted_at IS NULL',
       ) ==
-      1;
+      0;
 
   void expectTooMany(WebPage page, String retryAfter, String reason) {
     expect(page.status, 429, reason: '$page');
