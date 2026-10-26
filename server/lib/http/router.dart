@@ -132,6 +132,7 @@ Handler buildHandler({
       '/api/v1/invites/join',
       const Pipeline()
           .addMiddleware(requireAuth)
+          .addMiddleware(requestLimits.inviteJoinAttempts())
           .addHandler(joinBudgetHandler(budgets)),
     )
     ..post(

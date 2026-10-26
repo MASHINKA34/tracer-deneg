@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 import 'package:shelf/shelf.dart';
 
+import '../auth/auth_middleware.dart';
 import '../http/json.dart';
 import 'sliding_window.dart';
 import 'trusted_proxies.dart';
@@ -16,12 +17,16 @@ const int loginFailureLimit = 5;
 const Duration loginFailureWindow = Duration(minutes: 15);
 const int authRequestsPerIpLimit = 30;
 const int clientErrorRequestsPerIpLimit = 20;
+const int inviteJoinFailureLimit = 10;
+const Duration inviteJoinFailureWindow = Duration(minutes: 15);
+const int inviteJoinRequestsPerIpLimit = 30;
 const Duration ipRequestWindow = Duration(minutes: 1);
 const int maxRequestBodyBytes = 1024 * 1024;
 
 const String _authPath = 'api/v1/auth';
 const String _accountPath = 'api/v1/account';
 const String _clientErrorsPath = 'api/v1/client-errors';
+const String _inviteJoinPath = 'api/v1/invites/join';
 
 class RequestBodyTooLarge implements Exception {
   RequestBodyTooLarge(this.limit, this.received);
@@ -56,6 +61,18 @@ class RequestLimits {
          limit: clientErrorRequestsPerIpLimit,
          window: ipRequestWindow,
          now: now,
+       ),
+       inviteJoinFailures = SlidingWindowLimiter(
+         name: 'invite-join-failures',
+         limit: inviteJoinFailureLimit,
+         window: inviteJoinFailureWindow,
+         now: now,
+       ),
+       inviteJoinRequests = SlidingWindowLimiter(
+         name: 'invite-join-ip',
+         limit: inviteJoinRequestsPerIpLimit,
+         window: ipRequestWindow,
+         now: now,
        );
 
   final TrustedProxies trustedProxies;
@@ -63,6 +80,8 @@ class RequestLimits {
   final SlidingWindowLimiter loginFailures;
   final SlidingWindowLimiter authRequests;
   final SlidingWindowLimiter clientErrorRequests;
+  final SlidingWindowLimiter inviteJoinFailures;
+  final SlidingWindowLimiter inviteJoinRequests;
 
   Map<String, Object?> toLogContext() => {
     'loginFailures':
@@ -71,6 +90,10 @@ class RequestLimits {
     'authCovers': '/auth/*,/account',
     'clientErrors':
         '$clientErrorRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
+    'inviteJoinFailures':
+        '$inviteJoinFailureLimit/${inviteJoinFailureWindow.inMinutes}m per user',
+    'inviteJoin':
+        '$inviteJoinRequestsPerIpLimit/${ipRequestWindow.inMinutes}m per IP',
     'maxBodyBytes': maxBodyBytes,
     'trustedProxies': trustedProxies.describe(),
     'store': 'in-memory',
@@ -204,7 +227,8 @@ class RequestLimits {
         }
 
         final text = await response.readAsString();
-        if (_errorCodeOf(text, operation) != ApiErrorCode.badCredentials.code) {
+        if (_errorCodeOf(text, operation, 401) !=
+            ApiErrorCode.badCredentials.code) {
           loginFailures.forget(key, attempt);
           _log.fine(
             '$operation attempt not counted: 401 without bad_credentials '
@@ -230,6 +254,76 @@ class RequestLimits {
         return response.change(body: text);
       };
 
+  Middleware inviteJoinAttempts() =>
+      (inner) => (request) async {
+        const operation = 'invite join';
+        final userId = authContextOf(request).userId;
+        final wait = inviteJoinFailures.blockedFor(userId);
+        if (wait != null) {
+          final seconds = retryAfterSeconds(wait);
+          _log.warning(
+            'invite code attempts limit hit userId=$userId '
+            'failures=${inviteJoinFailures.count(userId)}/'
+            '$inviteJoinFailureLimit '
+            'window=${inviteJoinFailureWindow.inMinutes}m '
+            'retryAfter=${seconds}s → 429, code not checked',
+          );
+          return tooManyFailures(seconds);
+        }
+
+        final attempt = inviteJoinFailures.record(userId);
+        final Response response;
+        try {
+          response = await inner(request);
+        } catch (e) {
+          inviteJoinFailures.forget(userId, attempt);
+          _log.fine(
+            '$operation attempt not counted: handler threw '
+            '${e.runtimeType} userId=$userId',
+          );
+          rethrow;
+        }
+
+        if (response.statusCode != 404) {
+          inviteJoinFailures.forget(userId, attempt);
+          _log.fine(
+            '$operation attempt not counted: status=${response.statusCode} '
+            'userId=$userId failures=${inviteJoinFailures.count(userId)}/'
+            '$inviteJoinFailureLimit',
+          );
+          return response;
+        }
+
+        final text = await response.readAsString();
+        if (_errorCodeOf(text, operation, 404) !=
+            ApiErrorCode.inviteNotFound.code) {
+          inviteJoinFailures.forget(userId, attempt);
+          _log.fine(
+            '$operation attempt not counted: 404 without invite_not_found '
+            'userId=$userId',
+          );
+          return response.change(body: text);
+        }
+        final failures = inviteJoinFailures.count(userId);
+        if (failures >= inviteJoinFailureLimit) {
+          final seconds = retryAfterSeconds(
+            inviteJoinFailures.blockedFor(userId)!,
+          );
+          _log.warning(
+            'invite code attempts exhausted userId=$userId '
+            'failures=$failures/$inviteJoinFailureLimit '
+            'window=${inviteJoinFailureWindow.inMinutes}m → next attempts '
+            'blocked for ${seconds}s',
+          );
+        } else {
+          _log.fine(
+            '$operation failure recorded userId=$userId '
+            'failures=$failures/$inviteJoinFailureLimit',
+          );
+        }
+        return response.change(body: text);
+      };
+
   SlidingWindowLimiter? _ipLimiterFor(String path) {
     if (path == _authPath ||
         path.startsWith('$_authPath/') ||
@@ -239,6 +333,7 @@ class RequestLimits {
     if (path == _clientErrorsPath || path.startsWith('$_clientErrorsPath/')) {
       return clientErrorRequests;
     }
+    if (path == _inviteJoinPath) return inviteJoinRequests;
     return null;
   }
 }
@@ -353,7 +448,7 @@ String? _loginOf(List<int> bytes, String operation) {
   }
 }
 
-String? _errorCodeOf(String text, String operation) {
+String? _errorCodeOf(String text, String operation, int status) {
   try {
     final decoded = jsonDecode(text);
     if (decoded is! Map<String, Object?>) return null;
@@ -363,7 +458,7 @@ String? _errorCodeOf(String text, String operation) {
     return code is String ? code : null;
   } on FormatException catch (e) {
     _log.warning(
-      '$operation 401 response is not JSON (${e.message}) '
+      '$operation $status response is not JSON (${e.message}) '
       '→ attempt not counted',
     );
     return null;
