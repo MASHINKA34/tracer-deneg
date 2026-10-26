@@ -13,6 +13,7 @@ import '../../core/clock.dart';
 import '../../core/router.dart';
 import '../../data/db/redact_db_error.dart';
 import '../../data/providers.dart';
+import '../../data/session/session_providers.dart';
 import '../../data/sync/sync_status_view.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/avatar.dart';
@@ -31,6 +32,29 @@ String avatarLetterOf(String name) {
   final letters = name.trim().characters;
   return letters.isEmpty ? '' : letters.first.toUpperCase();
 }
+
+typedef HeaderAvatar = ({String letter, CategoryColor color});
+
+final headerAvatarProvider = Provider.autoDispose<HeaderAvatar?>((ref) {
+  final user = ref.watch(sessionProvider.select((s) => s.user));
+  if (user == null) {
+    _log.fine(
+      'header avatar: no session → letter of the budget name, color=blue',
+    );
+    return null;
+  }
+  final self = ref.watch(memberProfilesProvider).value?[user.userId];
+  final color = self?.avatarColor ?? CategoryColor.blue;
+  _log.fine(
+    'header avatar userId=${user.userId}: letter of the user name from '
+    '${self == null ? 'session (no member profile yet)' : 'member profile'}, '
+    'color=${color.name}',
+  );
+  return (
+    letter: avatarLetterOf(self?.displayName ?? user.displayName),
+    color: color,
+  );
+}, name: 'headerAvatar');
 
 class MonthHeader extends ConsumerWidget {
   const MonthHeader({super.key});
@@ -51,6 +75,7 @@ class MonthHeader extends ConsumerWidget {
     final debugToday = kDebugMode ? ref.watch(todayOverrideProvider) : null;
     ref.listen(syncStatusViewProvider, _logSync);
     final sync = ref.watch(syncStatusViewProvider);
+    final avatar = ref.watch(headerAvatarProvider);
 
     return MonthHeaderView(
       debugToday: debugToday,
@@ -58,7 +83,9 @@ class MonthHeader extends ConsumerWidget {
       syncPending: sync.queue,
       budgetName: budget?.name,
       budgetEmoji: budget?.emoji,
-      avatarLetter: budget == null ? '' : avatarLetterOf(budget.name),
+      avatarLetter:
+          avatar?.letter ?? (budget == null ? '' : avatarLetterOf(budget.name)),
+      avatarColor: avatar?.color ?? CategoryColor.blue,
       onBudgetTap: budget == null
           ? null
           : () {
