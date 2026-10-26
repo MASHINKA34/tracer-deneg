@@ -181,6 +181,7 @@ void main() {
         environment: {
           'DATABASE_URL': _url,
           'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
           'PRIVACY_CONTACT': '  privacy@example.test ',
         },
         dotEnv: {'PRIVACY_OPERATOR': 'Иван Петров'},
@@ -195,6 +196,7 @@ void main() {
         environment: {
           'DATABASE_URL': _url,
           'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
           'PRIVACY_CONTACT': '   ',
         },
       );
@@ -223,6 +225,7 @@ void main() {
             'PORT': '0',
             'DATABASE_URL': await createScratchDatabase(),
             'JWT_SECRET': _secret,
+            'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
             'PRIVACY_CONTACT': 'privacy@example.test',
             'PRIVACY_OPERATOR': 'Оператор Омега',
           },
@@ -255,6 +258,7 @@ void main() {
             'PORT': '0',
             'DATABASE_URL': await createScratchDatabase(),
             'JWT_SECRET': _secret,
+            'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
           },
         ),
         dbConnectAttempts: 1,

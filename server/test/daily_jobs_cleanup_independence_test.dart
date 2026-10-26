@@ -82,6 +82,7 @@ void main() {
           'PORT': '0',
           'DATABASE_URL': maintenance.url,
           'JWT_SECRET': 'maintenance-secret-0123456789-abcdefg',
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
         },
       ),
       dbConnectAttempts: 1,

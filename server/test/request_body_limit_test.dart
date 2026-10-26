@@ -147,6 +147,7 @@ void main() {
             'PORT': '0',
             'DATABASE_URL': await createScratchDatabase(),
             'JWT_SECRET': 'body-limit-secret-0123456789-abcdefgh',
+            'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
           },
         ),
         dbConnectAttempts: 1,

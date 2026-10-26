@@ -69,7 +69,11 @@ void main() {
   group('TRUSTED_PROXIES в конфиге', () {
     test('по умолчанию пусто; значение попадает в лог-контекст', () {
       final plain = ServerConfig.load(
-        environment: {'DATABASE_URL': _url, 'JWT_SECRET': _secret},
+        environment: {
+          'DATABASE_URL': _url,
+          'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
+        },
       );
       expect(plain.trustedProxies.isEmpty, isTrue);
       expect(plain.toLogContext()['trustedProxies'], 'none');
@@ -78,6 +82,7 @@ void main() {
         environment: {
           'DATABASE_URL': _url,
           'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
           'TRUSTED_PROXIES': '172.16.0.0/12',
         },
       );
@@ -91,6 +96,7 @@ void main() {
           environment: {
             'DATABASE_URL': _url,
             'JWT_SECRET': _secret,
+            'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
             'TRUSTED_PROXIES': 'caddy',
           },
         ),

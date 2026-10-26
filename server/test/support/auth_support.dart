@@ -16,6 +16,8 @@ import 'test_support.dart';
 
 const testJwtSecret = 'test-jwt-secret-0123456789-abcdefghij';
 
+const testInviteCodeSecret = 'test-invite-code-secret-0123456789-abc';
+
 class ApiResponse {
   ApiResponse(this.status, this.headers, this.text);
 
@@ -60,6 +62,7 @@ class AuthHarness {
       buildHandler(
         db: db,
         auth: auth,
+        inviteCodeSecret: testInviteCodeSecret,
         notifier: notifier,
         now: now ?? DateTime.now,
       ),

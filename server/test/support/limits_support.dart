@@ -59,7 +59,12 @@ class LimitsHarness {
       db,
       limits,
       clock,
-      buildHandler(db: db, auth: auth, limits: limits),
+      buildHandler(
+        db: db,
+        auth: auth,
+        inviteCodeSecret: testInviteCodeSecret,
+        limits: limits,
+      ),
     );
   }
 

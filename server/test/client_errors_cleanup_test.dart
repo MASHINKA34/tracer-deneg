@@ -150,6 +150,7 @@ void main() {
           'PORT': '0',
           'DATABASE_URL': url,
           'JWT_SECRET': 'cleanup-secret-0123456789-abcdefghijk',
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
         },
       ),
       dbConnectAttempts: 1,

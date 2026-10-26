@@ -42,6 +42,7 @@ services:
     environment:
       DATABASE_URL: postgres://milionchik:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required, set it in deploy/.env}@db:5432/milionchik?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required, set it in deploy/.env}
+      INVITE_CODE_SECRET: ${INVITE_CODE_SECRET:?INVITE_CODE_SECRET is required, set it in deploy/.env}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRIVACY_CONTACT: ${PRIVACY_CONTACT:-}
       PRIVACY_OPERATOR: ${PRIVACY_OPERATOR:-}

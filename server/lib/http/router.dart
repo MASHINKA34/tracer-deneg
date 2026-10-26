@@ -31,6 +31,7 @@ import 'sync_handlers.dart';
 Handler buildHandler({
   required Database db,
   required AuthService auth,
+  required String inviteCodeSecret,
   RequestLimits? limits,
   SyncNotifier notifier = const NoopSyncNotifier(),
   WsHub? ws,
@@ -42,7 +43,12 @@ Handler buildHandler({
   final account = AccountService(db: db, hasher: auth.hasher);
   final pull = PullService(db: db);
   final push = PushService(db: db, notifier: notifier);
-  final budgets = BudgetService(db: db, now: now, notifier: notifier);
+  final budgets = BudgetService(
+    db: db,
+    inviteCodeSecret: inviteCodeSecret,
+    now: now,
+    notifier: notifier,
+  );
   final clientErrors = ClientErrorStore(db);
   final router = Router(notFoundHandler: _notFound)
     ..get('/api/v1/health', healthHandler(db))

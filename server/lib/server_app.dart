@@ -8,6 +8,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'auth/auth_service.dart';
 import 'auth/password_hasher.dart';
 import 'auth/tokens.dart';
+import 'budgets/budget_service.dart';
 import 'config/config.dart';
 import 'config/dotenv.dart';
 import 'db/database.dart';
@@ -116,6 +117,10 @@ Future<RunningServer> startServer(
 
   final limits = RequestLimits(trustedProxies: config.trustedProxies);
   _log.info('limits ready ${formatContext(limits.toLogContext())}');
+  _log.info(
+    'invites ready codeHash=hmac-sha256 ttl=${inviteTtl.inHours}h '
+    'secret=${maskToken(config.inviteCodeSecret)}',
+  );
 
   final ws = WsHub(db: db);
   _log.info(
@@ -154,6 +159,7 @@ Future<RunningServer> startServer(
       buildHandler(
         db: db,
         auth: auth,
+        inviteCodeSecret: config.inviteCodeSecret,
         limits: limits,
         notifier: ws,
         ws: ws,

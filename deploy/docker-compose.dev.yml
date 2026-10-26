@@ -34,6 +34,7 @@ services:
     environment:
       DATABASE_URL: postgres://milionchik:milionchik@db:5432/milionchik?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-not-for-production}
+      INVITE_CODE_SECRET: ${INVITE_CODE_SECRET:-dev-only-invite-code-secret-not-for-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PRIVACY_CONTACT: ${PRIVACY_CONTACT:-}
       PRIVACY_OPERATOR: ${PRIVACY_OPERATOR:-}

@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:cryptography/dart.dart' show DartSha256;
+import 'package:cryptography/cryptography.dart' show SecretKeyData;
+import 'package:cryptography/dart.dart' show DartHmac, DartSha256;
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart' as pg;
 import 'package:shared/shared.dart';
@@ -64,8 +65,14 @@ final class JoinedBudget {
 
 enum LeaveResult { left, transferred, deleted }
 
-String hashInviteCode(String normalizedCode) {
-  final digest = const DartSha256().hashSync(utf8.encode(normalizedCode)).bytes;
+String hashInviteCode(String normalizedCode, {required String secret}) {
+  final digest = const DartHmac(DartSha256())
+      .calculateMacSync(
+        utf8.encode(normalizedCode),
+        secretKeyData: SecretKeyData(utf8.encode(secret)),
+        nonce: const [],
+      )
+      .bytes;
   final buffer = StringBuffer();
   for (final byte in digest) {
     buffer.write(byte.toRadixString(16).padLeft(2, '0'));
@@ -127,12 +134,14 @@ Future<BudgetContentErased> eraseBudgetContent(
 class BudgetService {
   BudgetService({
     required this.db,
+    required this._inviteCodeSecret,
     this._now = DateTime.now,
     this._notifier = const NoopSyncNotifier(),
     Random? random,
   }) : _random = random ?? Random.secure();
 
   final Database db;
+  final String _inviteCodeSecret;
   final DateTime Function() _now;
   final SyncNotifier _notifier;
   final Random _random;
@@ -296,7 +305,7 @@ class BudgetService {
       if (denied != null) return denied;
       for (var attempt = 1; attempt <= inviteCodeAttempts; attempt++) {
         final code = normalizeInviteCode(generateInviteCode(_random))!;
-        final hash = hashInviteCode(code);
+        final hash = hashInviteCode(code, secret: _inviteCodeSecret);
         final inserted = await tx.execute(
           'INSERT INTO invites (code_hash, budget_id, created_by, created_at, '
           r'expires_at) VALUES ($1, $2::uuid, $3::uuid, $4::timestamptz, '
@@ -374,7 +383,7 @@ class BudgetService {
         sw,
       );
     }
-    final hash = hashInviteCode(normalized);
+    final hash = hashInviteCode(normalized, secret: _inviteCodeSecret);
     final now = normalizeInstant(_now());
     String? budgetId;
     int? cursor;

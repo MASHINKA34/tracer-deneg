@@ -67,7 +67,10 @@ void main() {
 
       final stored = await invites(familyId);
       expect(stored, hasLength(1));
-      expect(stored.single[0], hashInviteCode(code));
+      expect(
+        stored.single[0],
+        hashInviteCode(code, secret: testInviteCodeSecret),
+      );
       expect(stored.single[0], matches(RegExp(r'^[0-9a-f]{64}$')));
       expect(stored.single[1], olga.id);
       expect(stored.single[3], expiresAt);
@@ -205,15 +208,22 @@ void main() {
     expect(logs.text, isNot(contains(suffix)));
     expect(logs.text, isNot(contains(typed)));
     expect(logs.text, isNot(contains('QQQU')));
-    expect(logs.text, isNot(contains(hashInviteCode(code))));
+    expect(
+      logs.text,
+      isNot(contains(hashInviteCode(code, secret: testInviteCodeSecret))),
+    );
   });
 
   test('код совпал с действующим приглашением другого бюджета — выдаётся '
       'другой; совпал с истёкшим — строка переиспользуется', () async {
     final dachaId = (await createSharedBudget(api, olga, name: 'Дача')).id;
     var now = DateTime.now().toUtc();
-    BudgetService service() =>
-        BudgetService(db: api.db, now: () => now, random: Random(42));
+    BudgetService service() => BudgetService(
+      db: api.db,
+      inviteCodeSecret: testInviteCodeSecret,
+      now: () => now,
+      random: Random(42),
+    );
 
     final family = await service().createInvite(
       userId: olga.id,
@@ -250,7 +260,7 @@ void main() {
       await api.count(
         r'SELECT count(*)::int FROM invites WHERE code_hash = $1 '
         r'AND budget_id = $2::uuid AND revoked_at IS NULL',
-        [hashInviteCode(family.code), dachaId],
+        [hashInviteCode(family.code, secret: testInviteCodeSecret), dachaId],
       ),
       1,
     );

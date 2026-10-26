@@ -94,6 +94,7 @@ void main() {
           'PORT': '0',
           'DATABASE_URL': testDatabaseUrl(),
           'JWT_SECRET': 'x' * 32,
+          'INVITE_CODE_SECRET': 'invite-code-secret-0123456789-abcdef',
         },
       );
       final server = await startServer(config, dbConnectAttempts: 1);

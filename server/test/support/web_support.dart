@@ -60,7 +60,13 @@ class WebHarness {
       db,
       limits,
       clock,
-      buildHandler(db: db, auth: auth, limits: limits, privacy: privacy),
+      buildHandler(
+        db: db,
+        auth: auth,
+        inviteCodeSecret: testInviteCodeSecret,
+        limits: limits,
+        privacy: privacy,
+      ),
     );
   }
 

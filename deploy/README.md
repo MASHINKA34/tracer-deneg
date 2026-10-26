@@ -273,6 +273,7 @@ cp .env.example .env
 chmod 600 .env
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 32)|" .env
 sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48)|" .env
+sed -i "s|^INVITE_CODE_SECRET=.*|INVITE_CODE_SECRET=$(openssl rand -base64 48)|" .env
 sed -i "s|^LOG_LEVEL=.*|LOG_LEVEL=info|" .env
 sed -i "s|^DOMAIN=.*|DOMAIN=<домен>|" .env
 nano .env
@@ -285,6 +286,7 @@ nano .env
 | `DOMAIN` | Имя из шага 7 |
 | `POSTGRES_PASSWORD` | Пароль базы, 64 символа `0-9a-f` (входит в адрес подключения сервера, поэтому только латиница и цифры) |
 | `JWT_SECRET` | Секрет подписи токенов, 64 символа |
+| `INVITE_CODE_SECRET` | Секрет хешей кодов приглашения (HMAC-SHA256), 64 символа. Смена отменяет все действующие коды приглашения |
 | `LOG_LEVEL` | `info`; `debug` - только на время разбора (шаг 14) |
 | `PRIVACY_CONTACT`, `PRIVACY_OPERATOR` | Для `/privacy`; пустые - на странице «не указан» и `WARN` в логе сервера |
 
@@ -295,7 +297,7 @@ awk -F= '/^[A-Z_]+=/ { print $1 " " length(substr($0, index($0, "=") + 1)) }' .e
 docker compose config --quiet && echo config ok
 ```
 
-Первая команда печатает длины: `POSTGRES_PASSWORD 64`, `JWT_SECRET 64`, у остальных - больше 0. Вторая - `config ok`; если переменной нет, например `required variable DOMAIN is missing a value: DOMAIN is required, set it in deploy/.env`. `docker compose config` без `--quiet` печатает пароли - не запускать при посторонних и не вставлять его вывод в чаты.
+Первая команда печатает длины: `POSTGRES_PASSWORD 64`, `JWT_SECRET 64`, `INVITE_CODE_SECRET 64`, у остальных - больше 0. Вторая - `config ok`; если переменной нет, например `required variable DOMAIN is missing a value: DOMAIN is required, set it in deploy/.env`. `docker compose config` без `--quiet` печатает пароли - не запускать при посторонних и не вставлять его вывод в чаты.
 
 - Команды с `openssl` выполнять один раз, до первого запуска. PostgreSQL запоминает пароль при создании тома с данными; если потом поменять `POSTGRES_PASSWORD`, сервер не стартует (шаг 16).
 - Сразу сохранить копию `.env` в менеджер паролей: с ней сервер переносится на новый VPS (шаг 12.5). Показать файл, чтобы скопировать: `cat .env`.
@@ -567,6 +569,7 @@ free -h
 | `dependency failed to start: container milionchik-server-1 is unhealthy` | Сервер не стартует - причина в `docker compose logs server`, строки ниже |
 | `ERROR [db] Postgres connect failed db:5432 (attempt 5/5) … 28P01: password authentication failed for user "milionchik"` | `POSTGRES_PASSWORD` в `.env` поменяли после первого запуска. Вернуть прежнее значение из менеджера паролей и `docker compose up -d --wait`. Если прежнего нет - задать базе новый: `docker compose exec db psql -U milionchik -d milionchik`, в нём `\password milionchik` (ввести значение из `.env`), `\q`, затем `docker compose up -d --wait` (этот путь не проверялся) |
 | `ERROR [server] config invalid: JWT_SECRET is too short (8 chars), need ≥ 32` | Исправить значение в `.env` (шаг 9) и `docker compose up -d --wait` |
+| `ERROR [server] config invalid: INVITE_CODE_SECRET is required (random string, ≥ 32 chars)` или `… is too short` | В `.env` нет `INVITE_CODE_SECRET` или он короче 32 символов: строка `sed` для него из шага 9 и `docker compose up -d --wait` |
 | `migration failed … rolled back` в логе сервера | Ошибка новой миграции: в строке файл и SQLSTATE. Каждая миграция идёт в своей транзакции, упавшая откатилась целиком. Не перезапускать по кругу: откатить код (13.1) и сообщить разработчику |
 | health отвечает `502`, в логе Caddy, например, `dial tcp: lookup server: i/o timeout` | Контейнер `server` остановлен или перезапускается: `docker compose ps`, логи сервера, `docker compose up -d --wait` |
 | health отвечает `503` и `{"status":"degraded",…,"db":"error"}`, в логе `WARN  [health] database check failed` | База недоступна: `docker compose ps db`, `docker compose logs --since 15m db`, место на диске `df -h /`; запуск - `docker compose up -d --wait db` |

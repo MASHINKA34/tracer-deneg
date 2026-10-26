@@ -5,12 +5,17 @@ import 'package:test/test.dart';
 
 const _url = 'postgres://milionchik:s3cr%40t@127.0.0.1:5434/milionchik';
 final _secret = 'x' * 40;
+final _inviteSecret = 'i' * 36;
 
 void main() {
   group('ServerConfig.load', () {
     test('обязательные заданы — значения по умолчанию для остального', () {
       final config = ServerConfig.load(
-        environment: {'DATABASE_URL': _url, 'JWT_SECRET': _secret},
+        environment: {
+          'DATABASE_URL': _url,
+          'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': _inviteSecret,
+        },
       );
       expect(config.host, '0.0.0.0');
       expect(config.port, 8080);
@@ -30,6 +35,7 @@ void main() {
           isA<ConfigException>().having((e) => e.problems, 'problems', [
             startsWith('DATABASE_URL is required'),
             startsWith('JWT_SECRET is required'),
+            startsWith('INVITE_CODE_SECRET is required'),
           ]),
         ),
       );
@@ -43,6 +49,7 @@ void main() {
             'LOG_LEVEL': 'verbose',
             'DATABASE_URL': 'mysql://u@h/db',
             'JWT_SECRET': 'short',
+            'INVITE_CODE_SECRET': _inviteSecret,
           },
         ),
         throwsA(
@@ -63,6 +70,7 @@ void main() {
           'PORT': '8081',
           'DATABASE_URL': _url,
           'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': _inviteSecret,
           'HOST': '127.0.0.1',
         },
       );
@@ -73,7 +81,11 @@ void main() {
 
     test('в лог-контексте секреты замаскированы', () {
       final config = ServerConfig.load(
-        environment: {'DATABASE_URL': _url, 'JWT_SECRET': _secret},
+        environment: {
+          'DATABASE_URL': _url,
+          'JWT_SECRET': _secret,
+          'INVITE_CODE_SECRET': _inviteSecret,
+        },
       );
       final context = config.toLogContext();
       expect(

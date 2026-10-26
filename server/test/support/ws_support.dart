@@ -36,7 +36,13 @@ class WsHarness {
     final hub = WsHub(db: api.db, idleTimeout: idleTimeout);
     relay.target = hub;
     final server = await shelf_io.serve(
-      buildHandler(db: api.db, auth: api.auth, notifier: hub, ws: hub),
+      buildHandler(
+        db: api.db,
+        auth: api.auth,
+        inviteCodeSecret: testInviteCodeSecret,
+        notifier: hub,
+        ws: hub,
+      ),
       '127.0.0.1',
       0,
     );

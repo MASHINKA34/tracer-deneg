@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
    docker compose -f deploy/docker-compose.dev.yml up -d --wait db
    ```
    Имя сервиса `db` обязательно: без него поднимется и сервер в Docker (см. ниже) и займёт порт 8080.
-2. Настройки: скопировать `server/.env.example` в `server/.env` и вписать `JWT_SECRET` (не короче 32 символов; команда генерации — в файле). Переменные окружения важнее значений из `.env`.
+2. Настройки: скопировать `server/.env.example` в `server/.env` и вписать `JWT_SECRET` и `INVITE_CODE_SECRET` (разные, каждый не короче 32 символов; команда генерации — в файле). Переменные окружения важнее значений из `.env`.
 3. Запуск из папки `server`:
    ```powershell
    cd server
@@ -54,6 +54,7 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 |---|---|---|---|
 | `DATABASE_URL` | да | — | `postgres://user:password@host:port/db?sslmode=disable` |
 | `JWT_SECRET` | да | — | Секрет подписи токенов, ≥ 32 символов |
+| `INVITE_CODE_SECRET` | да | — | Секрет хешей кодов приглашения (HMAC-SHA256), ≥ 32 символов; смена отменяет все действующие коды |
 | `HOST` | нет | `0.0.0.0` | Адрес HTTP |
 | `PORT` | нет | `8080` | Порт HTTP |
 | `LOG_LEVEL` | нет | `info` | `debug`, `info`, `warn`, `error` |
@@ -77,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File tool/check.ps1
 3. Логи — `docker compose -f deploy/docker-compose.dev.yml logs -f server`: тот же формат, что без Docker, время в UTC.
 4. Остановка сервера — `docker compose -f deploy/docker-compose.dev.yml stop server`, всего — `docker compose -f deploy/docker-compose.dev.yml down` (том с данными базы остаётся).
 
-Настройки контейнер берёт из переменных окружения при `up`, `server/.env` он не читает. `DATABASE_URL` указывает на сервис `db`. `JWT_SECRET` по умолчанию — несекретная строка для разработки из compose-файла; `LOG_LEVEL` (по умолчанию `info`), `PRIVACY_CONTACT`, `PRIVACY_OPERATOR` — как в таблице выше. Пример:
+Настройки контейнер берёт из переменных окружения при `up`, `server/.env` он не читает. `DATABASE_URL` указывает на сервис `db`. `JWT_SECRET` и `INVITE_CODE_SECRET` по умолчанию — несекретные строки для разработки из compose-файла; `LOG_LEVEL` (по умолчанию `info`), `PRIVACY_CONTACT`, `PRIVACY_OPERATOR` — как в таблице выше. Пример:
 ```powershell
 $env:LOG_LEVEL = "debug"; docker compose -f deploy/docker-compose.dev.yml up -d --wait
 ```

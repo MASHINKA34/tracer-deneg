@@ -97,6 +97,7 @@ class ServerConfig {
     required this.database,
     required this.logLevel,
     required this.jwtSecret,
+    required this.inviteCodeSecret,
     this.migrationsDir = defaultMigrationsDir,
     this.trustedProxies = TrustedProxies.none,
     this.privacyContact,
@@ -106,6 +107,7 @@ class ServerConfig {
   static const defaultHost = '0.0.0.0';
   static const defaultPort = 8080;
   static const minJwtSecretLength = 32;
+  static const minInviteCodeSecretLength = 32;
   static const defaultMigrationsDir = 'migrations';
 
   final String host;
@@ -113,6 +115,7 @@ class ServerConfig {
   final DatabaseConfig database;
   final Level logLevel;
   final String jwtSecret;
+  final String inviteCodeSecret;
   final String migrationsDir;
   final TrustedProxies trustedProxies;
   final String? privacyContact;
@@ -185,6 +188,19 @@ class ServerConfig {
       );
     }
 
+    final inviteCodeSecret = value('INVITE_CODE_SECRET');
+    if (inviteCodeSecret == null) {
+      problems.add(
+        'INVITE_CODE_SECRET is required (random string, '
+        '≥ $minInviteCodeSecretLength chars)',
+      );
+    } else if (inviteCodeSecret.length < minInviteCodeSecretLength) {
+      problems.add(
+        'INVITE_CODE_SECRET is too short (${inviteCodeSecret.length} chars), '
+        'need ≥ $minInviteCodeSecretLength',
+      );
+    }
+
     var trustedProxies = TrustedProxies.none;
     try {
       trustedProxies = TrustedProxies.parse(value('TRUSTED_PROXIES'));
@@ -199,6 +215,7 @@ class ServerConfig {
       database: database!,
       logLevel: logLevel,
       jwtSecret: jwtSecret!,
+      inviteCodeSecret: inviteCodeSecret!,
       migrationsDir: value('MIGRATIONS_DIR') ?? defaultMigrationsDir,
       trustedProxies: trustedProxies,
       privacyContact: value('PRIVACY_CONTACT'),
@@ -213,6 +230,7 @@ class ServerConfig {
     'log': logLevelName(logLevel),
     'db': database.masked,
     'jwtSecret': maskToken(jwtSecret),
+    'inviteCodeSecret': maskToken(inviteCodeSecret),
     'migrations': migrationsDir,
     'trustedProxies': trustedProxies.describe(),
     'privacyContact': privacyContact == null ? 'empty' : 'set',
