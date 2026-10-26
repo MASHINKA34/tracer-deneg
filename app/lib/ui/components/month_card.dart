@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shared/shared.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../decor/decor_animation.dart';
+import '../decor/decor_painter.dart' show DecorKeepClear;
 import '../icons/app_icon.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
@@ -86,19 +87,33 @@ class MonthCard extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(
-                child: AnimatedDecor(
-                  mood: mood,
-                  brightness: theme.brightness,
-                  phase: decorPhase,
-                  cornerRadius: _radius,
+                child: LayoutBuilder(
+                  builder: (context, box) => AnimatedDecor(
+                    mood: mood,
+                    brightness: theme.brightness,
+                    phase: decorPhase,
+                    cornerRadius: _radius,
+                    keepClear: DecorKeepClear(
+                      area: monthTitleArea(
+                        month: month,
+                        cardWidth: box.maxWidth,
+                        textScaler: MediaQuery.textScalerOf(context),
+                      ),
+                      designArea: monthTitleArea(
+                        month: month,
+                        cardWidth: box.maxWidth,
+                        textScaler: TextScaler.noScaling,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  12,
+                  _cardPadding,
                   0,
-                  12 - _Header.overhang,
-                  12,
+                  _cardPadding - _Header.overhang,
+                  _cardPadding,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -125,6 +140,49 @@ class MonthCard extends StatelessWidget {
   }
 }
 
+Rect monthTitleArea({
+  required YearMonth month,
+  required double cardWidth,
+  required TextScaler textScaler,
+}) {
+  const left = _cardPadding + _Header.leftPadding;
+  final rowMax =
+      cardWidth -
+      _cardPadding -
+      (_cardPadding - _Header.overhang) -
+      _Header.leftPadding -
+      _Header.titleRightInset;
+  final iconRow = _Header.chevronGap + _Header.chevronSize;
+  TextPainter measure(String text, TextStyle style) => TextPainter(
+    text: TextSpan(text: text, style: style),
+    textScaler: textScaler,
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+  )..layout();
+  final title = measure(_Header.titleOf(month), AppText.displayMonth);
+  final year = measure('${month.year}', AppText.caption);
+  final titleMax = rowMax - iconRow;
+  final fit = title.width <= titleMax || title.width == 0
+      ? 1.0
+      : titleMax / title.width;
+  final rowWidth = title.width * fit + iconRow;
+  final rowHeight = title.height * fit > _Header.chevronSize
+      ? title.height * fit
+      : _Header.chevronSize;
+  final width = rowWidth > year.width ? rowWidth : year.width;
+  final height = rowHeight + year.height;
+  final header = height > _Header.minHeight ? height : _Header.minHeight;
+  final top = (header - height) / 2;
+  return Rect.fromLTWH(
+    left,
+    top,
+    width,
+    height,
+  ).inflate(_Header.decorClearance);
+}
+
+const double _cardPadding = 12;
+
 class _Header extends StatelessWidget {
   const _Header({
     required this.month,
@@ -144,23 +202,39 @@ class _Header extends StatelessWidget {
 
   static const double _arrowMargin = 3;
 
+  static const double minHeight = 60;
+
+  static const double leftPadding = 8;
+
+  static const double titleRightInset = _arrowsWidth + overhang;
+
+  static const double chevronGap = 4;
+
+  static const double chevronSize = 18;
+
+  static const double decorClearance = 2;
+
+  static String titleOf(YearMonth month) {
+    final name = DateFormat.LLLL('ru')
+        .format(DateTime(month.year, month.month));
+    return TextStyleTokens.displayMonth.uppercase ? name.toUpperCase() : name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mood = context.mood;
     final l10n = AppLocalizations.of(context);
     final name = DateFormat.LLLL('ru')
         .format(DateTime(month.year, month.month));
-    final title = TextStyleTokens.displayMonth.uppercase
-        ? name.toUpperCase()
-        : name;
+    final title = titleOf(month);
     final monthLabel =
         '${name[0].toUpperCase()}${name.substring(1)} ${month.year}';
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 60),
+      constraints: const BoxConstraints(minHeight: minHeight),
       child: Padding(
         // Справа 2 по Figma — его даёт поле правой стрелки.
-        padding: const EdgeInsets.only(left: 8),
+        padding: const EdgeInsets.only(left: leftPadding),
         child: Stack(
           alignment: AlignmentDirectional.centerStart,
           children: [
@@ -189,7 +263,7 @@ class _Header extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(right: _arrowsWidth + overhang),
+              padding: const EdgeInsets.only(right: titleRightInset),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Semantics(
@@ -225,10 +299,10 @@ class _Header extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: chevronGap),
                               AppIcon(
                                 AppIcons.chevronDown,
-                                size: 18,
+                                size: chevronSize,
                                 color: mood.onSoft,
                               ),
                             ],

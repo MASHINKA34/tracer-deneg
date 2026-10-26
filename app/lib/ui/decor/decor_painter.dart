@@ -29,6 +29,7 @@ class DecorPainter extends CustomPainter {
     this.cornerRadius = 28,
     this.animation,
     this.opening = false,
+    this.keepClear,
   }) : super(repaint: animation);
 
   final Mood mood;
@@ -36,6 +37,7 @@ class DecorPainter extends CustomPainter {
   final double phase;
   final Animation<double>? animation;
   final bool opening;
+  final DecorKeepClear? keepClear;
 
   /// Скругление карточки — узор обрезается по нему.
   final double cornerRadius;
@@ -53,6 +55,9 @@ class DecorPainter extends CustomPainter {
 
   static int get cachedAnimations => _frames.length;
 
+  static const int topDecisionCapacity = 64;
+  static final LinkedHashMap<String, bool> _topHidden = LinkedHashMap();
+
   /// Очистить кэш (тесты).
   static void clearCache() {
     for (final picture in _cache.values) {
@@ -64,6 +69,7 @@ class DecorPainter extends CustomPainter {
     }
     _frames.clear();
     _failedFrames.clear();
+    _topHidden.clear();
   }
 
   DecorLayer get layer =>
@@ -71,7 +77,51 @@ class DecorPainter extends CustomPainter {
 
   String _key(Size size) =>
       '${mood.name}|${brightness.name}|'
-      '${size.width.toStringAsFixed(1)}x${size.height.toStringAsFixed(1)}';
+      '${size.width.toStringAsFixed(1)}x${size.height.toStringAsFixed(1)}'
+      '${_hidesTop(size) ? '|no-top' : ''}';
+
+  bool _hidesTop(Size size) {
+    final clear = keepClear;
+    if (clear == null) return false;
+    final area = clear.area;
+    final design = clear.designArea;
+    final key =
+        '${layer.key}|${size.width.toStringAsFixed(1)}x'
+        '${size.height.toStringAsFixed(1)}|${_rectText(area)}|'
+        '${_rectText(design)}';
+    final known = _topHidden.remove(key);
+    if (known != null) {
+      _topHidden[key] = known;
+      return known;
+    }
+    final regions = generateDecor(
+      layer,
+      width: size.width,
+      height: size.height,
+    );
+    final hits = decorTopOverlaps(regions, area, beyond: design);
+    final hidden = hits > 0;
+    if (_topHidden.length >= topDecisionCapacity) {
+      _topHidden.remove(_topHidden.keys.first);
+    }
+    _topHidden[key] = hidden;
+    _log.fine(
+      hidden
+          ? 'decor top strip hidden layer=${layer.key} '
+                'size=${size.width.toStringAsFixed(1)}x'
+                '${size.height.toStringAsFixed(1)}: $hits of '
+                '${regions.top.length} top shapes overlap the month title '
+                'area ${_rectText(area)} beyond its font 1.0 area '
+                '${_rectText(design)} → sides and bottom only'
+          : 'decor top strip kept layer=${layer.key} '
+                'size=${size.width.toStringAsFixed(1)}x'
+                '${size.height.toStringAsFixed(1)}: none of '
+                '${regions.top.length} top shapes overlap the month title '
+                'area ${_rectText(area)} beyond its font 1.0 area '
+                '${_rectText(design)}',
+    );
+    return hidden;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -117,7 +167,7 @@ class DecorPainter extends CustomPainter {
           Radius.circular(cornerRadius),
         ),
       );
-    paintDecorRegions(canvas, regions, palette);
+    paintDecorRegions(canvas, regions, palette, top: !_hidesTop(size));
     final picture = recorder.endRecording();
     _log.fine(
       'decor picture cached layer=${layer.key} theme=${brightness.name} '
@@ -174,7 +224,9 @@ class DecorPainter extends CustomPainter {
     final units = <_DecorUnit>[];
     var still = 0;
     var moving = 0;
+    final hideTop = _hidesTop(size);
     for (final region in DecorRegion.values) {
+      if (hideTop && region == DecorRegion.top) continue;
       final offset = switch (region) {
         DecorRegion.top => Offset.zero,
         DecorRegion.left => const Offset(0, decorTop),
@@ -268,7 +320,46 @@ class DecorPainter extends CustomPainter {
       oldDelegate.phase != phase ||
       oldDelegate.cornerRadius != cornerRadius ||
       oldDelegate.animation != animation ||
-      oldDelegate.opening != opening;
+      oldDelegate.opening != opening ||
+      oldDelegate.keepClear != keepClear;
+}
+
+String _rectText(Rect r) =>
+    '(${r.left.toStringAsFixed(1)},${r.top.toStringAsFixed(1)})-'
+    '(${r.right.toStringAsFixed(1)},${r.bottom.toStringAsFixed(1)})';
+
+final class DecorKeepClear {
+  const DecorKeepClear({required this.area, required this.designArea});
+
+  final Rect area;
+  final Rect designArea;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DecorKeepClear &&
+      other.area == area &&
+      other.designArea == designArea;
+
+  @override
+  int get hashCode => Object.hash(area, designArea);
+
+  @override
+  String toString() =>
+      'DecorKeepClear(${_rectText(area)} font 1.0 ${_rectText(designArea)})';
+}
+
+int decorTopOverlaps(DecorRegions regions, Rect area, {Rect? beyond}) {
+  var hits = 0;
+  for (final e in regions.top) {
+    final stroke = e.stroke == null ? 0.0 : (e.strokeWidth ?? 1) / 2;
+    final bounds = e.isCircle
+        ? Rect.fromCircle(center: Offset(e.cx, e.cy), radius: e.r + stroke)
+        : e.toPath().getBounds().inflate(stroke);
+    if (bounds.overlaps(area) && !(beyond?.overlaps(bounds) ?? false)) {
+      hits++;
+    }
+  }
+  return hits;
 }
 
 bool _sameSpans(List<DecorMotionSpan> a, List<DecorMotionSpan> b) {
@@ -441,8 +532,9 @@ void _paintElement(Canvas canvas, DecorElement e, MoodTokens palette) {
 void paintDecorRegions(
   Canvas canvas,
   DecorRegions regions,
-  MoodTokens palette,
-) {
+  MoodTokens palette, {
+  bool top = true,
+}) {
   Color ink(DecorInk i) => switch (i) {
     DecorInk.c1 => palette.decor1,
     DecorInk.c2 => palette.decor2,
@@ -491,7 +583,7 @@ void paintDecorRegions(
     canvas.restore();
   }
 
-  draw(regions.top, Offset.zero);
+  if (top) draw(regions.top, Offset.zero);
   draw(regions.left, const Offset(0, decorTop));
   draw(regions.right, Offset(regions.width - decorSide, decorTop));
   draw(regions.bottom, Offset(0, regions.height - decorSide));

@@ -18,12 +18,14 @@ class AnimatedDecor extends StatefulWidget {
     required this.brightness,
     this.phase = 0,
     this.cornerRadius = 28,
+    this.keepClear,
   });
 
   final Mood mood;
   final ui.Brightness brightness;
   final double phase;
   final double cornerRadius;
+  final DecorKeepClear? keepClear;
 
   @override
   State<AnimatedDecor> createState() => _AnimatedDecorState();
@@ -257,6 +259,7 @@ class _AnimatedDecorState extends State<AnimatedDecor>
         cornerRadius: widget.cornerRadius,
         animation: _running ? _controller : null,
         opening: _opening,
+        keepClear: widget.keepClear,
       ),
     ),
   );
