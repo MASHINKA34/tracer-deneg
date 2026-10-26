@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/router.dart';
+import '../../core/web_links.dart';
 import '../../data/api/api_error_text.dart';
 import '../../data/api/api_exception.dart';
 import '../../l10n/app_localizations.dart';
@@ -131,6 +132,14 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     context.go(AppRoutes.profile);
   }
 
+  Future<void> _openLink(WebPage page) async {
+    final opened = await ref
+        .read(webLinksProvider)
+        .open(page, from: WebLinkSource.deleteAccount);
+    if (!mounted || opened) return;
+    showAppSnackbar(context, text: AppLocalizations.of(context).linkOpenFailed);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -207,6 +216,24 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                         color: colors.textTertiary,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    for (final (page, label) in [
+                      (WebPage.deleteAccount, l10n.linkDeleteAccountPage),
+                      (WebPage.privacy, l10n.linkPrivacy),
+                    ])
+                      Semantics(
+                        link: true,
+                        label: l10n.a11yWebLink(label),
+                        excludeSemantics: true,
+                        onTap: () => _openLink(page),
+                        child: AppButton(
+                          label: label,
+                          type: AppButtonType.text,
+                          size: AppButtonSize.m,
+                          expand: true,
+                          onPressed: () => _openLink(page),
+                        ),
+                      ),
                   ],
                 ),
               ),
