@@ -498,7 +498,7 @@ String? _logSelected(_SelectedChoice choice, String? ownerId) {
       : ' hiddenPersonal=${choice.hidden} (personal budgets of another owner, '
             'e.g. made on this phone before sign-in: kept in the database, '
             'not shown)';
-  final owner = ownerId == null ? '' : ' ownerId=$ownerId';
+  final owner = ownerId == null ? '' : ' userId=$ownerId';
   final chosenKind = choice.chosenKind;
   final gone = choice.gone;
   if (chosenKind != null) {
@@ -526,7 +526,7 @@ String? _logSelected(_SelectedChoice choice, String? ownerId) {
   } else {
     _log.info(
       'selected budget budgetId=$budgetId reason=personal '
-      'ownerId=$ownerId$hidden',
+      'userId=$ownerId$hidden',
     );
   }
   return budgetId;

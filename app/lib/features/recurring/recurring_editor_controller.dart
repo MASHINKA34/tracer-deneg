@@ -294,10 +294,10 @@ final class RecurringEditorController extends Notifier<RecurringDraft> {
         );
       }
       final saved = sw.elapsedMilliseconds;
-      const reason = RecurringRunReason.afterSync;
+      const reason = RecurringRunReason.afterSave;
       _log.info(
-        'recurring save id=$savedId: rule saved → generator runs after save '
-        'as run (${reason.label}), no sync involved',
+        'recurring save id=$savedId: rule saved → generator run '
+        '(${reason.label})',
       );
       final run = await ref.read(recurringServiceProvider).run(reason);
       if (run.ok) {

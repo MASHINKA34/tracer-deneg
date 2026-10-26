@@ -61,14 +61,14 @@ Future<void> _openDay(WidgetTester tester, String date) async {
 
 void main() {
   testUnmounting('холодный старт по milionchik://add от системы: «Новая '
-      'трата» поверх главной, в логе start=cold', (tester) async {
+      'трата» поверх главной, в логе router=first screen', (tester) async {
     final h = await _start(tester, coldLink: 'milionchik://add');
 
     expect(find.byType(NewExpenseScreen), findsOneWidget);
     expect(find.byType(MonthScreen, skipOffstage: false), findsOneWidget);
     expect(
       _nav(h, Level.INFO).first,
-      'deep link milionchik://add start=cold → /expense/new over /month',
+      'deep link milionchik://add router=first screen → /expense/new over /month',
     );
     expect(_nav(h, Level.WARNING), isEmpty);
     expect(h.records.where((r) => r.level >= Level.SEVERE), isEmpty);
@@ -88,7 +88,7 @@ void main() {
     expect(_shownMonth(tester), _october);
     expect(
       _nav(h, Level.INFO).first,
-      'deep link milionchik://month start=cold → /month on the current month',
+      'deep link milionchik://month router=first screen → /month on the current month',
     );
     expect(_nav(h, Level.WARNING), isEmpty);
     expect(h.records.where((r) => r.level >= Level.SEVERE), isEmpty);
@@ -111,7 +111,7 @@ void main() {
     expect(
       _nav(h, Level.INFO),
       contains(
-        'deep link milionchik://month start=warm from=/stats → /month on the '
+        'deep link milionchik://month router=on /stats → /month on the '
         'current month',
       ),
     );
@@ -157,7 +157,7 @@ void main() {
     expect(
       _nav(h, Level.INFO),
       contains(
-        'deep link milionchik://add start=warm from=/month query=ignored → '
+        'deep link milionchik://add router=on /month query=ignored → '
         '/expense/new over /month',
       ),
     );
@@ -188,11 +188,11 @@ void main() {
     }
 
     expect(_nav(h, Level.WARNING), [
-      'deep link milionchik://unknown start=warm from=/stats query=ignored: '
+      'deep link milionchik://unknown router=on /stats query=ignored: '
           'unknown link, known: milionchik://add, milionchik://month → /month',
-      'deep link milionchik://add/extra start=warm from=/stats: unknown '
+      'deep link milionchik://add/extra router=on /stats: unknown '
           'link, known: milionchik://add, milionchik://month → /month',
-      'deep link https://example.org/month start=warm from=/stats: unknown '
+      'deep link https://example.org/month router=on /stats: unknown '
           'link, known: milionchik://add, milionchik://month → /month',
     ]);
     expect(h.records.where((r) => r.level >= Level.SEVERE), isEmpty);

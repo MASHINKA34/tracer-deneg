@@ -97,7 +97,7 @@ void main() {
         ),
         contains(
           'selected budget budgetId=${server.id} reason=personal '
-          'ownerId=$pullUserId hiddenPersonal=1',
+          'userId=$pullUserId hiddenPersonal=1',
         ),
       ]),
     );

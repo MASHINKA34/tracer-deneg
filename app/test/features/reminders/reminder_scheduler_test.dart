@@ -348,7 +348,7 @@ void main() {
     expect(rig.opened, [Uri.parse('milionchik://add')]);
     expect(
       info().last,
-      'reminder tapped id=20261019 day=2026-10-19 start=warm → '
+      'reminder tapped id=20261019 day=2026-10-19 app=running → '
       'milionchik://add',
     );
 
@@ -362,7 +362,7 @@ void main() {
     expect(
       info(),
       contains(
-        'reminder tapped id=20261018 day=2026-10-18 start=cold → '
+        'reminder tapped id=20261018 day=2026-10-18 app=launched by tap → '
         'milionchik://add',
       ),
     );

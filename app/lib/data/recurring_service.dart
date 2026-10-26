@@ -21,6 +21,7 @@ enum RecurringRunReason {
   midnight('midnight'),
   dayChanged('day changed'),
   afterSync('after sync'),
+  afterSave('after save'),
   background('background');
 
   const RecurringRunReason(this.label);

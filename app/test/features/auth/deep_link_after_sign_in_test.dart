@@ -83,7 +83,7 @@ void main() {
       h.linesOf('nav', Level.INFO),
       contains(
         endsWith(
-          'deep link milionchik://add start=cold → /auth/login first, '
+          'deep link milionchik://add router=first screen → /auth/login first, '
           '/expense/new over /month after sign-in',
         ),
       ),
@@ -123,7 +123,7 @@ void main() {
       h.linesOf('nav', Level.INFO),
       contains(
         endsWith(
-          'deep link milionchik://month start=warm from=/auth/login '
+          'deep link milionchik://month router=on /auth/login '
           'query=ignored → /auth/login first, /month on the current month '
           'after sign-in',
         ),
@@ -158,7 +158,7 @@ void main() {
       h.linesOf('nav', Level.WARNING),
       contains(
         endsWith(
-          'deep link milionchik://unknown/path start=warm from=/auth/login: '
+          'deep link milionchik://unknown/path router=on /auth/login: '
           'unknown link, known: milionchik://add, milionchik://month → '
           '/auth/login, nothing to open after sign-in',
         ),

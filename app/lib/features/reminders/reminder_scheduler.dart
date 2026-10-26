@@ -181,7 +181,7 @@ final class ReminderScheduler {
     final ReminderTap? launch;
     try {
       launch = await _notifications.initialize(
-        onTap: (tap) => _tapped(tap, start: 'warm'),
+        onTap: (tap) => _tapped(tap, app: 'running'),
       );
     } catch (e, st) {
       _log.severe(
@@ -197,21 +197,21 @@ final class ReminderScheduler {
       'notifications plugin ready channel=$reminderChannelId '
       'launchedByReminder=${launch != null} in ${sw.elapsedMilliseconds}ms',
     );
-    if (launch != null) _tapped(launch, start: 'cold');
+    if (launch != null) _tapped(launch, app: 'launched by tap');
   }
 
-  void _tapped(ReminderTap tap, {required String start}) {
+  void _tapped(ReminderTap tap, {required String app}) {
     final day = reminderDayOf(tap.id);
     final payload = tap.payload;
     final link = payload == null ? null : Uri.tryParse(payload);
     if (link == null || !isAddExpenseLink(link)) {
       _log.warning(
-        'notification tapped id=${tap.id ?? '-'} start=$start with unexpected '
+        'notification tapped id=${tap.id ?? '-'} app=$app with unexpected '
         'payload length=${payload?.length ?? 0} → opening $reminderLink anyway',
       );
     }
     _log.info(
-      'reminder tapped id=${tap.id ?? '-'} day=${day ?? '-'} start=$start → '
+      'reminder tapped id=${tap.id ?? '-'} day=${day ?? '-'} app=$app → '
       '$reminderLink',
     );
     _taps.deliver(reminderLink);

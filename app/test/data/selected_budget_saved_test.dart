@@ -85,7 +85,7 @@ void main() {
       containsAllInOrder([
         endsWith(
           'selected budget budgetId=budget-personal reason=personal '
-          'ownerId=$pullUserId',
+          'userId=$pullUserId',
         ),
         matches(
           RegExp(
@@ -95,7 +95,7 @@ void main() {
         ),
         endsWith(
           'selected budget budgetId=budget-family reason=chosen kind=shared '
-          'ownerId=$pullUserId',
+          'userId=$pullUserId',
         ),
       ]),
     );
@@ -137,7 +137,7 @@ void main() {
         contains(
           endsWith(
             'selected budget budgetId=budget-personal reason=personal '
-            'ownerId=$pullUserId: chosen budgetId=budget-family is gone '
+            'userId=$pullUserId: chosen budgetId=budget-family is gone '
             '(removed or not visible to this user) → stored choice cleared',
           ),
         ),

@@ -29,7 +29,7 @@ void main() {
     expect(
       reminderLines(h, Level.INFO),
       contains(
-        'reminder tapped id=20261019 day=2026-10-19 start=warm → '
+        'reminder tapped id=20261019 day=2026-10-19 app=running → '
         'milionchik://add',
       ),
     );
@@ -37,7 +37,7 @@ void main() {
       h.linesOf('nav', Level.INFO),
       contains(
         endsWith(
-          'deep link milionchik://add start=warm from=/profile → '
+          'deep link milionchik://add router=on /profile → '
           '/expense/new over /month',
         ),
       ),
@@ -60,10 +60,22 @@ void main() {
           r'^notifications plugin ready channel=reminders '
           r'launchedByReminder=true in \d+ms$',
         ),
-        'reminder tapped id=20261018 day=2026-10-18 start=cold → '
+        'reminder tapped id=20261018 day=2026-10-18 app=launched by tap → '
             'milionchik://add',
       ]),
     );
+    final nav = h.linesOf('nav', Level.INFO);
+    expect(
+      nav,
+      contains(
+        matches(
+          r'deep link milionchik://add router=(on /month|first screen) → '
+          r'/expense/new over /month$',
+        ),
+      ),
+    );
+    expect(nav, isNot(contains(contains('start=warm'))));
+    expect(nav, isNot(contains(contains('start=cold'))));
   });
 
   testUnmounting('чужой payload - warn, всё равно «Новая трата»', (
@@ -78,7 +90,7 @@ void main() {
     expect(find.byType(NewExpenseScreen), findsOneWidget);
     expect(
       reminderLines(h, Level.WARNING).single,
-      'notification tapped id=7 start=warm with unexpected payload length=14 '
+      'notification tapped id=7 app=running with unexpected payload length=14 '
       '→ opening milionchik://add anyway',
     );
   });

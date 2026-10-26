@@ -77,10 +77,10 @@ final class DeepLinkRouting {
 
   String _received(DeepLink link, String? signIn) {
     final current = router().routerDelegate.currentConfiguration;
-    final start = current.isEmpty
-        ? 'start=cold'
-        : 'start=warm from=${current.uri.path}';
-    final what = 'deep link ${link.place} $start${link._extras}';
+    final shown = current.isEmpty
+        ? 'router=first screen'
+        : 'router=on ${current.uri.path}';
+    final what = 'deep link ${link.place} $shown${link._extras}';
     final target = link.target;
     if (signIn != null) {
       _waiting = target == null ? null : link;
