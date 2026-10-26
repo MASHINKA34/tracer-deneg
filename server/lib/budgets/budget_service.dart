@@ -685,19 +685,19 @@ class BudgetService {
     };
     _checkBudgetId(action, budgetId, context, sw);
     final now = normalizeInstant(_now());
-    final outcome = await _run<int>(action, context, sw, (tx) async {
+    final outcome = await _run<_Removed>(action, context, sw, (tx) async {
       final access = await _lockBudget(tx, budgetId, userId, action);
-      final denied = _denied<int>(access, ownerOnly: true);
+      final denied = _denied<_Removed>(access, ownerOnly: true);
       if (denied != null) return denied;
       if (memberId == userId) {
-        return const _Outcome<int>.rejected(
+        return const _Outcome<_Removed>.rejected(
           BudgetFailureReason.removeSelf,
           'owner tried to remove themselves, leave goes through '
           'POST /budgets/{id}/leave',
         );
       }
       if (!isUuid(memberId)) {
-        return const _Outcome<int>.rejected(
+        return const _Outcome<_Removed>.rejected(
           BudgetFailureReason.memberNotFound,
           'member id is not a uuid',
         );
@@ -711,14 +711,31 @@ class BudgetService {
         logParams: context,
       );
       if (removed.isEmpty) {
-        return const _Outcome<int>.rejected(
+        return const _Outcome<_Removed>.rejected(
           BudgetFailureReason.memberNotFound,
           'not an active member of this budget',
         );
       }
-      return _Outcome.ok(removed.single[0]! as int);
+      final invites = await _revokeInvites(tx, budgetId, now);
+      return _Outcome.ok((
+        seq: removed.single[0]! as int,
+        invitesRevoked: invites,
+      ));
     });
-    final seq = _unwrap(action, outcome, context, sw);
+    final removed = _unwrap(action, outcome, context, sw);
+    final seq = removed.seq;
+    if (removed.invitesRevoked > 0) {
+      _log.info(
+        'budget $action revoked invite codes budgetId=$budgetId '
+        'memberId=$memberId invitesRevoked=${removed.invitesRevoked} → '
+        'old code no longer works, owner issues a new one',
+      );
+    } else {
+      _log.fine(
+        'budget $action: no active invite code to revoke budgetId=$budgetId '
+        'memberId=$memberId',
+      );
+    }
     _log.info(
       'budget $action ok budgetId=$budgetId userId=$userId '
       'memberId=$memberId seq=$seq in ${sw.elapsedMilliseconds}ms',
@@ -1003,6 +1020,8 @@ typedef _Left = ({
 });
 
 typedef _Deleted = ({int members, _Erased erased});
+
+typedef _Removed = ({int seq, int invitesRevoked});
 
 typedef _Joined = ({
   Budget budget,
