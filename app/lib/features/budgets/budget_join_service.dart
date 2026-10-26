@@ -97,6 +97,20 @@ class BudgetJoinService {
             'status=$statusCode rid=${e.requestId} in ${ms}ms → error under '
             'the code field, not joined',
           );
+        case ApiErrorResponse(
+              :final statusCode,
+              :final error,
+              retryAfter: final wait,
+            )
+            when error.code == ApiErrorCode.tooManyAttempts.code:
+          _log.warning(
+            'budget join rejected code=$masked reason=${error.code} '
+            'status=$statusCode '
+            'retryAfter=${wait == null ? 'none' : '${wait.inSeconds}s'} '
+            'rid=${e.requestId} in ${ms}ms → snackbar '
+            '${wait == null ? 'without' : 'with'} the wait, code kept, not '
+            'joined',
+          );
         case ApiErrorResponse(:final statusCode, :final error):
           _log.warning(
             'budget join rejected code=$masked reason=${error.code} '

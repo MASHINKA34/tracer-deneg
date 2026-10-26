@@ -850,6 +850,13 @@
   "@joinBudgetNotLoaded": { "description": "Вход по коду: снекбар, если сервер принял код, а загрузка с сервера не удалась — повтор с тем же кодом безопасен" },
   "joinBudgetFailed": "Не получилось войти в бюджет. Попробуй ещё раз",
   "@joinBudgetFailed": { "description": "Вход по коду: снекбар, если запрос сломался на телефоне (не ответ сервера и не сеть)" },
+  "joinBudgetTooManyAttempts": "Слишком много попыток. Попробуй через {minutes, plural, one{{minutes} минуту} few{{minutes} минуты} many{{minutes} минут} other{{minutes} минуты}}",
+  "@joinBudgetTooManyAttempts": {
+    "description": "Вход по коду: снекбар на 429 too_many_attempts (10 неверных кодов за 15 минут или 30 запросов в минуту с IP); minutes — Retry-After, округлённый вверх до минут. Без Retry-After — общий apiErrorTooManyAttempts",
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
   "budgetScreenSubtitle": "Общий бюджет · {count, plural, one{{count} участник} few{{count} участника} many{{count} участников} other{{count} участника}}",
   "@budgetScreenSubtitle": {
     "description": "Экран общего бюджета (13:1135): подпись под названием в шапке — число участников",
@@ -918,6 +925,10 @@
   },
   "budgetScreenInviteExpired": "Код истёк. Нажми «Пригласить», чтобы сделать новый",
   "@budgetScreenInviteExpired": { "description": "Экран общего бюджета: снекбар при копировании или «Поделиться», если код уже истёк" },
+  "budgetScreenInviteRevoked": "Старый код больше не работает",
+  "@budgetScreenInviteRevoked": { "description": "Экран общего бюджета: строка на месте кода после исключения участника — сервер отозвал показанный код вместе с исключением" },
+  "budgetScreenInviteNew": "Новый код",
+  "@budgetScreenInviteNew": { "description": "Экран общего бюджета: кнопка под строкой «Старый код больше не работает» — POST /budgets/{id}/invites без подтверждения" },
   "budgetScreenRenewTitle": "Сделать новый код?",
   "@budgetScreenRenewTitle": { "description": "Экран общего бюджета: заголовок подтверждения нового кода" },
   "budgetScreenRenewMessage": "Код {code} перестанет работать. Кто ещё не вошёл по нему, тому отправь новый.",

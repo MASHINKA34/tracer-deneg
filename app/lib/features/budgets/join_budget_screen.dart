@@ -40,12 +40,24 @@ String joinCodeErrorText(AppLocalizations l10n, JoinCodeError error) =>
       JoinCodeError.notFound => l10n.joinBudgetCodeNotFound,
     };
 
+int joinRetryMinutes(Duration wait) {
+  final minutes = (wait.inSeconds + 59) ~/ 60;
+  return minutes < 1 ? 1 : minutes;
+}
+
 String budgetJoinFailureText(AppLocalizations l10n, BudgetJoinFailed failure) =>
     switch (failure) {
       BudgetJoinFailed(stage: BudgetJoinStage.select) =>
         l10n.budgetSwitcherFailed,
       BudgetJoinFailed(stage: BudgetJoinStage.pull) => l10n.joinBudgetNotLoaded,
       BudgetJoinFailed(offline: true) => l10n.joinBudgetOffline,
+      BudgetJoinFailed(
+        error: ApiErrorResponse(
+          code: ApiErrorCode.tooManyAttempts,
+          retryAfter: final Duration wait,
+        ),
+      ) =>
+        l10n.joinBudgetTooManyAttempts(joinRetryMinutes(wait)),
       BudgetJoinFailed(error: final ApiException e) => apiErrorText(l10n, e),
       BudgetJoinFailed() => l10n.joinBudgetFailed,
     };

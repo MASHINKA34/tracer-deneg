@@ -327,9 +327,11 @@ class BudgetInviteCard extends StatelessWidget {
     required this.onCopy,
     required this.onShare,
     required this.onRenew,
+    this.revoked = false,
   });
 
   final BudgetInvite? invite;
+  final bool revoked;
   final bool busy;
   final VoidCallback onCreate;
   final VoidCallback onCopy;
@@ -361,7 +363,18 @@ class BudgetInviteCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(l10n.budgetScreenInviteText, style: onSoft),
           const SizedBox(height: 12),
-          if (invite == null)
+          if (invite == null && revoked) ...[
+            Text(
+              l10n.budgetScreenInviteRevoked,
+              style: AppText.bodyM.copyWith(color: mood.onSoft),
+            ),
+            const SizedBox(height: 12),
+            AppButton(
+              label: l10n.budgetScreenInviteNew,
+              expand: true,
+              onPressed: busy ? null : onCreate,
+            ),
+          ] else if (invite == null)
             AppButton(
               label: l10n.budgetScreenInviteCreate,
               expand: true,

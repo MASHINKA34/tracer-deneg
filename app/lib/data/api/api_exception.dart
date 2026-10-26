@@ -34,15 +34,19 @@ final class ApiErrorResponse extends ApiException {
     required super.requestId,
     required this.statusCode,
     required this.error,
+    this.retryAfter,
   });
 
   final int statusCode;
   final ApiError error;
+  final Duration? retryAfter;
 
   ApiErrorCode? get code => error.knownCode;
 
   @override
-  String get details => '$statusCode code=${error.code}';
+  String get details =>
+      '$statusCode code=${error.code}'
+      '${retryAfter == null ? '' : ' retryAfter=${retryAfter!.inSeconds}s'}';
 }
 
 final class ApiServerFailure extends ApiException {
@@ -253,7 +257,27 @@ ApiException _fromResponse(
     requestId: rid,
     statusCode: status,
     error: error,
+    retryAfter: _retryAfter(method, path, rid, response),
   );
+}
+
+Duration? _retryAfter(
+  String method,
+  String path,
+  String? rid,
+  Response<dynamic>? response,
+) {
+  final values = response?.headers['retry-after'];
+  if (values == null || values.isEmpty) return null;
+  final seconds = int.tryParse(values.first.trim());
+  if (seconds == null || seconds < 0) {
+    _log.fine(
+      '$method $path Retry-After "${values.first}" is not a number of '
+      'seconds → ignored rid=$rid',
+    );
+    return null;
+  }
+  return Duration(seconds: seconds);
 }
 
 ({ApiError? error, String? problem}) _parseError(Object? data) {

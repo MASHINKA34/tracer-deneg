@@ -98,6 +98,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   bool _sharing = false;
   bool _menuOpen = false;
   bool _loggedShown = false;
+  bool _inviteRevoked = false;
   String _closedBy = 'back';
 
   String get _id => widget.budgetId;
@@ -393,7 +394,15 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     if (!mounted) return;
     setState(() => _busy = null);
     switch (outcome) {
-      case BudgetActionDone():
+      case BudgetActionDone(:final inviteRevoked):
+        if (inviteRevoked) {
+          _log.fine(
+            'budget screen budgetId=$_id: shown invite code revoked with the '
+            'removal → «${l10n.budgetScreenInviteRevoked}» and '
+            '«${l10n.budgetScreenInviteNew}» instead of the code',
+          );
+          setState(() => _inviteRevoked = true);
+        }
         _snackbar(l10n.budgetScreenExcluded(name));
       case final BudgetActionFailed failure:
         _snackbar(budgetActionFailureText(l10n, failure));
@@ -424,7 +433,10 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
         .read(budgetActionsServiceProvider)
         .invite(_id, renew: renew);
     if (!mounted) return;
-    setState(() => _busy = null);
+    setState(() {
+      _busy = null;
+      if (outcome is BudgetActionDone) _inviteRevoked = false;
+    });
     if (outcome case final BudgetActionFailed failure) {
       _snackbar(budgetActionFailureText(l10n, failure));
     }
@@ -663,8 +675,12 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             if (owner) ...[
               BudgetInviteCard(
                 invite: invite,
+                revoked: _inviteRevoked,
                 busy: _busy != null,
-                onCreate: () => _invite(renew: false, by: 'button'),
+                onCreate: () => _invite(
+                  renew: false,
+                  by: _inviteRevoked ? 'new code after removal' : 'button',
+                ),
                 onCopy: () {
                   if (invite != null) unawaited(_copy(invite));
                 },

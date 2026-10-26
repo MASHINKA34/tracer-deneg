@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
+import '../../core/clock.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/api/budgets_api.dart';
 import '../../data/db/redact_db_error.dart';
@@ -41,16 +42,19 @@ final class BudgetActionDone extends BudgetActionOutcome {
     required this.requestId,
     required this.synced,
     this.invite,
+    this.inviteRevoked = false,
   });
 
   final String requestId;
   final bool synced;
   final BudgetInvite? invite;
+  final bool inviteRevoked;
 
   @override
   String toString() =>
       'BudgetActionDone(${action.logName} budgetId=$budgetId '
-      'synced=$synced${invite == null ? '' : ' $invite'} rid=$requestId)';
+      'synced=$synced${invite == null ? '' : ' $invite'}'
+      '${inviteRevoked ? ' inviteRevoked' : ''} rid=$requestId)';
 }
 
 final class BudgetActionFailed extends BudgetActionOutcome {
@@ -145,6 +149,7 @@ class BudgetActionsService {
         PullReason.memberRemoved,
         (api) => api.removeMember(budgetId: budgetId, userId: memberId),
         memberId: memberId,
+        revokesInvite: true,
       );
 
   Future<BudgetActionOutcome> _change(
@@ -154,6 +159,7 @@ class BudgetActionsService {
     Future<BudgetActionReply> Function(BudgetsApi api) request, {
     bool own = false,
     String? memberId,
+    bool revokesInvite = false,
   }) async {
     final sw = Stopwatch()..start();
     final who = memberId == null ? '' : ' memberId=$memberId';
@@ -183,6 +189,8 @@ class BudgetActionsService {
       if (synced) notices.ownRemovalSettled(budgetId, removed: true);
       await _ref.read(budgetSelectionProvider.notifier).forgetGone(budgetId);
     }
+    final inviteRevoked =
+        revokesInvite && _forgetRevokedInvite(action, budgetId);
     _log.info(
       'budget ${action.logName} ok budgetId=$budgetId$who '
       'status=${reply.statusCode} synced=$synced rid=$rid '
@@ -193,7 +201,32 @@ class BudgetActionsService {
       budgetId: budgetId,
       requestId: rid,
       synced: synced,
+      inviteRevoked: inviteRevoked,
     );
+  }
+
+  bool _forgetRevokedInvite(BudgetAction action, String budgetId) {
+    final shown = _ref.read(budgetInvitesProvider)[budgetId];
+    if (shown == null) {
+      _log.fine(
+        'budget ${action.logName} budgetId=$budgetId: no invite code on this '
+        'phone, the server revoked whatever was active',
+      );
+      return false;
+    }
+    final active = shown.activeAt(_ref.read(clockProvider).now());
+    _ref
+        .read(budgetInvitesProvider.notifier)
+        .forget(
+          budgetId,
+          reason: '${action.logName}: the server revoked the code',
+        );
+    _log.info(
+      'budget ${action.logName} budgetId=$budgetId: invite $shown revoked by '
+      'the server with the removal, forgotten on this phone → '
+      '${active ? '«new code» offered' : 'it had expired anyway'}',
+    );
+    return active;
   }
 
   Future<bool> _pull(
