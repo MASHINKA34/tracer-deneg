@@ -47,13 +47,15 @@ void main() {
         '0001_init.sql',
         '0002_used_refresh_tokens.sql',
         '0003_sync_seq_gate.sql',
+        '0004_release_deleted_logins.sql',
       ]);
       expect(first.alreadyApplied, 0);
-      expect(first.schemaVersion, 3);
+      expect(first.schemaVersion, 4);
       expect(await _appliedRows(db), [
         [1, '0001_init.sql'],
         [2, '0002_used_refresh_tokens.sql'],
         [3, '0003_sync_seq_gate.sql'],
+        [4, '0004_release_deleted_logins.sql'],
       ]);
       expect(
         logs.text,
@@ -77,17 +79,17 @@ void main() {
       logs.clear();
       final second = await Migrator(db, directory: _migrations).run();
       expect(second.applied, isEmpty);
-      expect(second.alreadyApplied, 3);
-      expect(second.schemaVersion, 3);
+      expect(second.alreadyApplied, 4);
+      expect(second.schemaVersion, 4);
       expect(
         logs.text,
         contains(
-          'INFO  [db] migrations: nothing to apply, 3 already applied, '
-          'schema version 3 (0003_sync_seq_gate.sql)',
+          'INFO  [db] migrations: nothing to apply, 4 already applied, '
+          'schema version 4 (0004_release_deleted_logins.sql)',
         ),
       );
       expect(logs.text, isNot(contains('applying')));
-      expect(await _appliedRows(db), hasLength(3));
+      expect(await _appliedRows(db), hasLength(4));
     });
 
     test('файлы применяются по номеру, а не по порядку в папке', () async {
@@ -214,12 +216,13 @@ void main() {
             '0001_init.sql',
             '0002_used_refresh_tokens.sql',
             '0003_sync_seq_gate.sql',
+            '0004_release_deleted_logins.sql',
           ],
           <String>[],
         ]),
       );
-      expect(results.map((r) => r.schemaVersion), everyElement(3));
-      expect(await _appliedRows(first), hasLength(3));
+      expect(results.map((r) => r.schemaVersion), everyElement(4));
+      expect(await _appliedRows(first), hasLength(4));
       expect(logs.text, isNot(contains('ERROR')));
     });
 
@@ -246,6 +249,7 @@ void main() {
             '0001_init.sql',
             '0002_used_refresh_tokens.sql',
             '0003_sync_seq_gate.sql',
+            '0004_release_deleted_logins.sql',
           ]);
         });
 
@@ -344,6 +348,7 @@ void main() {
         [1, '0001_init.sql'],
         [2, '0002_used_refresh_tokens.sql'],
         [3, '0003_sync_seq_gate.sql'],
+        [4, '0004_release_deleted_logins.sql'],
       ]);
       int at(String text) =>
           logs.lines.indexWhere((line) => line.contains(text));

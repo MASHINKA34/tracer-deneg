@@ -276,15 +276,23 @@ class Migrator {
         cause: e,
       );
     }
+    final int changedRows;
     try {
-      await connection.transaction('migration ${file.name}', (tx) async {
-        await tx.execute(sql, what: file.name, queryMode: QueryMode.simple);
+      changedRows = await connection.transaction('migration ${file.name}', (
+        tx,
+      ) async {
+        final result = await tx.execute(
+          sql,
+          what: file.name,
+          queryMode: QueryMode.simple,
+        );
         await tx.execute(
           r'INSERT INTO schema_migrations (version, name) VALUES ($1, $2)',
           parameters: [file.version, file.name],
           what: 'record migration',
           logParams: {'version': file.version, 'name': file.name},
         );
+        return result.affectedRows;
       });
     } catch (e, st) {
       final described = describeError(e);
@@ -308,7 +316,7 @@ class Migrator {
     }
     _log.info(
       'migration ${file.name} applied in ${sw.elapsedMilliseconds}ms '
-      '($index/$count)',
+      '($index/$count) changedRows=$changedRows',
     );
   }
 
