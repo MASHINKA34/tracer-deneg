@@ -3,11 +3,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'package:logging/logging.dart';
+
 import '../../l10n/app_localizations.dart';
 import '../icons/app_icon.dart';
 import '../theme/app_text.dart';
 import '../theme/app_theme.dart';
 import 'fab.dart';
+
+final _log = Logger('nav.labels');
 
 /// Вкладки нижнего меню.
 enum AppNavTab { month, stats, recurring, profile }
@@ -21,7 +25,7 @@ enum AppNavTab { month, stats, recurring, profile }
 /// панелью — кнопки сразу над ней (решение этапа 03).
 /// Подпись, которая не помещается по ширине (экран 320, крупный шрифт),
 /// уменьшается, а не обрезается.
-class AppBottomNav extends StatelessWidget {
+class AppBottomNav extends StatefulWidget {
   const AppBottomNav({
     super.key,
     required this.active,
@@ -37,32 +41,128 @@ class AppBottomNav extends StatelessWidget {
   /// Эмодзи наклейки на «+» (праздник).
   final String? fabSticker;
 
+  static const double labelGap = 4;
+
+  static const double _sidePadding = 6;
+
+  static const double _fabSlot = 64;
+
+  static double labelScale({
+    required double width,
+    required TextScaler textScaler,
+    required List<String> labels,
+  }) => _measureLabels(width, textScaler, labels).scale;
+
+  static ({double scale, String widest, double widestWidth, double tab})
+  _measureLabels(double width, TextScaler textScaler, List<String> labels) {
+    final tab = (width - 2 * _sidePadding - _fabSlot) / labels.length;
+    final widths = [
+      for (final label in labels)
+        (TextPainter(
+          text: TextSpan(text: label, style: AppText.labelS),
+          textScaler: textScaler,
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+        )..layout()).width,
+    ];
+    var widest = 0;
+    for (var i = 1; i < widths.length; i++) {
+      if (widths[i] > widths[widest]) widest = i;
+    }
+    var scale = 1.0;
+    for (final w in widths) {
+      if (w > 0) scale = math.min(scale, tab / w);
+    }
+    final half = labels.length ~/ 2;
+    for (var i = 0; i + 1 < labels.length; i++) {
+      if (i + 1 == half) continue;
+      final pair = (widths[i] + widths[i + 1]) / 2;
+      if (pair > 0) scale = math.min(scale, (tab - labelGap) / pair);
+    }
+    return (
+      scale: math.max(0, scale),
+      widest: labels[widest],
+      widestWidth: widths[widest],
+      tab: tab,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  State<AppBottomNav> createState() => _AppBottomNavState();
+}
+
+class _AppBottomNavState extends State<AppBottomNav> {
+  double? _loggedScale;
+
+  double _labelScale(BuildContext context, double width, List<String> labels) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final m = AppBottomNav._measureLabels(width, scaler, labels);
+    if (_loggedScale != m.scale) {
+      _loggedScale = m.scale;
+      final where =
+          'widest «${m.widest}» ${m.widestWidth.toStringAsFixed(1)}dp, '
+          'tab ${m.tab.toStringAsFixed(1)}dp, gap ${AppBottomNav.labelGap}dp, '
+          'textScale=${(scaler.scale(12) / 12).toStringAsFixed(2)} '
+          'width=${width.toStringAsFixed(0)}dp';
+      _log.fine(
+        m.scale < 1
+            ? 'nav labels scaled together '
+                  'x${m.scale.toStringAsFixed(3)} to fit: $where'
+            : 'nav labels at full size: $where',
+      );
+    }
+    return m.scale;
+  }
+
+  @override
+  Widget build(BuildContext context) => _FabHitArea(
+    child: Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) => _bar(context, constraints.maxWidth),
+      ),
+    ),
+  );
+
+  Widget _bar(BuildContext context, double width) {
+    final active = widget.active;
     final colors = context.colors;
     final l10n = AppLocalizations.of(context);
     final bottom = math.max(18.0, MediaQuery.viewPaddingOf(context).bottom);
+    final scale = _labelScale(context, width, [
+      l10n.navMonth,
+      l10n.navStats,
+      l10n.navRecurring,
+      l10n.navProfile,
+    ]);
 
     Widget tab(AppNavTab tab, AppIcons icon, String label) => Expanded(
       child: _NavTab(
         icon: icon,
         label: label,
+        labelScale: scale,
         active: tab == active,
         order: tab.index < AppNavTab.recurring.index
             ? tab.index
             : tab.index + 1,
-        onTap: () => onTabSelected(tab),
+        onTap: () => widget.onTabSelected(tab),
       ),
     );
 
     // Container добавляет линию сверху (1) к отступу 8 — как в Figma, где
     // обводка входит в размер.
-    final nav = Container(
+    return Container(
       decoration: BoxDecoration(
         color: colors.bgSurface,
         border: Border(top: BorderSide(color: colors.borderDefault)),
       ),
-      padding: EdgeInsets.fromLTRB(6, 8, 6, bottom),
+      padding: EdgeInsets.fromLTRB(
+        AppBottomNav._sidePadding,
+        8,
+        AppBottomNav._sidePadding,
+        bottom,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -70,7 +170,7 @@ class AppBottomNav extends StatelessWidget {
           tab(AppNavTab.stats, AppIcons.pieChart, l10n.navStats),
           // Слот 64 × 54, «+» выступает над меню на 26 (как в Figma).
           SizedBox(
-            width: 64,
+            width: AppBottomNav._fabSlot,
             height: 54,
             child: Stack(
               clipBehavior: Clip.none,
@@ -83,7 +183,10 @@ class AppBottomNav extends StatelessWidget {
                       sortKey: OrdinalSortKey(
                         AppNavTab.recurring.index.toDouble(),
                       ),
-                      child: AppFab(onPressed: onAdd, stickerEmoji: fabSticker),
+                      child: AppFab(
+                        onPressed: widget.onAdd,
+                        stickerEmoji: widget.fabSticker,
+                      ),
                     ),
                   ),
                 ),
@@ -94,9 +197,6 @@ class AppBottomNav extends StatelessWidget {
           tab(AppNavTab.profile, AppIcons.user, l10n.navProfile),
         ],
       ),
-    );
-    return _FabHitArea(
-      child: Semantics(container: true, explicitChildNodes: true, child: nav),
     );
   }
 }
@@ -168,6 +268,7 @@ class _NavTab extends StatelessWidget {
   const _NavTab({
     required this.icon,
     required this.label,
+    required this.labelScale,
     required this.active,
     required this.order,
     required this.onTap,
@@ -175,6 +276,7 @@ class _NavTab extends StatelessWidget {
 
   final AppIcons icon;
   final String label;
+  final double labelScale;
   final bool active;
   final int order;
   final VoidCallback onTap;
@@ -183,9 +285,13 @@ class _NavTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final mood = context.mood;
-    final style = active
+    final base = active
         ? AppText.labelS.copyWith(color: colors.textPrimary)
         : AppText.micro.copyWith(color: colors.textTertiary);
+    final style = base.copyWith(
+      fontSize:
+          MediaQuery.textScalerOf(context).scale(base.fontSize!) * labelScale,
+    );
     return Semantics(
       sortKey: OrdinalSortKey(order.toDouble()),
       button: true,
@@ -222,7 +328,12 @@ class _NavTab extends StatelessWidget {
               // уменьшается, а не обрезается и не налезает на соседей.
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(label, maxLines: 1, style: style),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textScaler: TextScaler.noScaling,
+                  style: style,
+                ),
               ),
             ],
           ),
