@@ -43,6 +43,8 @@ const Duration amountShakeDuration = Duration(milliseconds: 420);
 
 const int newExpenseGridCategories = 7;
 
+const Duration amountRevealDuration = Duration(milliseconds: 250);
+
 String shortExpenseDate(LocalDate date, LocalDate today) {
   final pattern = date.year == today.year ? 'd MMM' : 'd MMM y';
   return DateFormat(
@@ -83,6 +85,9 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
   String _closedBy = 'back';
   bool _leaving = false;
   bool _needAmount = false;
+  final ScrollController _scroll = ScrollController();
+  bool _keypadPinned = false;
+  bool? _wantPinned;
 
   NewExpenseController get _controller =>
       ref.read(newExpenseControllerProvider(widget.date).notifier);
@@ -102,7 +107,58 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
   void dispose() {
     _blink?.cancel();
     _shake.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  void _fitKeypad({
+    required double content,
+    required double available,
+    required double keypad,
+    required double textScale,
+  }) {
+    final pin = content + keypad > available + 0.5;
+    if (pin == (_wantPinned ?? _keypadPinned)) return;
+    final queued = _wantPinned != null;
+    _wantPinned = pin;
+    final sizes =
+        'content ${content.toStringAsFixed(1)}dp + keypad '
+        '${keypad.toStringAsFixed(1)}dp, available '
+        '${available.toStringAsFixed(1)}dp, textScale='
+        '${textScale.toStringAsFixed(2)}';
+    _log.fine(
+      pin
+          ? 'new expense keypad pinned at the bottom: $sizes → amount, chips '
+                'and categories scroll above it'
+          : 'new expense keypad back in the flow: $sizes → everything fits',
+    );
+    if (queued) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final want = _wantPinned;
+      _wantPinned = null;
+      if (!mounted || want == null || want == _keypadPinned) return;
+      setState(() => _keypadPinned = want);
+    });
+  }
+
+  void _revealAmount() {
+    if (!_keypadPinned || !_scroll.hasClients || _scroll.offset <= 0) return;
+    _log.fine(
+      'new expense key pressed with the amount scrolled away '
+      '(offset=${_scroll.offset.toStringAsFixed(1)}dp) → scrolling back to '
+      'the amount${_animate ? '' : ' without animation'}',
+    );
+    if (_animate) {
+      unawaited(
+        _scroll.animateTo(
+          0,
+          duration: amountRevealDuration,
+          curve: Curves.easeOut,
+        ),
+      );
+    } else {
+      _scroll.jumpTo(0);
+    }
   }
 
   void _startBlink() {
@@ -126,6 +182,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
 
   void _press(bool Function(NewExpenseController c) key, {bool shake = true}) {
     HapticFeedback.lightImpact();
+    _revealAmount();
     if (key(_controller)) {
       final input = ref.read(newExpenseControllerProvider(widget.date)).input;
       if (_needAmount && input.canSave) setState(() => _needAmount = false);
@@ -360,6 +417,16 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
         ? const <Category>[]
         : categoriesValue.value ?? const <Category>[];
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final keypadMin = ExpenseKeypad.minHeightFor(context, bottomInset: bottom);
+    final textScale = MediaQuery.textScalerOf(context).scale(10) / 10;
+    Widget keypad(double keyHeight) => ExpenseKeypad(
+      keyHeight: keyHeight,
+      bottomInset: bottom,
+      onDigit: (d) => _press((c) => c.digit(d)),
+      onComma: () => _press((c) => c.comma()),
+      onBackspace: () => _press((c) => c.backspace(), shake: false),
+      onClear: () => _press((c) => c.clear(), shake: false),
+    );
 
     return PopScope<Object?>(
       canPop: _leaving || state.input.isEmpty,
@@ -383,6 +450,7 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
             ),
             Expanded(
               child: CustomScrollView(
+                controller: _scroll,
                 slivers: [
                   SliverToBoxAdapter(
                     child: Column(
@@ -444,28 +512,36 @@ class _NewExpenseScreenState extends ConsumerState<NewExpenseScreen>
                     ),
                   ),
                   SliverLayoutBuilder(
-                    builder: (context, constraints) => SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: ExpenseKeypad(
-                        keyHeight: ExpenseKeypad.keyHeightFor(
-                          context,
-                          space:
-                              constraints.viewportMainAxisExtent -
-                              constraints.precedingScrollExtent,
-                          bottomInset: bottom,
+                    builder: (context, constraints) {
+                      final content = constraints.precedingScrollExtent;
+                      final viewport = constraints.viewportMainAxisExtent;
+                      _fitKeypad(
+                        content: content,
+                        available: viewport + (_keypadPinned ? keypadMin : 0),
+                        keypad: keypadMin,
+                        textScale: textScale,
+                      );
+                      if (_keypadPinned) {
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
+                      }
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: keypad(
+                          ExpenseKeypad.keyHeightFor(
+                            context,
+                            space: viewport - content,
+                            bottomInset: bottom,
+                          ),
                         ),
-                        bottomInset: bottom,
-                        onDigit: (d) => _press((c) => c.digit(d)),
-                        onComma: () => _press((c) => c.comma()),
-                        onBackspace: () =>
-                            _press((c) => c.backspace(), shake: false),
-                        onClear: () => _press((c) => c.clear(), shake: false),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
+            if (_keypadPinned) keypad(ExpenseKeypad.shortestKeyFor(context)),
           ],
         ),
       ),
@@ -778,15 +854,24 @@ class ExpenseKeypad extends StatelessWidget {
   static const double _padding = 12;
   static const double _keyHeight = 58;
 
+  static double shortestKeyFor(BuildContext context) {
+    final style = AppText.titleL;
+    final text =
+        MediaQuery.textScalerOf(context).scale(style.fontSize!) * style.height!;
+    return math.min(_keyHeight, math.max(kMinTapTarget, text));
+  }
+
+  static double minHeightFor(
+    BuildContext context, {
+    required double bottomInset,
+  }) => 4 * shortestKeyFor(context) + 3 * _gap + 2 * _padding + bottomInset;
+
   static double keyHeightFor(
     BuildContext context, {
     required double space,
     required double bottomInset,
   }) {
-    final style = AppText.titleL;
-    final text =
-        MediaQuery.textScalerOf(context).scale(style.fontSize!) * style.height!;
-    final shortest = math.min(_keyHeight, math.max(kMinTapTarget, text));
+    final shortest = shortestKeyFor(context);
     final fits = (space - 2 * _padding - 3 * _gap - bottomInset) / 4;
     return fits.clamp(shortest, _keyHeight);
   }
