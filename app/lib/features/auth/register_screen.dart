@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:shared/shared.dart';
 
 import '../../core/router.dart';
+import '../../core/web_links.dart';
 import '../../data/api/api_error_text.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/components/button.dart';
@@ -153,6 +154,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     context.go(AppRoutes.login);
   }
 
+  Future<void> _openPrivacy() async {
+    final opened = await ref
+        .read(webLinksProvider)
+        .open(WebPage.privacy, from: WebLinkSource.register);
+    if (!mounted || opened) return;
+    showAppSnackbar(context, text: AppLocalizations.of(context).linkOpenFailed);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -267,6 +276,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     question: l10n.authHaveAccount,
                     action: l10n.authSignIn,
                     onTap: () => _back('sign-in link'),
+                  ),
+                  Semantics(
+                    link: true,
+                    label: l10n.a11yWebLink(l10n.linkPrivacy),
+                    excludeSemantics: true,
+                    onTap: _openPrivacy,
+                    child: AppButton(
+                      label: l10n.linkPrivacy,
+                      type: AppButtonType.text,
+                      size: AppButtonSize.m,
+                      expand: true,
+                      onPressed: _openPrivacy,
+                    ),
                   ),
                 ],
               ),
